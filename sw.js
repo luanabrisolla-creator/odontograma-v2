@@ -1,7 +1,7 @@
 // Guarda o aplicativo no aparelho para funcionar sem internet.
 // Ao publicar uma nova versão do index.html, troque o número abaixo.
 const CACHE = "odontograma-v18";
-const ARQUIVOS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png"];
+const ARQUIVOS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
