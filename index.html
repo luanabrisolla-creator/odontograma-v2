@@ -707,7 +707,7 @@ function salvarCfg(parcial) { store.set(K_CFG, Object.assign(cfg(), parcial)); }
 function cadastroFaltando() {
   const p = perfil();
   if (!p) return [["acesso", "acesso"]];
-  if (p === "coord") return [["coord", "perfil de profissional"]];
+  if (!fazExames()) return [["coord", "perfil de profissional"]];
   return [];
 }
 const listaE = a => a.length > 1 ? a.slice(0, -1).join(", ") + " e " + a.at(-1) : a.join("");
@@ -931,12 +931,21 @@ function aplicarFerr(n, face) {
 
 /* ---------- salvar / lista ---------- */
 const exames = () => store.get(K_EXAMES, []);
+// Cada exame guardado no aparelho tem dono: só quem fez vê, edita e envia. Exames antigos, sem dono, valem pelo CRO.
+function ehMeu(e) {
+  const u = (sessao() || {}).usuario; if (!u) return false;
+  if (e.dono) return e.dono === u.id;
+  if (e.usuarioId) return e.usuarioId === u.id;
+  const a = croCod((e.profissional || {}).cro), b = croCod(u.cro);
+  return !a || !b || a === b;
+}
+const meus = () => exames().filter(ehMeu);
 const gravarExames = l => { store.set(K_EXAMES, l); atualizarRede(); };
 
 function montarRegistro(ex) {
   const c = cfg(), r = avaliar(ex), idade = idadeEm(ex.crianca.nascimento, ex.dataExame);
   const dentes = {}; for (const n of dentesDe(ex.denticao)) dentes[n] = clone(ex.dentes[n]);
-  return {id: ex.id, versao: 1, criadoEm: ex.criadoEm, atualizadoEm: new Date().toISOString(), dataExame: ex.dataExame,
+  return {id: ex.id, versao: 1, dono: ((sessao() || {}).usuario || {}).id || "", criadoEm: ex.criadoEm, atualizadoEm: new Date().toISOString(), dataExame: ex.dataExame,
     profissional: {nome: c.nome, cro: c.cro}, municipio: c.municipio, uf: ex.uf, dsei: ex.dsei, polo: ex.polo.trim(), aldeia: ex.aldeia.trim(), seq: ex.seq, croCod: ex.croCod, codigo: codigoDe(ex),
     crianca: {nascimento: ex.crianca.nascimento || "", sexo: ex.crianca.sexo || ""}, idadeAnos: idade ? idade.decimal : "", denticao: ex.denticao,
     placa: ex.placa, gengivite: ex.gengivite, fluorose: !!ex.fluorose, gerais: ex.gerais.slice(), insumos: (ex.insumos || []).slice(), observacoes: ex.observacoes, dentes,
@@ -972,7 +981,7 @@ function salvarExame() {
   sincronizar();
 }
 function abrirExame(id) {
-  const reg = exames().find(e => e.id === id); if (!reg) return;
+  const reg = meus().find(e => e.id === id); if (!reg) return;
   if (estado.ex._tocado && !estado.editando && !confirm("Há um exame em andamento que ainda não foi salvo. Deseja descartá-lo para abrir este?")) return;
   estado.ex = {id: reg.id, criadoEm: reg.criadoEm, dataExame: reg.dataExame, uf: reg.uf || "", dsei: reg.dsei || "", polo: reg.polo || "", aldeia: reg.aldeia || "", seq: reg.seq || null, croCod: reg.croCod || "", crianca: {nascimento: reg.crianca.nascimento || "", sexo: reg.crianca.sexo || ""}, denticao: reg.denticao,
     placa: reg.placa, gengivite: reg.gengivite, fluorose: !!reg.fluorose, gerais: reg.gerais.slice(), insumos: (reg.insumos || []).slice(), observacoes: reg.observacoes || "", dentes: clone(reg.dentes), _tocado: true,
@@ -990,11 +999,12 @@ function excluirExame(id) {
   gravarExames(exames().filter(e => e.id !== id)); renderLista();
 }
 function renderLista() {
-  const locais = exames(), idsLocais = new Set(locais.map(e => e.id));
+  const locais = meus(), idsLocais = new Set(locais.map(e => e.id)), deOutros = exames().filter(e => !ehMeu(e) && e.envio.estado !== "enviado").length;
   const daNuvem = (estado.nuvem || []).filter(e => !idsLocais.has(e.id)).map(e => Object.assign({}, e, {envio: {estado: "nuvem"}}));
   const l = [...locais, ...daNuvem].sort((a, b) => (b.atualizadoEm || "").localeCompare(a.atualizadoEm || ""));
   const pend = locais.filter(e => e.envio.estado !== "enviado").length;
-  $("#listaResumo").textContent = !l.length ? "" : `${l.length} ${l.length === 1 ? "exame" : "exames"}, ${pend} aguardando envio.` + (estado.nuvem ? " A lista inclui os exames que você enviou de outros aparelhos." : navigator.onLine ? " Buscando os exames da nuvem…" : " Sem internet: mostrando só os exames deste aparelho.");
+  $("#listaResumo").textContent = (!l.length ? "" : `${l.length} ${l.length === 1 ? "exame" : "exames"}, ${pend} aguardando envio.` + (estado.nuvem ? " A lista inclui os exames que você enviou de outros aparelhos." : navigator.onLine ? " Buscando os exames da nuvem…" : " Sem internet: mostrando só os exames deste aparelho."))
+    + (deOutros ? ` Há também ${deOutros} ${deOutros === 1 ? "exame de outro profissional guardado" : "exames de outros profissionais guardados"} neste aparelho, esperando que ${deOutros === 1 ? "ele entre" : "eles entrem"} para enviar.` : "");
   $("#enviarTudo").disabled = !pend || estado.enviando;
   $("#enviarTudo").textContent = estado.enviando ? "Enviando…" : `Enviar pendentes${pend ? ` (${pend})` : ""}`;
   $("#csvExames").disabled = $("#csvDentes").disabled = !l.length;
@@ -1041,7 +1051,7 @@ $("#leitura").addEventListener("click", async e => {
   try {
     const j = await api("cancelarExame", {id: b.dataset.id, motivo: document.querySelector('input[name="cMot"]:checked').value, observacao: $("#cObs").value.trim()});
     const l = exames(), i = l.findIndex(x => x.id === j.exame.id);
-    if (i >= 0) { l[i] = Object.assign(j.exame, {envio: {estado: "enviado", em: new Date().toISOString(), tentativas: 0}}); gravarExames(l); }
+    if (i >= 0) { l[i] = Object.assign(j.exame, {dono: l[i].dono || sessao().usuario.id, envio: {estado: "enviado", em: new Date().toISOString(), tentativas: 0}}); gravarExames(l); }
     if (estado.nuvem) estado.nuvem = estado.nuvem.map(x => x.id === j.exame.id ? j.exame : x);
     $("#leitura").hidden = true; $("#leitura").innerHTML = ""; document.body.style.overflow = "";
     renderLista(); toast("Exame cancelado. Ele continua na planilha, fora do painel.");
@@ -1085,7 +1095,7 @@ async function buscarPessoa() {
     // Sem internet: procura nos exames deste aparelho.
     offline = true;
     const g = {};
-    exames().filter(e => exameValido(e) && e.id !== ex.id && e.dsei === ex.dsei && normTexto(e.aldeia) === normTexto(ex.aldeia) && e.crianca.nascimento === ex.crianca.nascimento && e.crianca.sexo === sx)
+    meus().filter(e => exameValido(e) && e.id !== ex.id && e.dsei === ex.dsei && normTexto(e.aldeia) === normTexto(ex.aldeia) && e.crianca.nascimento === ex.crianca.nascimento && e.crianca.sexo === sx)
       .forEach(e => (g[codigoIndividuoDe(e)] = g[codigoIndividuoDe(e)] || []).push(e));
     cands = Object.entries(g).map(([k, l]) => { l.sort(ordemExame); return {codigoIndividuo: k, exames: l.length, ultimo: l.at(-1)}; });
   }
@@ -1182,10 +1192,10 @@ async function enviarUm(e) {
 async function sincronizar(manual) {
   const c = cfg();
   if (estado.enviando) return;
-  if (!sessao() || perfil() === "coord") return;
+  if (!sessao() || !fazExames()) return;
   if (!c.url) { if (manual) toast("O endereço do servidor não está configurado."); return; }
   if (!navigator.onLine) { if (manual) toast("Sem internet agora. Os exames serão enviados quando a conexão voltar."); return; }
-  const pend = exames().filter(e => e.envio.estado !== "enviado");
+  const pend = meus().filter(e => e.envio.estado !== "enviado");
   if (!pend.length) { if (manual) toast("Todos os exames já foram enviados."); return; }
   estado.enviando = true; atualizarRede(); if (estado.aba === "lista") renderLista();
   let ok = 0, falha = 0;
@@ -1208,7 +1218,7 @@ async function sincronizar(manual) {
   if (ok || manual || falha) toast(falha ? `${ok} enviado(s), ${falha} com erro. Veja em Meus exames.` : `${ok} ${ok === 1 ? "exame enviado" : "exames enviados"} para o banco de dados.`);
 }
 function atualizarRede() {
-  const on = navigator.onLine, pend = exames().filter(e => e.envio.estado !== "enviado").length;
+  const on = navigator.onLine, pend = meus().filter(e => e.envio.estado !== "enviado").length;
   $("#rede").classList.toggle("off", !on);
   $("#redeTxt").textContent = estado.enviando ? "Enviando…" : (on ? "Online" : "Sem internet") + (pend ? `, ${pend} a enviar` : "");
   const cp = $("#contPend"); if (cp) { cp.hidden = !pend; cp.textContent = pend; }
@@ -1219,7 +1229,7 @@ function irAba(a) {
   estado.aba = a;
   $$(".abas button").forEach(b => b.setAttribute("aria-selected", b.dataset.aba === a));
   if (!perfil() && a !== "acesso") a = "acesso";
-  if (perfil() === "coord" && ["exame", "lista"].includes(a)) a = "admin";
+  if (perfil() && !fazExames() && ["exame", "lista"].includes(a)) a = "admin";
   estado.aba = a;
   $$(".abas button").forEach(b => b.setAttribute("aria-selected", b.dataset.aba === a));
   ["exame","lista","painel","config","acesso","equipe","admin"].forEach(x => $("#aba-" + x).hidden = x !== a);
@@ -1330,12 +1340,12 @@ $("#lista").addEventListener("click", e => {
 });
 $("#enviarTudo").addEventListener("click", () => sincronizar(true));
 $("#reenviarTodos").addEventListener("click", () => {
-  const l = exames(); if (!l.length) return;
-  if (!confirm(`Enviar de novo os ${l.length} exames guardados neste aparelho? Os que já estão na nuvem são substituídos, sem duplicar.`)) return;
-  l.forEach(e => e.envio = {estado: "pendente", tentativas: 0}); gravarExames(l); renderLista(); sincronizar(true);
+  const l = exames(), m = l.filter(ehMeu); if (!m.length) return;
+  if (!confirm(`Enviar de novo os ${m.length} exames seus guardados neste aparelho? Os que já estão na nuvem são substituídos, sem duplicar.`)) return;
+  m.forEach(e => e.envio = {estado: "pendente", tentativas: 0}); gravarExames(l); renderLista(); sincronizar(true);
 });
-$("#csvExames").addEventListener("click", () => baixar(`exames_${hoje()}.csv`, csv([CAB_EXAME, ...(estado.listaCompleta || exames()).map(linhaExame)].map(l => l.filter((_, i) => i !== CAB_EXAME.indexOf("dados_completos_json"))))));
-$("#csvDentes").addEventListener("click", () => baixar(`dentes_${hoje()}.csv`, csv([CAB_DENTE, ...(estado.listaCompleta || exames()).flatMap(linhasDentes)])));
+$("#csvExames").addEventListener("click", () => baixar(`exames_${hoje()}.csv`, csv([CAB_EXAME, ...(estado.listaCompleta || meus()).map(linhaExame)].map(l => l.filter((_, i) => i !== CAB_EXAME.indexOf("dados_completos_json"))))));
+$("#csvDentes").addEventListener("click", () => baixar(`dentes_${hoje()}.csv`, csv([CAB_DENTE, ...(estado.listaCompleta || meus()).flatMap(linhasDentes)])));
 $("#nuvemAtualizar").addEventListener("click", () => carregarNuvem(true));
 
 // configurações
@@ -1344,7 +1354,7 @@ $("#segAgrup").addEventListener("click", e => { const b = e.target.closest("[dat
 
 window.addEventListener("online", () => { atualizarRede(); sincronizar(); });
 window.addEventListener("offline", atualizarRede);
-setInterval(() => { if (exames().some(e => e.envio.estado !== "enviado")) sincronizar(); }, 120000);
+setInterval(() => { if (meus().some(e => e.envio.estado !== "enviado")) sincronizar(); }, 120000);
 
 /* ===== COMPARTILHADO INICIO =====
    Código igual no app (index.html) e no servidor (Codigo.gs). É copiado pelo montar.py:
@@ -1611,8 +1621,8 @@ function abrirPainelAba() {
   $("#pExplica").textContent = {geral: "Todos os exames enviados por todos os profissionais que usam o app, de todos os DSEIs.",
     dsei: "Todos os exames enviados por todos os profissionais do DSEI escolhido.",
     minha: "Todos os seus exames enviados, de qualquer aparelho. Só você vê estes números."}[estP.visao];
-  $('#segVisao [data-visao="minha"]').hidden = perfil() === "coord";
-  if (perfil() === "coord" && estP.visao === "minha") estP.visao = "geral";
+  $('#segVisao [data-visao="minha"]').hidden = !fazExames();
+  if (!fazExames() && estP.visao === "minha") estP.visao = "geral";
   $("#pPeriodo").value = estP.periodo;
   carregarPainel();
 }
@@ -1625,7 +1635,7 @@ async function carregarPainel() {
   carregarAcomp();
   const {de, ate} = intervalo(estP.periodo), ag = cfg().agrupamento, st = $("#pStatus"), box = $("#pConteudo");
   if (estP.visao === "minha" && !navigator.onLine) {
-    const regs = exames().filter(e => (!de || e.dataExame >= de) && (!ate || e.dataExame <= ate));
+    const regs = meus().filter(e => (!de || e.dataExame >= de) && (!ate || e.dataExame <= ate));
     st.textContent = `Sem internet: mostrando só os exames deste aparelho, ${textoRecorte(de, ate).replace("sua produção neste aparelho, ", "")}.`;
     const blocos = montarPainel(regs, estP.filtro, ag);
     return desenharPainel({resumo: blocos.resumo, blocos}, true);
@@ -1888,13 +1898,18 @@ $("#pAtualizar").addEventListener("click", carregarPainel);
 
 /* ---------- acesso individual ---------- */
 // Endereço do servidor (Apps Script /exec). Vem do link de convite (?s=...) ou pode ser fixado aqui.
-const ENDERECO_PADRAO = "";
+// ENDEREÇO DO SERVIDOR: todos os aparelhos usam este endereço, sem depender do link que a pessoa abriu.
+// Se um dia criar uma implantação nova no Apps Script, troque só o endereço abaixo (entre as aspas) e suba o index.html.
+const ENDERECO_PADRAO = "https://script.google.com/macros/s/AKfycbyrM_xrLZiDKhLUhmjH3sle6jXiLPI_l9iq2TaIblXkC7jNt0-9NobjcbKww7NZF0MJiA/exec";
 const K_SESSAO = "odonto.sessao.v1";
 const LINK_APP = location.origin + location.pathname;
 const tipoAparelho = () => (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Celular ou tablet" : "Computador") + (/Edg\//.test(navigator.userAgent) ? " · Edge" : /Chrome\//.test(navigator.userAgent) ? " · Chrome" : /Firefox\//.test(navigator.userAgent) ? " · Firefox" : /Safari\//.test(navigator.userAgent) ? " · Safari" : "");
 const sessao = () => store.get(K_SESSAO, null);
 const perfil = () => (sessao() && sessao().usuario.perfil) || "";
 const NOME_PERFIL = {dentista: "Cirurgião-dentista", rt: "Referência técnica", coord: "Coordenação"};
+// Quem registra exames: dentista, RT e a pessoa da coordenação que também é RT de um DSEI.
+const fazExames = () => { const u = (sessao() || {}).usuario || {}; return u.perfil === "dentista" || u.perfil === "rt" || (u.perfil === "coord" && !!u.dsei); };
+const nomePerfil = u => u.perfil === "coord" && u.dsei ? "Coordenação e RT" : NOME_PERFIL[u.perfil] || "";
 (function lerLinkConvite() {
   try {
     const q = new URLSearchParams(location.search), sv = q.get("s");
@@ -1904,7 +1919,8 @@ const NOME_PERFIL = {dentista: "Cirurgião-dentista", rt: "Referência técnica"
       q.delete("s"); history.replaceState(null, "", location.pathname + (q.toString() ? "?" + q : "") + location.hash);
     }
   } catch (e) {}
-  if (!cfg().url && ENDERECO_PADRAO) store.set(K_CFG, Object.assign(cfg(), {url: ENDERECO_PADRAO}));
+  // O endereço gravado no app vale sempre: corrige aparelhos que guardaram o endereço de uma implantação antiga.
+  if (ENDERECO_PADRAO && cfg().url !== ENDERECO_PADRAO) store.set(K_CFG, Object.assign(cfg(), {url: ENDERECO_PADRAO}));
 })();
 const linkConvite = () => cfg().url ? `${LINK_APP}?s=${(cfg().url.match(/macros\/s\/([^/]+)\/exec/) || [])[1] || encodeURIComponent(cfg().url)}` : "";
 
@@ -1914,7 +1930,7 @@ async function api(acao, dados, opc) {
   if (!c.url) throw new Error("O endereço do servidor não está configurado. Abra o app pelo link enviado pela coordenação.");
   if (!navigator.onLine) throw new Error("Sem internet agora.");
   const cred = opc.cred || (opc.publica ? null : s);
-  const corpo = Object.assign({acao, versaoApp: 15, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
+  const corpo = Object.assign({acao, versaoApp: 18, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), opc.tempo || 30000);
   try {
     const r = await fetch(c.url, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(corpo), signal: ctrl.signal});
@@ -1955,7 +1971,7 @@ async function verificarSessao(forcar) {
 function abasDoPerfil() {
   const p = perfil();
   if (!p) return [["acesso", "Entrar"]];
-  const l = p === "coord" ? [["admin", "Administração"], ["equipe", "Equipes"], ["painel", "Painel"]] : [["exame", "Exame"], ["lista", "Meus exames"], ["painel", "Painel"]];
+  const l = p === "coord" ? [["admin", "Administração"], ["equipe", "Equipes"], ...(fazExames() ? [["exame", "Exame"], ["lista", "Meus exames"]] : []), ["painel", "Painel"]] : [["exame", "Exame"], ["lista", "Meus exames"], ["painel", "Painel"]];
   if (p === "rt") l.push(["equipe", "Equipe"]);
   l.push(["config", "Minha conta"]);
   return l;
@@ -1963,7 +1979,7 @@ function abasDoPerfil() {
 function renderAbas() {
   const atual = estado.aba;
   $("#abas").innerHTML = abasDoPerfil().map(([k, t]) => `<button role="tab" data-aba="${k}" aria-selected="${k === atual}">${t}${k === "lista" ? `<span id="contPend" class="contador" hidden></span>` : ""}${k === "equipe" || k === "admin" ? `<span class="contador" data-pedidos="${k}" hidden></span>` : ""}</button>`).join("");
-  $("#rede").hidden = !perfil() || perfil() === "coord";
+  $("#rede").hidden = !perfil() || !fazExames();
   atualizarRede();
 }
 function abaInicial() { const p = perfil(); return !p ? "acesso" : p === "coord" ? "admin" : "exame"; }
@@ -2061,36 +2077,38 @@ $("#acessoConteudo").addEventListener("click", async e => {
 /* ---------- minha conta ---------- */
 function renderConfig() {
   const s = sessao(), u = (s && s.usuario) || {}, c = cfg();
-  $("#contaPerfil").innerHTML = u.perfil ? `<span class="pill-p ${u.perfil}">${NOME_PERFIL[u.perfil]}${u.perfil === "coord" && u.titular ? " titular" : ""}</span>` : "";
-  const linhas = u.perfil === "coord" ? [...(u.titular ? [] : [["Nome", u.nome]]), ["E-mail", u.email], ["Acesso", "Todos os DSEIs"], ...(u.titular ? [] : [["Adicionada por", u.aprovado_por || "–"]])]
+  $("#contaPerfil").innerHTML = u.perfil ? `<span class="pill-p ${u.perfil}">${nomePerfil(u)}${u.perfil === "coord" && u.titular ? " titular" : ""}</span>` : "";
+  const linhas = u.perfil === "coord" ? [...(u.titular ? [] : [["Nome", u.nome]]), ...(u.dsei ? [["CRO", u.cro], ["RT do DSEI", `${u.dsei} (${u.uf})`]] : []), ["E-mail", u.email], ["Acesso", "Todos os DSEIs"], ...(u.titular ? [] : [["Adicionada por", u.aprovado_por || "–"]])]
     : [["Nome", u.nome], ["CRO", u.cro], ["E-mail", u.email], ["DSEI", `${u.dsei} (${u.uf})`], ["Aprovado por", u.aprovado_por || "–"]];
   $("#contaDados").innerHTML = linhas.map(([k, v]) => `<tr><th>${k}</th><td>${esc(v || "")}</td></tr>`).join("");
-  $("#contaAtende").hidden = u.perfil === "coord";
+  $("#contaAtende").hidden = !fazExames();
   $$("[data-cfg]").forEach(i => i.value = c[i.dataset.cfg] || "");
   $$("#segAgrup button").forEach(b => b.setAttribute("aria-pressed", b.dataset.ag === c.agrupamento));
-  const pend = exames().filter(e => e.envio.estado !== "enviado").length;
+  const pend = meus().filter(e => e.envio.estado !== "enviado").length;
   $("#contaAparelho").textContent = `Conectado a ${c.url ? "o servidor da coordenação" : "nenhum servidor"}.` + (pend ? ` Há ${pend} ${pend === 1 ? "exame" : "exames"} deste aparelho aguardando envio.` : " Todos os exames deste aparelho já foram enviados.");
 }
 $("#sair").addEventListener("click", () => {
-  const pend = exames().filter(e => e.envio.estado !== "enviado");
-  if (pend.length && !confirm(`Há ${pend.length} ${pend.length === 1 ? "exame que ainda não foi enviado" : "exames que ainda não foram enviados"}. Se sair agora, eles ficam guardados neste aparelho e são enviados quando alguém entrar com o mesmo acesso. Sair mesmo assim?`)) return;
-  if (!pend.length) gravarExames([]);
+  const pend = meus().filter(e => e.envio.estado !== "enviado");
+  if (estado.ex._tocado && !estado.editando && !confirm("Há um exame em andamento que ainda não foi salvo. Se sair agora, ele é descartado. Para guardar, toque em Salvar exame antes de sair. Sair mesmo assim?")) return;
+  // Os exames ainda não enviados (seus e de outras pessoas) ficam guardados; os já enviados saem do aparelho.
+  gravarExames(exames().filter(e => e.envio.estado !== "enviado"));
   store.set(K_SESSAO, null); store.set(K_RASC, null); estado.nuvem = null;
-  estAc.vista = "entrar"; estAc.msg = "Você saiu deste aparelho. Seus exames enviados continuam na nuvem.";
+  estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null;
+  estAc.vista = "entrar"; estAc.msg = "Você saiu deste aparelho. Seus exames enviados continuam na nuvem." + (pend.length ? ` ${pend.length === 1 ? "O exame que ainda não foi enviado ficou guardado" : `Os ${pend.length} exames que ainda não foram enviados ficaram guardados`} neste aparelho: quando você entrar de novo aqui, ${pend.length === 1 ? "ele é enviado" : "eles são enviados"} sozinho${pend.length === 1 ? "" : "s"}. Outra pessoa que entrar neste aparelho não vê nem envia esses exames.` : "");
   renderAbas(); irAba("acesso");
 });
 
 /* ---------- meus exames na nuvem ---------- */
 estado.nuvem = null;
 async function carregarNuvem(manual) {
-  if (!sessao() || perfil() === "coord") return;
+  if (!sessao() || !fazExames()) return;
   if (!navigator.onLine) { if (manual) toast("Sem internet agora. Mostrando só os exames deste aparelho."); return; }
   try { const j = await api("meusExames"); estado.nuvem = j.exames || []; if (estado.aba === "lista") renderLista(); if (manual) toast("Lista atualizada com os exames da nuvem."); }
   catch (err) { if (manual) toast(err.message); }
 }
 function abrirDaNuvem(id) {
   const r = (estado.nuvem || []).find(e => e.id === id); if (!r) return;
-  const l = exames(); if (!l.some(e => e.id === id)) { l.push(Object.assign(clone(r), {envio: {estado: "enviado", em: r.atualizadoEm, tentativas: 0}})); gravarExames(l); }
+  const l = exames(); if (!l.some(e => e.id === id)) { l.push(Object.assign(clone(r), {dono: sessao().usuario.id, envio: {estado: "enviado", em: r.atualizadoEm, tentativas: 0}})); gravarExames(l); }
   abrirExame(id);
 }
 
@@ -2134,7 +2152,7 @@ async function carregarEquipe() {
   const p = perfil(), st = $("#eqStatus");
   $("#eqDseiCampo").hidden = p !== "coord";
   if (p === "coord") {
-    if (!estEq.dsei) estEq.dsei = DSEIS[0];
+    if (!estEq.dsei) estEq.dsei = sessao().usuario.dsei || DSEIS[0];
     $("#eqDsei").innerHTML = DSEIS.map(d => `<option ${d === estEq.dsei ? "selected" : ""}>${esc(d)}</option>`).join("");
   } else estEq.dsei = sessao().usuario.dsei;
   $("#eqTitulo").textContent = `Equipe do DSEI ${estEq.dsei}`;
@@ -2151,13 +2169,13 @@ function renderEquipe() {
   const kpis = `<div class="kpis"><div class="kpi"><b>${ativos.length}</b><span>profissionais ativos</span></div><div class="kpi"><b>${mes}</b><span>exames neste mês</span></div>
     <div class="kpi"><b>${d.exames.filter(e => e.situacao !== "cancelado").length}</b><span>exames válidos no DSEI</span></div><div class="kpi"><b>${d.pedidos.length}</b><span>pedidos de acesso para analisar</span></div></div>`;
   const pedidos = `<div class="bloco"><div class="bloco-topo"><h2>Pedidos de acesso</h2><span class="dica">${p === "rt" ? "Dentistas que escolheram o seu DSEI" : "Pedidos deste DSEI"}</span></div>
-    ${d.pedidos.length ? d.pedidos.map(x => `<div class="pedido"><div><b>${esc(x.nome)}</b> <span class="pill-p ${x.perfil}">${NOME_PERFIL[x.perfil]}</span><p>CRO ${esc(x.cro)} · ${esc(x.polo || "sem polo")} · ${esc(x.email)} · pediu ${quando(x.pedido_em)}</p></div>
+    ${d.pedidos.length ? d.pedidos.map(x => `<div class="pedido"><div><b>${esc(x.nome)}</b> <span class="pill-p ${x.perfil}">${nomePerfil(x)}</span><p>CRO ${esc(x.cro)} · ${esc(x.polo || "sem polo")} · ${esc(x.email)} · pediu ${quando(x.pedido_em)}</p></div>
       <div class="bts"><button class="prim mini" data-eq="aprovar" data-id="${x.id}" data-nome="${esc(x.nome)}">Aprovar</button><button class="sec mini perigo-t" data-eq="recusar" data-id="${x.id}" data-nome="${esc(x.nome)}">Recusar</button></div></div>`).join("") : `<p class="dica">Nenhum pedido pendente.</p>`}</div>`;
   const podeMexer = m => m.id !== meuId && (p === "coord" || m.perfil === "dentista");
   const membros = `<div class="bloco"><div class="bloco-topo"><h2>Profissionais</h2><span class="dica">Desativar tira o acesso, mas os exames da pessoa continuam no banco</span></div>
     <div class="tabela"><table class="esq"><thead><tr><th>Profissional</th><th>Perfil</th><th>CRO</th><th>Polo base</th><th class="num">Exames no mês</th><th class="num">Total</th><th>Último envio</th><th>Situação</th><th></th></tr></thead><tbody>
     ${d.membros.map(m => { const parado = m.status === "ativo" && m.ultimoEnvio && (Date.now() - new Date(m.ultimoEnvio)) > 30 * 864e5;
-      return `<tr><td><b>${esc(m.nome)}</b><br><span class="dica">${esc(m.email)}</span></td><td>${NOME_PERFIL[m.perfil]}</td><td>${esc(m.cro)}</td><td>${esc(m.polo)}</td><td class="num">${m.mes}</td><td class="num">${m.total}</td>
+      return `<tr><td><b>${esc(m.nome)}</b><br><span class="dica">${esc(m.email)}</span></td><td>${nomePerfil(m)}</td><td>${esc(m.cro)}</td><td>${esc(m.polo)}</td><td class="num">${m.mes}</td><td class="num">${m.total}</td>
       <td>${quando(m.ultimoEnvio)}${parado ? ` <span class="estado pendente">mais de 30 dias</span>` : ""}</td><td><span class="estado ${m.status === "ativo" ? "enviado" : "inativo"}">${m.status === "ativo" ? "Ativo" : "Desativado"}</span></td>
       <td><div class="bts">${podeMexer(m) ? (m.status === "ativo" ? `<button class="sec mini" data-eq="novoCodigo" data-id="${m.id}" data-nome="${esc(m.nome)}">Novo código</button><button class="sec mini perigo-t" data-eq="desativar" data-id="${m.id}" data-nome="${esc(m.nome)}">Desativar</button>` : `<button class="sec mini" data-eq="reativar" data-id="${m.id}" data-nome="${esc(m.nome)}">Reativar</button>`) : ""}</div></td></tr>`; }).join("") || `<tr><td colspan="9" class="dica">Ninguém com acesso neste DSEI ainda.</td></tr>`}
     </tbody></table></div></div>`;
@@ -2217,7 +2235,7 @@ function renderAdmin() {
   const ped = `<div class="bloco"><div class="bloco-topo"><h2>Pedidos para você</h2><span class="dica">Referências técnicas e dentistas de DSEIs sem referência técnica</span></div>
     ${pendAdm.length ? pendAdm.map(x => `<div class="pedido"><div><b>${esc(x.nome)}</b> <span class="pill-p ${x.perfil}">${NOME_PERFIL[x.perfil]}</span><p>DSEI ${esc(x.dsei)} · CRO ${esc(x.cro)} · ${esc(x.email)} · pediu ${quando(x.pedido_em)}</p></div>
       <div class="bts"><button class="prim mini" data-adm="aprovar" data-id="${x.id}" data-nome="${esc(x.nome)}">Aprovar</button><button class="sec mini perigo-t" data-adm="recusar" data-id="${x.id}" data-nome="${esc(x.nome)}">Recusar</button></div></div>`).join("") : `<p class="dica">Nenhum pedido pendente.</p>`}</div>`;
-  const rts = ativos.filter(u => u.perfil === "rt").sort((a, b) => a.dsei.localeCompare(b.dsei));
+  const rts = ativos.filter(u => u.perfil === "rt" || (u.perfil === "coord" && u.dsei)).sort((a, b) => a.dsei.localeCompare(b.dsei));
   const blocoSubst = r => { const ordem = u => u.status === "pendente" ? 0 : u.perfil === "rt" ? 1 : 2;
     const cand = us.filter(u => u.dsei === r.dsei && u.id !== r.id && (u.status === "ativo" || (u.status === "pendente" && u.perfil === "rt"))).sort((a, b) => ordem(a) - ordem(b));
     return `<div class="subst"><b>Substituir a referência técnica do DSEI ${esc(r.dsei)}</b>
@@ -2227,8 +2245,8 @@ function renderAdmin() {
       <p class="dica">A equipe, os exames e os pedidos pendentes continuam no DSEI ${esc(r.dsei)} e passam para quem assume. Os exames que ${esc(r.nome)} fez continuam no nome dela(e).</p>
       <div class="lista-topo"><button class="prim mini" data-adm-subst="${r.id}">Confirmar substituição</button><button class="sec mini" data-adm-cancela>Cancelar</button></div></div>`; };
   const rtBloco = `<div class="bloco"><div class="bloco-topo"><h2>Referências técnicas ativas</h2><span class="dica">A equipe fica ligada ao DSEI, não à pessoa. Um DSEI pode ter mais de uma.</span></div>
-    ${rts.length ? rts.map(r => `<div class="pedido"><div><b>${esc(r.nome)}</b> <span class="pill-p rt">DSEI ${esc(r.dsei)}</span><p>${esc(r.email)} · desde ${r.aprovado_em ? fmtData(r.aprovado_em.slice(0, 10)) : "–"} · equipe de ${d.qtdEquipe[r.dsei] || 0} pessoas com acesso</p></div>
-      <div class="bts"><button class="sec mini" data-adm-abre="${r.id}">Substituir</button></div></div>${estAdm.subst === r.id ? blocoSubst(r) : ""}`).join("") : `<p class="dica">Nenhuma referência técnica aprovada ainda.</p>`}</div>`;
+    ${rts.length ? rts.map(r => `<div class="pedido"><div><b>${esc(r.nome)}</b> <span class="pill-p rt">DSEI ${esc(r.dsei)}</span>${r.perfil === "coord" ? ` <span class="pill-p coord">Também coordenação</span>` : ""}<p>${esc(r.email)} · desde ${r.aprovado_em ? fmtData(r.aprovado_em.slice(0, 10)) : "–"} · equipe de ${d.qtdEquipe[r.dsei] || 0} pessoas com acesso</p></div>
+      <div class="bts">${r.perfil === "rt" ? `<button class="sec mini" data-adm-abre="${r.id}">Substituir</button>` : `<span class="dica">${d.titular ? "Mude no bloco Coordenação" : "Pessoa da coordenação"}</span>`}</div></div>${estAdm.subst === r.id ? blocoSubst(r) : ""}`).join("") : `<p class="dica">Nenhuma referência técnica aprovada ainda.</p>`}</div>`;
   const mapa = `<div class="bloco"><h2>DSEIs com referência técnica</h2><p class="dica" style="margin:4px 0 10px">Em verde, os que já têm referência técnica ativa.</p>
     <div class="dsei-lista">${DSEIS.map(x => `<span class="${comRT.includes(x) ? "tem" : ""}" title="${esc((d.dseisRT[x] || []).join(", "))}">${esc(x)}</span>`).join("")}</div></div>`;
   const filtrados = us.filter(u => u.perfil !== "coord" && u.status !== "pendente" && (!estAdm.fPerfil || u.perfil === estAdm.fPerfil) && (!estAdm.fDsei || u.dsei === estAdm.fDsei) && (!estAdm.fStatus || u.status === estAdm.fStatus));
@@ -2248,25 +2266,64 @@ function renderAdmin() {
   const coords = us.filter(u => u.perfil === "coord");
   const coordBloco = !d.titular ? "" : `<div class="bloco"><div class="bloco-topo"><h2>Coordenação</h2><span class="dica">Quem vê todos os DSEIs e aprova as referências técnicas. Só você, a titular, vê este bloco.</span></div>
     <div class="pedido"><div><b>${esc(sessao().usuario.email)}</b> <span class="pill-p coord">Titular</span><p>Entra com a senha das Propriedades do script. Não pode ser desativada.</p></div></div>
-    ${coords.map(u => `<div class="pedido"><div><b>${esc(u.nome)}</b> <span class="pill-p coord">Coordenação</span> <span class="estado ${u.status === "ativo" ? "enviado" : "inativo"}">${u.status === "ativo" ? "Ativa" : "Desativada"}</span><p>${esc(u.email)} · adicionada em ${u.aprovado_em ? fmtData(u.aprovado_em.slice(0, 10)) : "–"} · último acesso ${quando(u.ultimo_acesso)}</p></div>
-      <div class="bts">${u.status === "ativo" ? `<button class="sec mini" data-adm="novoCodigo" data-id="${u.id}" data-nome="${esc(u.nome)}">Enviar novo código</button><button class="sec mini perigo-t" data-adm="desativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Desativar</button>` : `<button class="sec mini" data-adm="reativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Reativar</button>`}</div></div>`).join("")}
+    ${coords.map(u => `<div class="pedido"><div><b>${esc(u.nome)}</b> <span class="pill-p coord">Coordenação</span>${u.dsei ? ` <span class="pill-p rt">RT do DSEI ${esc(u.dsei)}</span>` : ""} <span class="estado ${u.status === "ativo" ? "enviado" : "inativo"}">${u.status === "ativo" ? "Ativa" : "Desativada"}</span><p>${esc(u.email)}${u.cro ? " · CRO " + esc(u.cro) : ""} · adicionada em ${u.aprovado_em ? fmtData(u.aprovado_em.slice(0, 10)) : "–"} · último acesso ${quando(u.ultimo_acesso)}</p></div>
+      <div class="bts">${u.status === "ativo" ? `${u.dsei ? `<button class="sec mini" data-adm-semrt="${u.id}" data-nome="${esc(u.nome)}" data-dsei="${esc(u.dsei)}">Deixar de ser RT</button>` : `<button class="sec mini" data-adm-rt="${u.id}">Tornar RT de um DSEI</button>`}<button class="sec mini" data-adm="novoCodigo" data-id="${u.id}" data-nome="${esc(u.nome)}">Enviar novo código</button><button class="sec mini perigo-t" data-adm="desativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Desativar</button>` : `<button class="sec mini" data-adm="reativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Reativar</button>`}</div></div>
+      ${estAdm.rtCoord === u.id ? `<div class="subst"><b>${esc(u.nome)} também será RT de um DSEI</b><p class="dica">Recebe os pedidos de acesso dos dentistas desse DSEI e pode registrar exames.</p>
+        <div class="grade"><label class="campo">UF<select id="admRtUf" class="lista-uf">${["", ...UFS].map(x => `<option value="${x}">${x || "Escolha a UF"}</option>`).join("")}</select></label><label class="campo">DSEI<select id="admRtDsei"></select></label><label class="campo">CRO<input id="admRtCro" value="${esc(u.cro || "")}" placeholder="Ex.: RR 4471"></label></div>
+        <div class="lista-topo"><button class="prim mini" data-adm-rtsalva="${u.id}">Salvar</button><button class="sec mini" data-adm-rt="">Cancelar</button></div></div>` : ""}`).join("")}
     <h3 style="margin-top:14px">Adicionar pessoa à coordenação</h3>
     <div class="grade"><label class="campo">Nome completo<input id="admCoordNome" autocomplete="off"></label><label class="campo">E-mail<input id="admCoordEmail" type="email" autocomplete="off"></label></div>
-    <div class="acoes-l"><button class="prim" id="admCoordAdd">Adicionar e enviar código</button><span class="dica">A pessoa recebe o código pessoal por e-mail. Ela vê tudo e aprova RTs, mas não adiciona nem desativa outras pessoas da coordenação.</span></div></div>`;
+    <label class="check" style="margin-top:12px"><input type="checkbox" id="admCoordEhRT"><span>Também é referência técnica de um DSEI (recebe os pedidos dos dentistas do DSEI e registra exames)</span></label>
+    <div class="grade" id="admCoordRT" hidden><label class="campo">UF<select id="admCoordUf">${["", ...UFS].map(x => `<option value="${x}">${x || "Escolha a UF"}</option>`).join("")}</select></label><label class="campo">DSEI<select id="admCoordDsei"></select></label><label class="campo">CRO<input id="admCoordCro" placeholder="Ex.: RR 4471"></label></div>
+    <div class="acoes-l"><button class="prim" id="admCoordAdd">Adicionar e enviar código</button><span class="dica">A pessoa recebe o código pessoal por e-mail. Ela vê tudo e aprova RTs, mas não adiciona nem desativa outras pessoas da coordenação. Se o e-mail já for de uma RT, ela continua RT e passa a ser também coordenação, com o mesmo código.</span></div></div>`;
   $("#admConteudo").innerHTML = kpis + ped + coordBloco + conv + rtBloco + mapa + usuarios + acessos;
+  if ($("#admRtDsei")) preencherDsei($("#admRtDsei"), "", "");
+  if ($("#admCoordDsei")) preencherDsei($("#admCoordDsei"), "", "");
 }
 $("#admAtualizar").addEventListener("click", carregarAdmin);
 $("#admConteudo").addEventListener("change", e => {
+  if (e.target.id === "admCoordEhRT") $("#admCoordRT").hidden = !e.target.checked;
+  if (e.target.id === "admCoordUf") preencherDsei($("#admCoordDsei"), e.target.value, "");
+  if (e.target.id === "admRtUf") preencherDsei($("#admRtDsei"), e.target.value, "");
   const m = {admFPerfil: "fPerfil", admFDsei: "fDsei", admFStatus: "fStatus"}[e.target.id]; if (m) { estAdm[m] = e.target.value; renderAdmin(); }
 });
 $("#admConteudo").addEventListener("click", async e => {
   if (e.target.id === "admCoordAdd") {
-    const b = e.target, nome = $("#admCoordNome").value.trim(), email = $("#admCoordEmail").value.trim();
-    if (!nome || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("Preencha o nome e um e-mail válido.");
+    const b = e.target, nome = $("#admCoordNome").value.trim(), email = $("#admCoordEmail").value.trim(), ehRT = $("#admCoordEhRT").checked;
+    const rt = ehRT ? {uf: $("#admCoordUf").value, dsei: $("#admCoordDsei").value, cro: $("#admCoordCro").value.trim()} : {};
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return toast("Preencha um e-mail válido.");
+    if (ehRT && (!rt.uf || !rt.dsei || !rt.cro)) return toast("Para ser também RT, escolha UF e DSEI e informe o CRO.");
     b.disabled = true;
-    try { const j = await api("adicionarCoord", {nome, emailNovo: email});
-      toast(`${nome} foi adicionada à coordenação.` + (j.emailEnviado ? " O código foi enviado por e-mail." : ` O e-mail não pôde ser enviado: passe este código: ${j.codigo}`)); carregarAdmin(); }
-    catch (err) { toast(err.message); b.disabled = false; }
+    const enviar = extra => api("adicionarCoord", Object.assign({nome, emailNovo: email}, rt, extra || {}));
+    try {
+      let j;
+      try { j = await enviar(); }
+      catch (err) {
+        const dd = err.dados || {};
+        if (!dd.jaRT) throw err;
+        if (!confirm(`${dd.nome} já é referência técnica do DSEI ${dd.dsei}. Ela continua RT e passa a ser também coordenação, com o mesmo código. Confirmar?`)) { b.disabled = false; return; }
+        j = await enviar({promover: 1});
+      }
+      toast(j.promovida ? "Pronto: ela continua RT e agora também é coordenação. Ela foi avisada por e-mail." : `${nome} foi adicionada à coordenação.` + (j.emailEnviado ? " O código foi enviado por e-mail." : ` O e-mail não pôde ser enviado: passe este código: ${j.codigo}`));
+      carregarAdmin();
+    } catch (err) { toast(err.message); b.disabled = false; }
+    return;
+  }
+  const brt = e.target.closest("[data-adm-rt]"); if (brt) { estAdm.rtCoord = brt.dataset.admRt || null; return renderAdmin(); }
+  const srt = e.target.closest("[data-adm-rtsalva]");
+  if (srt) {
+    const uf = $("#admRtUf").value, dsei = $("#admRtDsei").value, cro = $("#admRtCro").value.trim();
+    if (!uf || !dsei || !cro) return toast("Escolha UF e DSEI e informe o CRO.");
+    srt.disabled = true;
+    try { await api("definirRtCoord", {id: srt.dataset.admRtsalva, uf, dsei, cro}); estAdm.rtCoord = null; toast(`Pronto: agora também é RT do DSEI ${dsei}. Foi avisada por e-mail.`); carregarAdmin(); }
+    catch (err) { toast(err.message); srt.disabled = false; }
+    return;
+  }
+  const nrt = e.target.closest("[data-adm-semrt]");
+  if (nrt) {
+    if (!confirm(`${nrt.dataset.nome} deixa de ser RT do DSEI ${nrt.dataset.dsei} e continua na coordenação. Os exames que ela fez continuam no nome dela. Confirmar?`)) return;
+    try { await api("definirRtCoord", {id: nrt.dataset.admSemrt, dsei: ""}); toast("Pronto: continua só na coordenação."); carregarAdmin(); }
+    catch (err) { toast(err.message); }
     return;
   }
   if (e.target.id === "admCopiar") { const i = $("#admLink"); try { await navigator.clipboard.writeText(i.value); toast("Link copiado."); } catch (x) { i.select(); toast("Selecione e copie o link."); } return; }
