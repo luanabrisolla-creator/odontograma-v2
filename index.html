@@ -1900,7 +1900,7 @@ $("#pAtualizar").addEventListener("click", carregarPainel);
 // Endereço do servidor (Apps Script /exec). Vem do link de convite (?s=...) ou pode ser fixado aqui.
 // ENDEREÇO DO SERVIDOR: todos os aparelhos usam este endereço, sem depender do link que a pessoa abriu.
 // Se um dia criar uma implantação nova no Apps Script, troque só o endereço abaixo (entre as aspas) e suba o index.html.
-const ENDERECO_PADRAO = "https://script.google.com/macros/s/AKfycbyrM_xrLZiDKhLUhmjH3sle6jXiLPI_l9iq2TaIblXkC7jNt0-9NobjcbKww7NZF0MJiA/exec";
+const ENDERECO_PADRAO = "https://script.google.com/macros/s/AKfycbxK5e2VDsdo4TEgrwp9DFS-iv-SSo5xY1qY0vBosK91WkRaCmXsW8PhOxH4djW_f4r3Ig/exec";
 const K_SESSAO = "odonto.sessao.v1";
 const LINK_APP = location.origin + location.pathname;
 const tipoAparelho = () => (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Celular ou tablet" : "Computador") + (/Edg\//.test(navigator.userAgent) ? " · Edge" : /Chrome\//.test(navigator.userAgent) ? " · Chrome" : /Firefox\//.test(navigator.userAgent) ? " · Firefox" : /Safari\//.test(navigator.userAgent) ? " · Safari" : "");
