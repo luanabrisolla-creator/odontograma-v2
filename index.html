@@ -3,23 +3,27 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Odontograma · SESAI</title>
+<title>Odontograma · Saúde Bucal</title>
 <meta name="theme-color" content="#FFFFFF">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Montserrat:wght@700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Montserrat:wght@600;700;800&display=swap">
 <style>
 :root{
-  --bg:#F6F5F1; --surface:#FFFFFF; --surface-2:#F1F0EB; --ink:#1B1B1B; --muted:#5B5F63; --line:#DDDBD3;
-  --accent:#0B7A3E; --accent-soft:#E3F1E8; --focus:#F5B301;
+  /* Visual claro com azul como cor principal (versão 21). */
+  --bg:#F3F7FC; --surface:#FFFFFF; --surface-2:#EAF0F7; --ink:#13233A; --muted:#556275; --line:#D8E2EE;
+  --accent:#0A66CC; --accent-soft:#E4F0FD; --marinho:#0B4A98; --focus:#F5B301;
+  --info:#E7EFF9; --info-ink:#1E4F8F; --aviso:#FFF3D1; --aviso-ink:#6A4A00; --erro:#FCE6E6; --erro-ink:#9B1B2E;
+  --sombra:0 1px 2px rgba(11,42,99,.06),0 8px 24px rgba(11,42,99,.07);
+  --nav-h:0px; --barra-h:0px;
   --c-vermelho:#E2231A; --c-amarelo:#F7B500; --c-verde:#13924B; --c-azul:#1F5FAD;
   --titulo:"Montserrat", "Atkinson Hyperlegible", system-ui, sans-serif;
   --carie:#D7263D; --carie-cr:#7E3524; --mba:#F4B4BD; --mbi:#C3CDD5; --rest:#2F67D8; --sel:#27946A;
   --enamel:#FCFCFA; --dor:#E07A1F;
-  --r-sm:6px; --r-md:10px;
+  --r-sm:10px; --r-md:16px;
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   font-family:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -124,20 +128,10 @@ input:disabled,select:disabled{background:var(--surface-2);color:var(--muted)}
 .check input{width:22px;height:22px;min-height:0;flex:none;accent-color:var(--accent)}
 
 /* resultado */
-.resultado{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 24px rgba(20,50,74,.12);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
-.res-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .classe{width:58px;height:58px;border-radius:12px;display:grid;place-items:center;font-size:2.1rem;font-weight:700;color:#fff;flex:none;background:#999}
 .classe.mini{width:42px;height:42px;font-size:1.45rem;border-radius:9px}
 [data-c="A"]{background:#2E8B57}[data-c="B"]{background:#5E9C35}[data-c="C"]{background:#D7A406;color:var(--ink)}
 [data-c="D"]{background:#E07A1F}[data-c="E"]{background:#D7263D}[data-c="F"]{background:#86112C}
-.res-txt{flex:1 1 230px;min-width:0}
-.res-txt strong{display:block;font-size:1.05rem}
-.res-txt span{font-size:.875rem;color:var(--muted);display:block}
-.indices{display:flex;gap:16px;font-size:.8rem;color:var(--muted)}
-.indices b{display:block;font-size:1.2rem;color:var(--ink);font-variant-numeric:tabular-nums}
-.res-acoes{display:flex;gap:8px;align-items:center}
-.motivos{max-height:34vh;overflow:auto;max-width:1100px;margin:10px auto 0;padding:10px 12px 10px 30px;font-size:.9rem;background:var(--surface-2);border-radius:var(--r-sm)}
-.motivos li{margin:2px 0}
 
 /* painel do dente */
 .fundo{position:fixed;inset:0;z-index:40;background:rgba(20,50,74,.45);display:flex;align-items:flex-end;justify-content:center}
@@ -164,7 +158,7 @@ input:disabled,select:disabled{background:var(--surface-2);color:var(--muted)}
 .exame .info strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .exame .info span{font-size:.85rem;color:var(--muted)}
 .estado{font-size:.8rem;padding:3px 10px;border-radius:999px;white-space:nowrap}
-.estado.enviado{background:#DDF1E5;color:#1D6B43}
+.estado.enviado{background:var(--accent-soft);color:var(--accent)}
 .estado.pendente{background:#FFF1CC;color:#7A5600}
 .estado.erro{background:#FBDDE1;color:#9B1B2E}
 .vazio{text-align:center;padding:28px 12px;color:var(--muted)}
@@ -172,7 +166,7 @@ input:disabled,select:disabled{background:var(--surface-2);color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:120px;transform:translateX(-50%);z-index:60;background:var(--ink);color:#fff;padding:10px 16px;border-radius:var(--r-sm);max-width:min(92vw,520px);font-size:.95rem;box-shadow:0 8px 24px rgba(0,0,0,.2)}
 /* cadastro */
 .cad-status{margin:12px 0 0;padding:10px 12px;border-radius:var(--r-sm);font-size:.95rem}
-.cad-status.ok{background:#DDF1E5;color:#1D6B43}
+.cad-status.ok{background:var(--accent-soft);color:var(--accent)}
 .cad-status.falta{background:#FFF4D6;color:#6B4B00}
 .cad-acoes{display:flex;justify-content:flex-end;margin-bottom:8px}
 .prof{margin:0 2px 12px;font-size:.95rem;color:var(--muted)}
@@ -268,6 +262,36 @@ table.cruz tr.total td{border-top:2px solid var(--line)}
 .mes i{display:block;width:24px;background:var(--accent);border-radius:3px 3px 0 0}
 .mes b{color:var(--ink);font-size:.85rem}
 .nota{font-size:.82rem;color:var(--muted);margin:4px 0 0}
+/* versão 19: identificação do indivíduo em passos */
+.id-modo{margin:0 0 14px}
+.id-modo .radio{align-items:flex-start}
+.id-modo .radio.on{border:2px solid var(--accent);background:var(--accent-soft)}
+.id-modo .radio input{margin-top:3px}
+.info-id{background:#E8F0FA;color:#1F4E8C;border-radius:var(--r-sm);padding:10px 12px;font-size:.9rem;margin:12px 0 0}
+.achado{border:1px solid #C5DCF6;background:var(--accent-soft);border-radius:var(--r-md);padding:12px 14px;margin-top:14px}
+.achado h3,.ok-box h3{margin:0 0 2px;font-size:1rem;color:var(--accent)}
+.cartao-pessoa{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-md);padding:12px 14px;margin-top:10px;display:grid;gap:8px}
+.cp-cod span,.ok-dados span,.codigo-box>div>span:first-child{display:block;font-size:.74rem;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cp-cod b{font-size:1.05rem}
+.cp-dados{margin:0;padding-left:18px;font-size:.9rem;color:var(--muted)}
+.cp-bts{display:flex;flex-wrap:wrap;gap:8px}
+.aviso-id{background:#FFF4D6;border:1px solid #F0D48A;border-radius:var(--r-sm);padding:10px 12px;margin-top:12px;font-size:.92rem}
+.nenhuma{border:2px solid var(--c-amarelo);background:#FFFBEE;border-radius:var(--r-md);padding:12px 14px;margin-top:14px;display:grid;gap:6px}
+.nenhuma b{color:#6B4B00}
+.nenhuma p{margin:0;font-size:.9rem;color:#6B4B00}
+.nenhuma .prim{justify-self:start}
+.ok-box{border:1px solid #C5DCF6;background:var(--accent-soft);border-radius:var(--r-md);padding:12px 14px;margin-top:14px}
+.ok-dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 16px;margin-top:8px;font-size:.92rem}
+.ok-nota{margin:10px 0 0;font-size:.9rem;color:var(--accent);font-weight:700}
+.codigo-box{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;border:1px solid #C5DCF6;background:var(--accent-soft);border-radius:var(--r-md);padding:12px 14px;margin-top:14px}
+.codigo-box b{font-size:1.1rem}
+.trava{margin:6px 0 0}
+.modal-cod{text-align:center;position:relative}
+.modal-cod .fechar{position:absolute;top:10px;right:10px}
+.nc-ok{width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;font-size:1.8rem;line-height:56px;margin:6px auto 10px;font-weight:700}
+.modal-cod h3{margin:0 0 6px}
+.nc-cod{font-size:1.25rem;font-weight:700;background:var(--accent-soft);border:1px solid #C5DCF6;border-radius:var(--r-sm);padding:12px;margin:12px 0;overflow-wrap:anywhere;white-space:normal}
+input:disabled,select:disabled{background:var(--surface-2);color:var(--ink);opacity:1}
 /* versão 15: mesma pessoa, conferência, cancelamento e acompanhamento */
 .cod{font-variant-numeric:tabular-nums;letter-spacing:.01em;white-space:nowrap}
 .sugestao{border:2px solid var(--c-amarelo);background:#FFF4D6;border-radius:var(--r-md);padding:12px 14px;margin-top:14px}
@@ -305,13 +329,248 @@ tr.cancelado td{color:var(--muted)}
 .mudancas li{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-top:1px solid var(--line);font-size:.92rem}
 .mudancas li:first-child{border-top:0}
 .destaque{font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums}
-@media (max-width:600px){
-  .res-in{gap:10px}
-  .classe{width:48px;height:48px;font-size:1.7rem}
-  .res-txt{flex:1 1 150px}
-  .res-txt span{display:none}
-  .res-acoes{margin-left:auto}
-  .toast{bottom:140px}
+/* ===== versão 20: visual Clínico claro ===== */
+body{background:var(--bg);padding-bottom:calc(var(--nav-h) + var(--barra-h) + 28px)}
+h2,h3,h4{font-family:var(--titulo)}
+.ico{width:22px;height:22px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* topo */
+.topo{position:relative;background:#fff;padding:12px 16px 13px}
+.topo::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;opacity:.85;background:repeating-linear-gradient(90deg,var(--c-vermelho) 0 28px,var(--c-amarelo) 28px 56px,var(--c-verde) 56px 84px,var(--c-azul) 84px 112px)}
+.marca h1{font-size:1.08rem;font-weight:800}
+.marca h1 .sub{font-size:.62rem}
+.rede{border:0;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:.8rem;padding:6px 12px}
+.rede .ponto{width:8px;height:8px;background:var(--accent)}
+.rede.off{background:var(--aviso);color:var(--aviso-ink)}
+.rede.off .ponto{background:var(--aviso-ink)}
+/* menu: embaixo no celular, em cima no computador */
+.abas{background:#fff;border:0;gap:0;padding:0;overflow:visible;z-index:30}
+.abas button{display:flex;align-items:center;gap:8px;color:var(--muted);position:relative;border:0}
+.abas button .curto{display:none}
+.abas button[aria-selected="true"]{color:var(--accent);font-weight:700;border:0}
+.abas .contador{background:var(--c-vermelho);color:#fff;font-size:.62rem;min-width:17px;height:17px;line-height:17px;padding:0 5px;margin:0}
+@media (max-width:899px){
+  :root{--nav-h:calc(62px + env(safe-area-inset-bottom,0px))}
+  .abas{position:fixed;left:0;right:0;bottom:0;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border-top:1px solid var(--line);padding:6px 2px calc(8px + env(safe-area-inset-bottom,0px));min-height:var(--nav-h)}
+  .abas button{flex-direction:column;gap:3px;font-size:.68rem;padding:4px 0 2px;white-space:nowrap;min-width:0}
+  .abas button .longo{display:none}
+  .abas button .curto{display:block;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .abas button[aria-selected="true"]::before{content:"";position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:30px;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
+  .abas .contador{position:absolute;top:0;left:calc(50% + 6px)}
+}
+@media (min-width:900px){
+  .abas{position:sticky;top:0;display:flex;justify-content:center;border-bottom:1px solid var(--line);padding:0 12px}
+  .abas button{padding:12px 16px 11px;border-bottom:3px solid transparent}
+  .abas button[aria-selected="true"]{border-bottom:3px solid var(--accent)}
+  .abas .ico{width:19px;height:19px}
+}
+/* blocos e campos */
+main{padding:14px 16px}
+.bloco{border:0;box-shadow:var(--sombra);border-radius:var(--r-md);padding:16px}
+.bloco h2{font-size:1.05rem;font-weight:800;letter-spacing:-.01em;color:var(--marinho)}
+.aviso{background:var(--aviso);border:0;color:var(--aviso-ink);border-radius:var(--r-md)}
+input,select,textarea{border-radius:12px;border-color:var(--line)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.prim{border-radius:12px}
+.sec{border-radius:12px;border-color:var(--line)}
+.seg{border:0;background:var(--surface-2);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;border-radius:999px;background:transparent;color:var(--muted);min-height:38px;padding:7px 14px;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(11,42,99,.14)}
+.seg.pequeno button{min-height:34px}
+.seg.pequeno button[data-val=""][aria-pressed="true"]{background:#fff;color:var(--muted)}
+.chip{border-color:var(--line);font-size:.88rem}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink)}
+.cad-status.ok,.estado.enviado{background:var(--accent-soft);color:var(--accent)}
+.estado.pendente{background:var(--aviso);color:var(--aviso-ink)}
+.estado.erro{background:var(--erro);color:var(--erro-ink)}
+.titulo{font-family:var(--titulo);font-weight:800;font-size:1.35rem;margin:0;letter-spacing:-.015em;color:var(--marinho)}
+.sub{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+/* exame: cabeçalho e etapas */
+.ex-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:2px 2px 12px}
+.ex-cab .sub b{color:var(--ink)}
+.ex-cab #novoExame{white-space:nowrap;font-size:.84rem;margin-top:6px}
+.p-topo h3 .sg{font-size:.78rem;padding:3px 5px;vertical-align:3px}
+.etapas{position:sticky;top:0;z-index:15;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:#fff;border-radius:var(--r-md);padding:8px 6px;box-shadow:var(--sombra);margin-bottom:14px}
+@media (min-width:900px){.etapas{top:52px}}
+.etapa{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.72rem;color:var(--muted);text-align:center;border:0;background:transparent;padding:0;cursor:pointer}
+.etapa i{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:.8rem;background:var(--surface-2);color:var(--muted)}
+.etapa.feita i{background:var(--accent);color:#fff}
+.etapa.atual{color:var(--ink);font-weight:700}
+.etapa.atual i{background:#fff;color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
+#blocoLocal,#blocoInd,#blocoOdonto,#blocoCond{scroll-margin-top:84px}
+@media (min-width:900px){#blocoLocal,#blocoInd,#blocoOdonto,#blocoCond{scroll-margin-top:136px}}
+.locais{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.locais .chip{min-height:36px;padding:6px 12px}
+/* pessoa identificada: cartão compacto */
+.pessoa-card{display:flex;gap:12px;align-items:center;background:var(--accent-soft);border-radius:var(--r-md);padding:10px 12px;margin-top:4px}
+.pessoa-card.nova{background:var(--info);color:var(--info-ink)}
+.pessoa-card .av{width:36px;height:36px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;flex:none}
+.pessoa-card.nova .av{background:var(--info-ink)}
+.pessoa-card .pc-txt{min-width:0;flex:1}
+.pessoa-card b{display:block;font-size:.98rem;letter-spacing:.01em;overflow-wrap:anywhere}
+.pessoa-card .pc-txt span{display:block;font-size:.84rem;color:var(--muted)}
+.copia-cod{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--accent);background:#fff;color:var(--accent);border-radius:12px;padding:8px 11px;font-size:.84rem;font-weight:700;cursor:pointer;flex:none}
+.copia-cod .ico{width:17px;height:17px}
+.pc-acoes{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin-top:8px}
+.pc-nota{margin:8px 0 0;font-size:.86rem;color:var(--muted)}
+/* odontograma */
+.legenda-grupo{display:flex;align-items:center;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}
+.legenda-grupo .paleta-rot{width:auto;min-width:76px;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.ferr{border-color:var(--line);font-size:.84rem;padding:6px 12px 6px 8px;min-height:36px;white-space:nowrap}
+.ferr[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff;box-shadow:none}
+.ferr .amostra{width:16px;height:16px;border-radius:4px;font-size:10px}
+.odonto{border-top:0;margin-top:10px;background:var(--bg);border-radius:12px;padding:12px 0 8px}
+.dente .num{font-size:.74rem}
+.dente.ativo .num{background:var(--accent)}
+.sg{font-size:.62rem;font-weight:700;line-height:1;border-radius:4px;padding:2px 3px;min-width:18px;text-align:center;background:var(--surface-2);color:var(--muted);font-variant-numeric:tabular-nums}
+.sg.c{background:#FBE0E3;color:#9B1B2E}.sg.r{background:#E1E9FA;color:#1F4E9C}.sg.rc{background:#EEE3FA;color:#5B2B9C}.sg.m{background:#FCE7EA;color:#9B3A4A}
+.sg.hs{background:#DDF1E6;color:#1D6B43}.sg.x{background:#FBE0E3;color:#9B1B2E}.sg.a{background:var(--surface-2);color:var(--muted)}.sg.ne{background:transparent;color:var(--muted)}
+.sg.q{background:var(--aviso);color:var(--aviso-ink)}.sg.h{background:transparent;color:#9AA5A0}
+.varios{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:1px dashed var(--accent);color:var(--accent);background:transparent;border-radius:14px;padding:11px;font-weight:700;margin-top:12px;cursor:pointer;min-height:46px}
+.vs-linha{margin:10px 0 2px}
+.vs-linha>span{display:block;font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:4px}
+.vs-dentes{display:flex;flex-wrap:wrap;gap:4px}
+.vs-dentes button{width:42px;min-height:38px;border:1px solid var(--line);background:#fff;border-radius:10px;font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer;font-size:.86rem}
+.vs-dentes button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.vs-dentes button:disabled{opacity:.35;cursor:not-allowed;text-decoration:line-through}
+.vs-grupos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+/* condições: vigilância e prótese */
+.vig{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:4px 16px}
+.vig label{display:flex;gap:10px;align-items:center;font-size:.95rem;padding:8px 8px;border-radius:10px;cursor:pointer;min-height:44px}
+.vig input{width:22px;height:22px;min-height:0;accent-color:var(--accent);flex:none}
+.vig label.on{background:var(--accent-soft)}
+.linha-op{display:flex;justify-content:space-between;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:6px 0}
+.linha-op+.linha-op{border-top:1px solid var(--surface-2)}
+.dica-vig{background:var(--aviso);color:var(--aviso-ink);border-radius:12px;padding:10px 12px;font-size:.88rem;margin:10px 0 0}
+/* barra fina do risco, acima do menu */
+.resultado{position:fixed;left:0;right:0;bottom:var(--nav-h);z-index:25;background:#fff;border-top:1px solid var(--line);box-shadow:0 -4px 14px rgba(11,42,99,.06);padding:6px 12px}
+@media (min-width:900px){.resultado{padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}}
+:root{--barra-h:52px}
+.res-in{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:10px}
+.res-toggle{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:4px 0;text-align:left;cursor:pointer;min-height:40px}
+.resultado .classe{width:30px;height:30px;border-radius:9px;font-size:1rem;font-family:var(--titulo);font-weight:800}
+.res-txt{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.9rem}
+@media (max-width:420px){.res-txt{font-size:.84rem}.res-txt small{font-size:.78rem}.resultado #salvar{padding:8px 13px}}
+.res-txt b{font-weight:700}
+.res-txt small{font-size:.84rem;color:var(--muted)}
+.res-txt .seta{display:inline-block;margin-left:6px;color:var(--muted);transition:transform .15s}
+.res-toggle[aria-expanded="true"] .seta{transform:rotate(180deg)}
+.resultado #salvar{min-height:40px;padding:8px 16px;flex:none}
+.motivos{max-width:1100px;margin:4px auto 2px;border-top:1px solid var(--line);padding:8px 2px 4px;font-size:.88rem;color:var(--muted);max-height:38vh;overflow:auto}
+.motivos p{margin:0 0 6px;color:var(--ink)}
+.motivos ul{margin:0;padding-left:18px}
+.motivos li{margin:2px 0}
+.toast{bottom:calc(var(--nav-h) + var(--barra-h) + 14px);border-radius:14px;width:max-content;max-width:min(calc(100vw - 32px),520px)}
+body.sem-barra{--barra-h:0px}
+/* meus exames */
+.busca{display:flex;align-items:center;gap:8px;background:#fff;border-radius:14px;padding:0 12px;box-shadow:var(--sombra);color:var(--muted);margin-bottom:10px}
+.busca input{border:0;box-shadow:none;padding:10px 0;background:transparent}
+.busca input:focus{box-shadow:none}
+.filtros-chip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px}
+.filtros-chip .chip{white-space:nowrap;flex:none}
+.envio{display:flex;align-items:center;gap:12px;background:var(--aviso);color:var(--aviso-ink);border-radius:var(--r-md);padding:12px 14px;margin-bottom:12px}
+.envio b{display:block}
+.envio span{font-size:.86rem}
+.envio .prim{margin-left:auto;background:var(--aviso-ink);white-space:nowrap}
+.dia{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:14px 4px 6px}
+.lista-g{background:#fff;border-radius:var(--r-md);box-shadow:var(--sombra);overflow:hidden}
+.item{border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item>summary{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;cursor:pointer;list-style:none}
+.item>summary::-webkit-details-marker{display:none}
+.item[open]>summary{background:var(--bg)}
+.item .classe{width:38px;height:38px;font-size:1.05rem;border-radius:11px;font-family:var(--titulo);font-weight:800}
+.item b{display:block;overflow-wrap:anywhere;font-size:.92rem}
+.item .it-sub{display:block;font-size:.84rem;color:var(--muted)}
+.item .it-erro{display:block;font-size:.84rem;color:var(--erro-ink)}
+.item.cancelado>summary{opacity:.65}
+.item.cancelado b{text-decoration:line-through}
+.it-acoes{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:4px 14px 14px 64px;background:var(--bg)}
+.mais{margin-top:16px}
+.mais summary{cursor:pointer;color:var(--accent);font-weight:700;padding:8px 2px}
+.mais .lista-topo{margin-top:8px}
+/* painel */
+.kpi{border:0;box-shadow:var(--sombra);border-radius:var(--r-md)}
+.kpi b{font-family:var(--titulo);font-weight:800;letter-spacing:-.02em}
+.kpi.kpi-destaque{background:var(--accent);color:#fff}
+.kpi.kpi-destaque span{color:rgba(255,255,255,.88)}
+.barra-risco{display:flex;height:16px;border-radius:999px;overflow:hidden;gap:2px;background:var(--surface-2)}
+.barra-risco i{display:block;min-width:3px}
+.risco-leg{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:10px}
+.risco-leg button{display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:transparent;padding:6px 0;border-radius:10px;cursor:pointer;font:inherit;color:inherit}
+.risco-leg button:hover{background:var(--surface-2)}
+.risco-leg .classe{width:30px;height:30px;font-size:.95rem;border-radius:9px}
+.risco-leg b{font-size:.92rem;font-variant-numeric:tabular-nums}
+.risco-leg small{font-size:.74rem;color:var(--muted)}
+.cpo-barra,.barra{border-radius:999px}
+.mes i{border-radius:6px 6px 0 0}
+.filtros{border:0;box-shadow:var(--sombra)}
+/* ===== versão 21: página inicial de acesso ===== */
+body.na-entrada{padding-bottom:0;background:#E3F1FC}
+body.na-entrada .topo,body.na-entrada .abas{display:none}
+body.na-entrada main{max-width:none;margin:0;padding:0}
+.acesso-shell{min-height:100vh;min-height:100svh;display:grid;grid-template-columns:minmax(0,53.5fr) minmax(0,46.5fr);background:linear-gradient(180deg,#DCEEFC 0%,#ECF6FE 70%,#E3F1FC 100%)}
+.acesso-hero{position:relative;padding:clamp(40px,6.5vh,72px) clamp(22px,3.4vw,52px) 0;display:flex;flex-direction:column;overflow:hidden;min-height:100vh;min-height:100svh;box-sizing:border-box}
+.acesso-marca h1{font-family:var(--titulo);font-size:clamp(2.4rem,4.9vw,4.3rem);line-height:.95;letter-spacing:-.02em;margin:0;color:var(--marinho);font-weight:800;white-space:nowrap}
+.acesso-faixa{display:block;width:clamp(150px,15vw,230px);height:5px;margin:14px 0 22px;border-radius:99px;background:linear-gradient(90deg,#1F5FAD 0 30%,#13924B 30% 52%,#F7B500 52% 74%,#F1C16A 74% 100%)}
+.acesso-hero h2{font-family:var(--titulo);font-size:clamp(1.15rem,2.1vw,1.75rem);line-height:1.2;color:var(--marinho);margin:0 0 14px;max-width:580px;font-weight:700}
+.acesso-hero h2 span{display:block}
+.acesso-intro{font-size:clamp(.95rem,1.2vw,1.06rem);line-height:1.5;color:#3E4F66;max-width:500px;margin:0}
+.acesso-beneficios{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:28px 0 28px;padding:0;list-style:none;max-width:540px}
+.acesso-beneficio{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;font-size:clamp(.78rem,.9vw,.88rem);line-height:1.3;color:#223B58}
+.acesso-beneficio .ico{width:56px;height:56px;border-radius:50%;background:#D6EAFE;display:grid;place-items:center;color:var(--accent)}
+.acesso-beneficio .ico svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.acesso-paisagem{margin:auto calc(-1 * clamp(22px,3.4vw,52px)) 0;height:clamp(220px,40vh,380px);flex:none;background:url(data:image/webp;base64,UklGRtamAABXRUJQVlA4IMqmAAAQnQKdASpKA1gBPmEqkUWkIqGVuU5EQAYEszdrxFgdzX94qUbZ/O/CD/O47mee1/GyZ/6qb4vQl9/5XSQyP67/kf5D0d+Re1n4B96/yv7JfPL/O69Pjf+Z5dXtf9d5vv91/8v9d7pP0t+03wDfrx+zHt7/8H7p+9f+2/+D1L/1n/c/uR7zf/Z/cf3sf4b1FP6//zv//2KHoTecV/8v3o+IP+4/9/93/ay///sAf//28ufXiK80P5/+T8e/yn7J/d/4n94/8h8wX7Bnn96/1vMz7Zv0PP/9qvIf84/lP/N6in5F/SP916K8dfsnF5//uVXxP/3B9bPHs/peop5If+/+3fsa/Mf+D/7f9d7QAq7m9uVKbTDha7NvEgsFjku3Ck4p7My9+4/pQAfJ4uKeJSoeGiewbTRVbkgWS4bYHUgLxwb1YGlkxHRa7dSAvHBvVgaWTFQ2uGp1rT4lL7hORpmGEbqL1PrKqo5M3Q06sHJC6NsBoIyGI9JJnwFBBOQIDBopmJ4Nnfd0V4DKYjkdzx94x2CBbbzehIx9Nko6bmn7acCaT5mgcG9WBpZMR0FCUCG1wyDjdPX//Wgv4P2lt69QVRir7t8v+bULhSobdnyWYz2cRL5+qysfdiwPisifdjnRS0gl41Vg8ytWC+LQKc9reUqscX8iqaJms1f+L+xVro3s/GmBWUnlkawhJ/Oz/t+Qp7HSaFKzNkm721Ch0Wqb14b1YGlkh2Z5amqivIvIc0IpnTr2suRHS48maMNh8F2fgXQTqu5JpXQlhvqfeAU/kXtss0wZpqlh+LfxeMS5DCOwKlW23IbHkqBewHcTqq5tc8K6j5hIN2Ykd/2qcXadTb44rS9w59pZDyhspSGAu+JU+37wEt7IgGRKtO+VdxwFPoSg3eceZx+y9uQJjtXEvTjmpJZwXRVwBwyDLDYdfpPLbrq9Fe3gLbR65MGS/ztOIah8aL0y+XGR/mPy9UzMeLLugDqsFUoXLxSFqAuSNgn7buaVvZWB3iYdsAeDZX/92WWAvvc+RbDALY/qHNj2yHhITsQzcPo9AVF7F0tAOWJT3otYqlqbVTTQ6aF4KoBKbehYZfYaA07jWmqWjTfunAKeo1oq/PjlCUIdNLo3NvaiWutYYjBZJYylTS+DoNIELA7hxno3rswNZZAQ1Ya/6gIRcDKb//ekr5R3WC4lek/TGhmnY0LeDa/4tW9+WZQlYCXjobWdhwnQOjujZVRIfUlO36lY5P6qBmsJiXUqke3XzTK47fKIPYJNOcf/gD+egUngPuzVy9GLB+oPwpKU9PXUOMws3jBaSIo7YdqB00pr+72yuQeJnIJQa8begnGISYOmy8dNEZRX/rBj91Eo+JTfhIGXjW399nOGi9JHHSvJQNX9BQqqhkun/j8svC2ldAbBNVTwwTRH9rhxRLEAcKZzd+6jy8sz20/1luPCGzoy7n3JVjFbTB+WxbeCNR+/Kh9m+6VIKIJJ+7EVx0tMkQH6Os2RTthsPHb4NVx/BsECl6objfWCMIM/qJwJbKVuofxdmoUuxwo2MmicAAK4kqJUszQ6ow1Fp5O5EzHlgGYMrKWKRhwU+MfJxZQP08MO36MOp7WzddBZNIoCHC9exgT2sGmncSeAfoy8mrMghfXf86jBwSjT+YN91DeO60e9Y9MVeEsXj6Pa/5/AKFF0uLw5rp6T+wYmAso+V2KZtAcB/+tuZvL0PBlJ88uMrooZz5aKLD7Bi5jT+Z9P9L7tMYgM0e+7dQNk3ghfLKUldIe+dr7wiS1Qj/ZJw2sfSL0cB/sdjC6wLb8HhGU5b9AV56NAtsb+GqRqOVUv4VK/KMqtaEnX/xz4tGrGz1gmubWvymI9Bp2Hh0MeGrxrR7zL8dRIyHRzNPAowDq1P9hJDPLSgiG3Tebn9/u4mgWza5aXKNpJhJuoJxNKMX6aSlX0AqBOQWC4AypV7A+DoM9fBUOqsNZIYcNYTrnzOxlrH79E4Y9jVLKN5VKg+PMuEmje+1jORf8lsBslIbHd3QcmlIUGD1dCimnX46CRcwKP24rK4jn9ZvF1DXiJdDdegPUXt08tvRgEhn7sMvKytPdyuSOxeB9eMV8tERhtgJaip6uNjRemYES+IGyE2Km6lLwCmf0wZnw1/F0eIEJ5ZCQkIEL6cO/Y8hEwDxsJnnfd15PFwx9QpQT/NywkSCmq1vEV3qgZbkXmJC6GteeO9CjHj8Ih/qY90Ht9ogmZ0DqeO7zDVpLNns6nmXHr0/NKFASTGhGU2xRm++vlHqxDkkyfu6RkKfL1Ppdn4zBkezkTHFFwPmeynk1rXYDUF50HQJKPK2XmPVZmIH2NYcmsLiSgBVhLSj6PXhRMzNb5Sk1qveGC/EpXetDFzZdLfzUW2RzGXnlxp9bFHKE5/sTS3HthLlt0a1BXJJk5FKoxu2a76b73W8pAqH3hsGNQ5VaqKpxtgkmoBProRJqhXfRt79bpQ347EvIpSEb5HCdTHa4zGMk3G97+raHzcG4e8yAfWL55qgme6jx4tPK2V6USWc/TwWxYrkQpf3n/mtWRYVLKGhckW2E49/sep95D3hsUQuQNKPMJYQBqX7axCGUCV1RjE10FfFSBzJGF7Do/ju5BPN/iFmcmIYte6snYyZRFEwxgJk6LR7zofh9Dn573o+CE8MiGfvrwbev+xHlkELexJ/AtCkruaR+R9qWw0g34QRnr5kKm+Jh+qwEGsIJQVTPJsTS4UnwyGH62tKMTftnfLLtcCuL8rBjSquOSBE0wnxXmndy4Ej2rvw6JvcKBdB/a8RwAT3jm2FmaPgfSiVkVlFN8g/zjS0qiPyjgEDb5VluYmvnNnFEMCsW8KSSti9iSJKyoKBkpO6DFaJCUCOxr0cXhURQU3T6OFC6mdhcNsH7DCKsQess56/1v51HDFGZJANxJ49/rTgayTqk7WPOxCLop6brzJOZRQNe/C16mE0sMcR56QeW1xPZk0QAnJsvkSPrsfeWQ654nDIfNWkTzq3B+/lJeVpzaex5qUcc/lje9VS6xJyb894c6U6I52dc7nGWfsdq+X0CuyjMmjMbTzKeFA3BnDthvppGxa4gt+FMFjq7SihSCCF3DP/+jQIg3vqHW4PDRmyWBrYr0pEzNxvzrAMrOCcUpYrZlVbdSIYzLqwoa/5CHtVFGUH+xirlRxq8RjdWYf7Uh/9JcOfXexKXoWLJPIL6eu/RzF/vpirvmQYnwoCuLpHiES7YTUE7C5t3viz4PdiCYM6W/ndT9zbuebONuC98Q7rtBg+gau+/Kk9mQ+5nVSO7THeHO1xpbaLp4ELlPkOG2TsvHFUtPqw7zKr+bu0AhFfrqromSa3aWqEGEdNQv3SfnNiyFVOaj8ubNUDcbr4qUMzhb1EdWHFUzV17C1wiNoI3aaeijcZtg7CFs6zRr7IxtrHQciHBo6wBG+CtyLqejDjZUq8Q6m2rOXxunsRF0gsgmcNWLX0HXlwGMei79toKYlbdhHkDaRQITIrfxdTEq/caB/Kvh7veG299iP9gmPSbqcN+124s0r0MhIMMDIxhc0HL5DLI/EYi8EuVy4mTspBavVSgbCqwktzpHVdcJyMcRaP0IidAquQsNjQ3bNwu5ZbMFakt4UEIdNdl62rNwX/WpTOSilf0q4ZTe8BgT1fDj3F7DK4OdVUCrw4Zc2A/EqIvsTp8Gj59oQcg8QpjKdmmE4F8l09KdZEcZuPw5xm1iz251DDi9KmmEMVlAnujd9m6qXjVjMACRCJpY2+BqG5Lz0tsX8nsw6eVFsYUyHyf3g0eLUOp3i0JDakCz0+D6l9TgFsRlyRZ/KcotokxMuKUJ1dEUx0b/XFgZcqWCsVlkjC11+gg2PySVXA9jF1logYmwRjysDVamCck6OjbqN1av2LxyvcMFtU8zQyGLkOxGUMZRdt2wi9T4TtMtbTTStudWMj2B5G2eI846IyygMtlGQBe/hBIkHWaU+/8XJMWoJ2FgZwzTdBzYkWPDb/mzDrK2GOPDpLNL1aUKbHaAnrVC6vsXgwFyOIu9oNv7oWWYHy2OI/ipUhWGsw7PVuBwNNxiL8NnT/KdevGsI6uz4mllfXf54P8gqD8IBE7pDjaMojaJTbqoDuPJ+nWufkGmy4hsCuR3J+PVuCO/jn5EBltKdbbLCPdA5InsO3uZIOh51nZvNrAsEtD3lPXzRJZRhqVj+m06mXTuzvABsod8xRRM43qgi55XNlXAVN8ZbOXopCvivmU116y5D6IEEJjOxCCXF45nYIX9mbjUz8MZakfLDMxtM2vflaffBGVLrGaxxvBkudkq4lXXPytmCtHjQtSt2BJZXMbmANo63ZZjLP5zUX1i4Sk8aqhH/QmUf8WYQwZ77NNpqeApsbi0EGIjPe/RXD2J9eCZ5vQxuGm1XdcnpzTr5ccgOptOLOkbMDWffqxhhxo8WFrmjQItfzeXi/K3Zz/cDIbBRtKTOE5cgD5UGTyxfzImhshUhPuQTouLapOkur9TrcFt4aTqnHKNpbGovjWLQoXFEGPR9/LiJqZ0acwwGC7RMdCYcEENN+1eKaq2HEdIjTHCWSvTYAH7BGWmRy9iSbgcpoMkoO5TN7tPrzlpRFRWMDOmznwrDBUKzBBawAtXFLqIq44qzSrGHvvBEu5hKvdMjrNAkYRY05yGPPdo6PYZ4692OlhlJ7Gh76TWOweUoGLzoG3f7fogGxcdtQRrfrfOAOxEHRYAMJ+NVqM5wcSfAHYnyNUzl5wfiGrL+RQEJFvP6fEBTf7m+wdF64usS8WXV8y0ZpLxXfR76FgxkGnI6fM/6XR1EG/QTYjAQ8C7rIYLlx9nmhYvEGulRRn7toa329K1gZj5YEY4jgrnoZjkdH7MXxMyvhu5l2/DxZ9mOssZNeQD3fW/AC/3yikgo8vma1cyXegpdDvNVDGnb1Hnm64ZqQSYM6NI+LWRMpGxNCCGcrQeYQJbeK0dya0HCP+jUNfThe/KqwRS0J+87vztOh2+6vd635FEOwl8nEIinRFe5O9L4pIKrSogFyVYjWu193rC9Dn4rC5EAbkUAvUcFxHfr9O6XbfhW1rwEe2T9gLgzpEoMUMMjUEGWCPXg8T/qBDOIsD2qH1No55NqyjTqaytz1btptv50QDG7iWBeoxl16dG+MM5SNagFU6XRoYrMFEHqWNfshHBctIKXwKmzi03v7GoH17YKGOCwhrabXaPm2yyhR1G4Mpye9GyWIWiShaJwa/Jh6v5Mt3XNH/Mro+JonKf1SgNMg5glkwqzLQFsYEeTj6CoRfEEfFI251pCvbK7JOTxTp5DOdgP/yz1Cgw+T92+jPDoruSI16TXpCLvfEDtlZ73bMRwFkwNLubV9rwWlXffO2DJtkZYwsdREFEJkQCeO4jsk+utpECizqFN6k1drxyVRSyAQspgp4mlNLKgGBcBrc1DMwbOGNTqcvEwccvpEsaQjbhgTSskzmCNsXSqUSXVM9qyQNNxgQqaijsHzS3LcKdmibtXtLdmjllv5J2atgHO/sH9JQYUuwm7QM/1nrGfeFmyZd2ImFpV44Zh/CYDVQR99jCdNpGL4vaY+ba2f6IOr7WkPchg2hWEZcNEnvjEF0Djkg/Ad2SVzWwbndBx+aTfzgAtK9ofozi1Jxtw6dawP0e6DRAy13S3MuKYO5dhmzLfc2NZd42lhOkAIqMNJdue4C00tfKZZKM1KugcfrQc6uDk9LiylRE5hDE9uJcnq2VBHWgSR6PkgJwLXxkDfhEAKU8Di1gAQiuvoSdXnEPXB/uXhZANPWPYOHKBBJq7siwjhEz675/PBiBZCI65SSj6VNI0fKHJ7Y0uZaEpC2QH5m9VYtc5TbQIUeJx68c5KTwCGfSsUUlmbWGmz7AGeSf0hFb2WRcimTZLF0NMDD2WQpOL8CXSRDBr5XabY1SQmlvEmdZv96lMDkiwo0JMaT/T8klC0R3wnMQ6J2BSLdmYPnXMMe7KF4YXRlyVZta5E53NfNJka6SR66aDaJqKju+qrX1nsAm3z3wMl8/Q7cw4hKZZyuyReV1B2i30MJUhDRJ5J1kSZtSOg742EYawZw6hi+3fg2gdVcZhhD00rao8nz8BrgkIXxCNV1rsNWQB3fiaHBMcyXZTEnqmeGasNPexcndAPIXQNS7KCUmJYEC4Qzg+ecPYg3waEzxqL+BYlvpPDbIfQZXYZxUz9ojyYZTFRLUGkKza+P1g+kZqe8U30KcwZSJ/OtaffY/ASVDXJ/oj+0oePmWW9gSqnc813eJldbi+tfjQDn4BFFrxvc3H9gt2if0mhF6/CivTjn8YprgNkCoUi6mi6lNBRWrvXnECEb/UzXLD6QUtbk2ejBQ8ikDxwbrmLep25grUGBYOomFsywuAyYLx9/6E2GEhRm4Z1E2PFj5a1RCbHCdnPbtYQHRweLiMoE4sdWnhejt2RreujJBhnpVRWIssz0OvHtLcV9nw0HzyKsbp/zr0UGrJfWD+SVnWb9OtZ7rSgtBZ2SirkbdVpGmXsyEqFhHk8pi8dhjfasS9SINDCJ/PMfRqIqvG0sKzwEd7aSDBBcU30FmgUa4+IlRRPwW/hNhVyFnUS9fTYNTRTe4CuByxlDwcae2P8nSPBVZbd4FVVzaI004fTkfJ/VdzeexgMNVhkB5MzohMoNMPgQOVECfjgwNSqslHbBG/BjLegEzjgbYuM7ZbqcgArMgr3a3zTCXoQKfdzKtbtumIKJ5ty4X2/I1062a+Y6rc4J+Z/NS5sDCOEgPpl6OyXgNotFVe0ZWR8uiTLb5KsanbHru+nUQRpA5IV/JL8fAFBAdEMfAA75LxEJzXdLIbkoW3UAx4etwaOcTcS5wqjjpvJzBpTCO8ZjouZT0ThyeWijwC7uA6UoJA/8Bl849hilvHOvNpE2w1C6+6EfYCWnZJ+t5/MLHR+e8CNUfJc1mib/f80Xgl7he2YH7m7vFiA1VrVphl00mHpExyeE+kec+ZlT5JtPLC+4ac+GPrCdS6SxNnp7Snicd9a+w/DZ9KE6ZmyV7fwCQj04pCQRKwUyx8e8G3VqgxN1Y+8BTFnILqQHbErBfuNpAHpkrJid3VadQUNI95OQCGsL78h39i1M55VzQc/bgk+C8gTpPwgkftL7SCif9zn181FbjVOL4tdAA/vtePiod+3HCzJq1hcun+9x6I4njidqxIeqL0P+uFYBo5hcq4SNv1U+xZdQ2qUE3vzTfLJe3HjOcrFv2hGyhFRzcejzsJtUSN/nNSnGu+8Sf6JmykreIEWakfhm/bANFdr3kjR5W+bMKyac4QaXtuok+Bzda9QwPHV1wC/2IzeJzb+aylmueRl0um9duczj2zMUXUHQl88BJ/Qdycc26lkb/RXpIMTuzap+1NPdVUdlUPHmguZ4SelcNTdOtX9Mtv0NfxcqBTQd0k14eETfV3TibeVeZ6M1MmWFjdP4RfcmL+tIfhxG1qzyThD3AesPMGz6UrZd0Veb5V01RyyHTA7wghW2Mo2zFQpsddQ+8Y4g67+KSznefymaHAQKEYp5utxOYBopTluFV77ocmpgr9WbyEby1tdY3FXOyixqwTKCaLjmxwAlgJqdnL2oEYhSuY42Il1yjKPbQVigabot4SE+8tYmR9jAAD1aE4wAAAAAPPh5NaXNR/9TxUZEsnd4mcqhvelLPK0m9Rp9I9Gi8QZ/QqOmQF4XqBfufGB01oaC+EleMLyQ4YUEyoAddN+Y6kUN06j3Fxlu9bCE+ViDBELzoLwG3WcZ6qLu8mFe/nFNZUZcyq3wE2L3ld4X20SIUJ0QOBaUGCl/kZh0+9MxAVAHGqjVtUSOrj/jZ342zIp9Mr7DCV5FAY0+tXlWrEINyzaoyWgaS+8AC9mkprie0PbvCHeFQe5JUhlGr/8F3Sg7KADUZgLC0i7dD3XFA8WEEIZKprwk7eQ2Kn5l/HdbFSu0kq5+uSqa+1DOO0zkxNi7SHsIb8Vkwo4PvgkwvrhFAd+T6Coa3q/reU0E+rd+e9LUotReQbLPJTIX40KxNpZE8eWSnCsENm3OF5QKd+Lt+e/6XEWRXDWlpg6K9S+qKhYd10O8TH8yZsv+N0XtLgBP/ogCzkSPpnRUz09jvleE3Toc/G83CrBqaRzxCaNao0T2xOFkbw7imQsz/LYcA5PkusyzIhyfNaK0h+t87DZCGEGpuTgDCgquwKlDWAMlilhZzLRKg0+kMehxwE1SWXylKfFoblDAt9V0bJYw7Du3l3I4nY/JOugvsrIYorbNzekw4Gl/LwlUtfNgsbfJJq04ogHhzQ2hfSdQRToQKgB4Sju2jmu1nyAAAAzhm9MBo/YAAAug+ipAkgyKGiejMf73p91C89+SDb+KjxYgV0UDfuXnptlKven27OA0bVHLbqfA1/On41NMy4O+JjHeEpry5fzXBwVAELhONEqHPhLblgaIKlU2Psl7o38Eu+5S5eY9BWMOyL4vcJ8/IzJ7X57MYoi+g4emnTivgSLZimGwpgQq8Z4J10YfEXtvBNqydY6mx6wsrM5L3y4f3XFt//nOSnBvK/Zh3wCuZagEvAbqX0Ybc1bbm7iv95KunnfvO6XaIJvKvEFF7vV0r/wYnLIraHNJP5JJtvLGJUJlTBLVpdPJM+XUwkGgWP4YWpq8vpMRp1CqqOT37cUdB03zteok9085T1PGwicY3buwQB357zLcqdArupF24Ls0TCBuyizbgFeJ1AMW+AmjJb5fRLH0Qrt5T3P52rzp/UfFsynFLrH8+ASqAtGnPVo5TmyjqEwBZeI32ke5vxOQcs7nkvwZ6UZItcPoCIcjx+nHrHYGzkVNdNLrZpCJQdMR5axBR7wLkJidHszB1pbP4+MEZfsNuCGa+h6xiGYv44/WT4GgKz8CTj0R8BbojWNKBpuoFEQ3C1hHzW0jwtVJ3qRJhny35DkPMBmxovCUg95yjFr5QxubjfXF4KOR3BqjvKaeby6NMl7qIRr56P5Ge6Ros2LKDGW08tcQDPU7we2egDa8/aSmMhebHBP/N1x6FxtVOMjP3hCuc2fK3UiILUWov4cdAAjopxmQcX9EnI3fmOUECMQCTl14YxZCSk2O5uBj4JjIpwIAROZLGuMIjYa1r1Tb9CjL//I6oc+8qXmVS93roq3BCcK+V1Catcz/rodfKDIaEb3uh8OU91WgOBcdZp39MpIHmEK1JisIvgmtuTlF63r2XH7CKKHc2gbyx3gohtgan46ZiDE/V3f5ImwoelSrhdGPXmrHHaI68YHYDvWVUZ0nYEeg8S6+hGVulWWHFfcrMyD48qb89jhwG0a7PeXC48zqKdV154ME+7wcuXELWoVOvbdDlZtwikWnThpLrrAPr+Q30cGOpZQaRZxXM9LcmJCS7WnyLWGCUZZLbjEdxBEJv16xak+UZh2NwZpHoHui6G2eG9p91rrRNjvTwlRr2GPi2DxvTdrnKO+OZQasu8kdk0RNNwYz/wpPvL1bAYG5x+9HoibBeon20GaMKQx29mkJ4yOSTraN85ZP9KXixTHIo+lP+4YFKHqGc4o6AHG5JkfrBZvQoJYlpCmIJSTp5AAqVIys7dILVdnb/Sp73Btbm1vWEWUGIInd7qMKIOusVFtEkhIBznILpgXHtJOkuVjdx3a5jBQy91Cz/mCBmZoae6B6rVAaWl74h7Pu14pLOIaVZC83ftIEzmDvO3bYqal9YPaYHkaQ33tLBXWkOJ/tN9QHYWJauwoLcbzu8TpIKxvfHMQ4ebaYZScI1uf/csCSPEasnds977xLJ3+E3oIiQU0IQf3EKyePx+q459Q2HiUDy1+KcfUfY7+7MorTr1fUeuP3b3nEg7zwOMxU272scaLtrLse04ftGhEvKpR50fxzkOyzbCG2bFJToFXAcAE9jrLuSesgil6qSRrWBRD+K0xbryGlOq9rTkPTY4tbA4RaUihOID+ZaHAcq4s8X1zzjF/SqlqiY67/ftcyaTnTEYaNknsKtkBHvDBVASO/RzU7UHXeFhgHfyJamSEknEOLyT1L/MA3RvFMRbYcGs/WoTDRqaBTQLPb6L6P/NeSGspwpyT9eUgB4fhgRj3gmOQwQesrKqWMhETpgGbCeG8Rdkt1RdfpMysWoz0uofUk+MDPMelkEU8/N6DMA/CR6HH8dTTZGh9qy0NBRZr5Ku7wsmJL9Q5QaCGtbuxo9rKstGx1sWIhChWGnXJf+W44hg6PuRso48UfhJRA5C1eD/Y0BigjM/aSR54cs1oqCJBtglsb34U9bY16+RA2d7oSxd+qEPcKqvdl/27tilxQtAEOfAwsdM9kMWs/H3kWoE105mv0kDyP+/WgbDI3txJPT7RhcYEbpxDhLELFSFIXEUR/h+DQ3OwHJ62IqdTpZCeRsvBaQEZ5ScdKJ5Z4+8HBqlNpjI+dN0HVJpbQ2Uwh4FXQSWpElIGLbGydvADWKx0PgYh+oHji7puCrXyqKV0v/LdayfrJESZLCnj7H9GNFkUQ+F3qqdd2pM7u48CFSh/Bz4qNtgGiHypl50e9S41sNnVhaR4S7a9L388JCt9rD1yFwrmH70SNXSOfhufkGRM4G7odHmPizUaJ2ZC7+D+/3O1r0oZnxjxwoABUgeNgrBwumKGkKrGboxVzFruwxcVF/iFTGG/EAUcZoBBM64D072SJLLo54J4kC/mEg6LlnRZdyy7AvG9uwRSnTl+sAWiWFRRkoLFBO8s3ar9evpIiJ7nmME7DIsXee8KowU/QUDeJkIFphA3XfCcXVyuyuSwFvMZnqhqE3Gt+cwanYh/9ik9krvjiSTvT8AXGwO9NZeKgY43C4GewtuK+fRZWcPKzFnVOfMId3hOSqotfSuIa3dUEmopVuvQZ01f9MNnaiY2Yj6RhRmP+U4LnY0v0LoBb4dFZU6F56U4tzebUfy/DZ8ZDKsvWDrXQLHCuxN8HVaJORobl36ma2im3KHNVCnJJrJbNzbj9O6jkK5033P6vv8l+raGhFWdHLVab8yISTImczW7l5cxqg7TRfaoojYjWnIU1Ab4it/T4Bdl5nKLAC9YUADgvhFIAAAAAX1j38BY3DYB6U7xSU9zFuD+GUjdqo6ti+wkxmpsrcgEJPEv+NHSWfR1pNXnsRD1Daw3mhqp6ORq/ADET0vnQZy8lR88sLNgcuzhkoTWIgPc8Etw+EXHJrlQlJwM48uMxWhf4K5FABXRhldaot7MNA5sIfnuuLiICGmJZFSNy6y7yE8th2nBno4HzGGjd8MZE2IhDC9cjyBmcVaCA0fO4GP0v3CpANOwMo62TASORrXQsEYnyIg+bVsfvLhLOC4mx8dvpcvZODYxIZFg/MCCfkjDbuWOfwTrPRyV+NoylQYvZvBsIw0uZCqbSOdfYUjyPJ4zoW9IYtk7QUvMd7TQsX85XPW/mW0x+N0z2S39mjw8N2/Y3lFDgMBPsHZkDB7h5oUDaaqooQE93AGB2I7rF7jmCqaFrDnxqTCdMw4ndl00suS+0/Gq/J1To2xL5z7V9u7ZqjU9tJahoozu90N2MARqZLJ+gpghFZDAPovepKpQrwjR3vyhq8kXVBY6wQ+uuoOU7w6HdSHIalH7U8MrUBhlkHI7ms4px7/yVXK9ma7ybNIP/XU64JAK/9CG6tODNJWV8Vs0NHQDK5Bi4TRAae31MM39DRyM3CNGtx+9kcDrkNihk5iw26h+u0LUN35lBF2H/tL7SQx1SFw0GzfhQKSDeATafZVRewKPWIurl8oU42Pm4piiaQXoSKPt1jfYZg7BSgfbZtOHjrEXMF9V+B7oqd0LSXqaFPJ+But0WsTGS4yhqFVxU5aLVNJge+RVzHxj1mHd7JnH9cw5SPzD2BOPftMN7sp/lUHZ5mjFlstgBJ8ekyAEnsvM/0t9UX5djT77OUD00SwYf8OoyTRwvBjSYNuV9aCNvUZoY6gEqEcy5+2WrrjlamuEPx9QKYJbd8uuW0G/Gc36j2sTGrmA1rFkqh2sENrgNvhixHB6QB7Zk7BSnncLL6cPrTRTi6KaHw+u5wKBH5KKpt7SDAjp9etW8bGPVPseBtOvlv5s6mZ4GxdZPLqH4mn61nVfh6jlXjjop1Lt0fGl10BRqhUBR9SQeim9rsQtsf2tTP5VsCppaRfOCTeHy2Tez03vwbIiMf2p9+pongJtvTXVImsl7NeVTPBVNqP4YRHchMNGeYDrD6enqnUMzXAdkm03NO9fLmz4op3q8KfGqH3XG8AMdskx+2xKYzGMI8k0FszBDAXsPXAWdb9NQBqLW3y84uDSlfkJaXbnb98c87/eOmHrpxe/0Scev/W6I66uJwYof1fN/F19wM877trrSj+kf2VTPD3gTq96geQlk3IvEqwgwYpI4AILW81vL1l8RbZVyG3AwTuQqb2u2WfBwL+fZmMQmwatw+6z38wxH8n902vVx6W6jgVeIhS2VbHUKBrgFBc+rckcbpuo7/K3/cRtpyxvd1qoT53aNpe9UFPIfVgjyVBnhsafw5OoTTgSlZg5PPT99Dtn6yRUcL3lxFdd94weoIXjrR8ymIRGrWkzoe8w7dcEbpAfErQEV5Coh/AjTtApLdbVyFAK2iyOTq+badwT+Syn2OVNKXzIxIgcvhv8ejEN35JETyi/8riYqTQ81MCmffov2fwLreZrQmdI+nHULOH0AJsoe/gTxEOupQNkpxXo77MtZ22LyPX5frp8/HMaejlALkDkNsUj5e6C3lJOi/+NZUla8A+yDzTkd0fLw1GDsuG5U9Lcm0OiGX3US0itmiKw5eomX9M27YjQLU7kfwRzUGPguJgVTpZtFm8FYq261JePX2ynPL3O4+i6LccQFbuSow0F71codQUm9tw+l5z3NHM3AOZBvYBc63yptsQ0PNhVym3wvV2AnMefkkfMlKAK9gvjN4UNSkyLD/dVTAhzB0ooiX0QNqaGZwXk62aGWQheT7bYN+7xqYzyH8A+wh16cZO01B2WhaAuhHOib7ERpVtU7C6lcqrDj2oFbqU/ibrqsB3bkYwnoCaSbyp0q+tEfECwtXkTCOEYYqm0Mh/uQNIodHN60OVasI541+khbesRACZBx98ut+Vt2qm4pOK7ARsuexgrBPQhQW9zKw2bfePStW6N/YfEbQ5TAoBYOenZV9fK92UbjZn4z/VckWLqw85oib+xI79ARQs7CBp/QAus71dc7dMRl6LpsVHKMhgIKzq2laqQLaT6NMnwvurlhQaRibHa13u82Z3yn2UTsVsM1aye/b9HaEb5O4yTeteSu0xle1w6CzuPXp9EIduPU2JrZt5eNECQNpVhdsY0h+Ue1qzLfD9s4n1FRXjH9zIRwr6/ksj94LPJWc/HLQZ7eECbgmZh5lIRSR6AxD6e2cBwWNcmUaiRH0TZiWePi2ptWK4CbMmgfb25qtalgoKb4fgLMnzvZB/dt8X2ERO30shXr53XLc3N7MkaAYwco7KTTexorzfQbweNgmEnJc55b8sgPVuqcD7r73lFdz7s4fKQ0iIfZpwiLn45RbFqSesyWObv9oUJYIPFY6tQn9T6CTymX56H3nsB3M25XUMjHMzYLr8To1lp7SIZqLpXFA0Kpv2+QrdL3sCOMhCFVDk3LZL9M+rorcZ1vsTlvkI0cKDIgCm+0+eT5AlOqI4fwVqwAPSpoPh3DPBd9nwBK99Ub/pL9KlV4wcIakBEdCCKatbNEIed/8t47eeLnh/eb4I0yD7VeVQ91sajBZKChwDSuyyyKm9AYl5ZeK2ww9xoc+W7ds3z4IBXjFo+IaxSe9jDasn3Hs6c0BakUbAfBeghHcsHQOgrY9JDkydrv3DRhBrN5QN+tpG/khRGPx4hfpXjcc4EqD6NGoIzm57OdYDzSXKmbrvQKpUlgAwdZP8uWNzZt3+V8ZgpxdbNKq7OUswhlCYPHAMBCUZIow422iwA8Ad1g6yUSqXVQOmJT3hj1UVRuP2DwCypjFO647/o34vdWtUfs9snYS7NmnJWRZHBLb8D9b3Yqi4qR95O/F4M7uZgM2sHMggkMUupfYqPGHFnm54Bs8hXFgplLLfScGZ5Ow0Xs47j7QPb8tefIcZ9LFmhMY6hoK4GP2LDW7ELXrjmgHOuQRHAq7ORtamms18xEeXqMPl6KxsGKJhFgKoOZr67+/2CrhUM0J4d9ji+HChNFUlIzGgR/H/TnLQ/rVfVDMDVEWTw/mjfpnTQfHSRAG+R4e+rfjwtE8pfMC29b6FKtxgLs6Z4O2roqFNIiEpEiIwfCJoARCZsdwjqLr2cl8zjUo4uKSc+p8EaOxyNRspp6rFHXezdVwDV/IwyMLjez61gCxORru+1bvtG3V/6/yBgiuee9vtK8U/EsQGU5ooapQIUoJ+JvD6Oq7zHfq4tmS6flv4uaXaMV+HiOvItCDmT92oiy5aZKqE3NR1WkBeBuKvE1eFqD3BVPk28vcNJ0IWt5EAZ4QXE7XwE3AEt8dC157ls1smzc7YznFnRNtpBd629dCqG4GwK22TeVDA8BrzwwT9QsPeOkfcXSIe7V+SY9B5CdjwOKlhRTz7FsCnXeyTCL6xdEWRJCn6R+Wpfokvl/ytU7WF6FFIooLsgsS9SgL1ahVcWIQot+66Dm2aR0fIzc5WURwBRqAcLx4waRV+eYCZGPCJU4EtE0pVI/9+ghxr+7NNg5RgMcHbnNITBT8Q4uqWiQq0tqk7Tp5MVHfSSiX7pCQDCFUg7+hVTs7P2WYgR1aEp1y1Yif9E2uA8GEbze3j6INySo5YxCVoYOm3DYOqhZ6qHwpXKOX0+o1W6vslPh5zGnsYDFgfOODgzDvxQZmh6K+mMcoMI65I5zn6rxyVl0LDRMqzXI8wvGGkS/wL/gYek+yXgLChlVG5X4uzDK6EgtOvzdUywp/nyP7d5e9c42xEISZ+J5wfMGdPDGnngjur7nHNlGe6GyUf3O1iByXn8xbaWrFfmuqUK9hNKCWdew1Fmyn2cB7IlBJ1v0pA5EjxMtlOfR8prdjkwQm166exkUvajlUCVYMAMnKm/3X7b0s1yWPYDCJyRrEiiuo9bumj0Q0R9orWWMQI7SmTmdDWc9tTpztpjfTKleo3348B9EmMUkMElNGZ9F1SGB8re9o9zXgPKaVTVglwwjXOZ52mCp2zLZAjD8T9pC9ilzq7K5t6iCRGfY45CY4+e/jS0EBaOzIKzAEATrbgB2JrMf65fq4P2z0wb+gGU5TpwXcV/6fcmlpp3t/INh8jANm30sft3ONBB0V0Eg8E/rQh8zus7sPF/7SDwcjAnknXxIwQcFdqoM6S7UmxOvJA/OnBKqhjFavNnrhh9HL7NiQVE1l+n8/Ysk6sNc5JIclArl2E+Cz3XLMg2f6/AWHk36AEMPjEaxXCAC3dO4rbtxVTeYnvBeuCkflgn+d/j4mUNvJR+GyGWdGtTAdFNRjZ57XPLvwVXSgvlE4ivFrhpZWGpVVj8Cb6SSnkKFMwh/8itT3Nyq0Ljs32tlXWbV+/E/Ag8Q/OFt3oGDEY8q758DVMxXwQeE9fd/MI3UmzN75G+6Fo5+sEPj7K9Lz+ivHl6eY098dXEM+/q0aYvBquhXT3SVg0WBhIZxlaBtObk4udBDhErSJ3LpuKmM/NcynqlqdywA/czb7CS9gpohn7Ygybv9b70diOLXs8QV75CeL682FO52iUlDbSMpGSyP3JYfUA7GP3vMicr+YPb3C6stgWmFY2GYWh6lqj3TH4wXz3YgrLQMNLm92cNUEfsanybU/8ar0jVBvV5/CUyYTuanRHltr+2/BcDRSHn8wIoN2WT4dM3CLjCL4U63sEiNSvaguLoaWeiad7bfuvFhb/qJUL+jrFu8C22IB8Fprk/7TMzWkhrxQUiBay3hbOAEahCshTLQaTAgJ8ae524x2H7BhNdnR3Tgs2sf4sOfwwb2ho5ssKk96hDb43pZ2xa8sEfgsAxdsKBRETVferVHOQi67sGXW6RZPscrjWxpvEFUIJNL8zoUH6vSwtgcCXrzaOMg1MpgX6kqs/k+aflNqN/V/tGhBGxtBfqsGJyl99wuHyjdM9JadNqvjLDx/3SGnpZINktMcblc2exsAXvf52nAikd0qLmHpIN8mcfbiIw0PuGtO2vHxJ7JaBzDinryXoWxuXIBfOvfW5GXHeaG+uirFDKVUQ/EjhT59rIAzg9vxjS1QNJq0BFSEDTmF6tc6TeqIXQm6YynmFvTHeE3D/e4JzGMTt6FPEq67xvGUPGXDc6vFw2luQmBxD3K2O/23tsHEfNDpZg6ezvnvzjrGmaqPLzatAMqHJBKwnzZ6s5iCaK/VbQIoNOcu3NH8Pg1ElzDJ+2lp2hKGLcMPuhb1LhRUF+GgmXLid/ftBLCZv6jYh8982PdEfxw0EFrUeKFP633NHkTA6BMLL61xeJ5LV3IRTaBmRgW50nMOY7uouPzKpdVeJfIOjsMP50a1OcJl1Qobpv5NsYnvfhnS8c5MnJG4RfEMgAl8hiLdk/hZlsCaVKXmYWIkP/pC0y7flFlm8Au5MNpMw3g1KPXD6FBaWxE4nvWppDre3ZgRX44nIeoPXJs5qbEoQscwFHs8zPldx4r9fFF3iaH65V8saqq3mYoGpVfebxRtl8rW1MyzJhYAkhJScXe1fZa8/VVFUZszt5JziRxi5UNtTMTNj49OGsh8FwvgXcvTvp2ZNe/yFTGqTBufeUlFF/L0U7/ShhIr2c6tojZFCnaaK4gFRS+1Dn57XD4ode/DbWJqnFd59gh4kLTWjh6VhttoMGclibaNn+Z+vnGpcT8sXKFyRj56gdxk+Fo1+kVM2GAeSfcDLIJYXrt8Y7XQV/nlRb7Hmk90urRkHf0bBvNlHK9yqd7vY5cNDWaPLbaQ+FlZIxdHazPfyiyoM2rXz/3wENydUeZ8rU43CXf0ihrKvGfhKW/sHus5jxSmC0hBcMK81cuCk0l1tmuXihLzRowNOXdh+kMHH70uS6/Z6C/vKdrX20qw89Th/tebD4XEOghp6/P1HSq7OrRbwdvaASmLCJnG6zE6t84iEZZ8KF0Y1U/R56L25j3vt45jUQgSIXtUUEFQAyWB/4fge2nT9s78Te4dtqpQUhZ686dRmJ/akthwGcwL28FD4x9bYc9tVV5rSKa4EExfyX6iZtyUj684DfjbB0DWXQX4L6gC1dq+L9kg8EWaEDGJmIQkteZQPdqf7/r5QBjarw3MTWsuHDqQung97w79Bco4wnNGKhFP7LAv1GP5HZfy2IeKYA/RMHdcCyS8CiN+qoYF/2hx+2D4AVpzEizkjWclSTafVK5J0DlO+0RELLbtaNl81dhcsDi80EXZgClKX9nb6thLaMCJ0aUuWbwMPOkDwawrnrEZx+XJ/IX4Rj4wzP90sYyrNjLBs04a9p71+jHLyaLn3Td/gPGfZHq9WJ6oKEfjogV/f9WmupuTyxHwq+JXa/dgIZE7XahUOZ3sBPAYImFZ4LZ/Zei2lMhu+5NnwPbJLX/fE0C5u4oD5RDCiGCGldCL/SfhQfNkRLCdPv9Kk/EkMWyWBKYLalfkbLu2F6IcjHN8f8Rcwxv9IuKGp7Pgpz2/QqINDhf3qDpqRce0RPJl8TJ8CVgR3AemhexAI36wMdEwbZ+BgTfWgvjOT0KAvTlRR5NH3bapYvI9ZVKvHVYmL0goSOTZGLqt7pUDqmXLTgj+YxJNYYXt/P8b6ycdKJyBOV7HZcU1VkhXMw7umFhDrPuOrvr7lJEcZJ+ibzr4Cf56QIkAQZEu91xmLzPXxK7wWc8uIRAbaHKZTmXRH3SvhU3ePsdNELBTpA32h28pxu8UZr33+InwOU58nvtbxG0oMIV71bMod1y5Tq4L05YZ7SOBn9lEwO2Z2z/v9qeikkXWCfOPhW0UCjxEhv7oo20LwoUnyEoDcBTEuHJC8YtipqsM2YZd/AWpuSOdSCsmForHxEmLoumj3YJ+QdE08d/J+r4XamVPs3opLSbpyCA3R14APP5h9koxGMSTSlaUy6GBH3Jrx7pfwgE3K+roX9RHX+lzeKqEy3TAzzl+DEk9Lz/zrlV11BxyVrLCmqcUGOls/gQOxYK2IMNxusTV3pqtle2uwWyfiVuyYNkhYRYWwyxAT4n+Wd0GNmWP9FO+hgZvdIHeXF9a6ZHwaxAEAZoTspqWD0wQPZGtrQlh1d41WZgwvN8GJbG1W3+vxo/EJ6oQF3Ca8BwOtJ3jq+mTXtQ6PHFM6Z5oDpyI31GiHk+pHAMw8oeeAogGibhI6r2/EfBj+uARrTRgJbFXV+P1orlIei9ay1sWchLnYdu17AQtQHoczqpq05/Tin8mePxXI6Fnppb6wl1KYn642TSIIUKgGBw8ItV3i9qwKaeFR3uopsRxkCG9Nx3e0viactth9bsGq783Mg1ZAw5eXbLqBzfWNscC+umbafNALkzBDM9B747Nf1b08+b+LaaFAnL91OB1icY9SUi+jS+0mSL8NNlLP0NdQc093j4n5WbyZmhsyJNSMLzqD/LHho8JLP7ekw3cuGgV+PyFf1C/SmOfmowggwWJWbC9GLM0Jkfmv+XxCLhD5ALg9UOGGUbL1j8ErUISAswDdKovxtHshwFTwG+foHV/szDE4zteDY+oDXSmtenkHtF8A7skvW6qkMNJ+61N0a4R+iXu5xrjsjUfi7BTseGLr3j1CffWcUOJaON1I9sMkoTh+A8MZYOEI6nnR9fRPvQFnONCYqm8DdZZExu1GJ3I6dh23B2VHgck/hNDjDODyht9Tp4PnnJre+c8bewz4SUU1lAywntKi79hOwch32m3HG8moy6BhAMXvw1Mf0AIDFoJRYMMfn+9M4IPWbCD1/c4CUfeHhyXwGZwpm/KsZYYpOsEuUOCJMxG8nESSY3B8xUdahZMa0L+EXkOaI6WfCWeWAEZu+Po++Ll8nZJW38N3EDKExKfNlp1m5DC3xvIrP2l7HbqsroRFnwf7XrUszqTiUrT/+2Tqk4b/DR86QDEiaRFrIDDEllFaTR/JY31NiSFUVPWuWiPF4JUsWun4L84HB+x32rSiXMyjUJvNiaK24RDia6S9tcDksZ2VdpO+1Y5RWyHMv63++xoTCdykONbMIIKo2LmpB/WUT8zQoCPaQpUroa8TPueWljT+SXb+DjFReftAoR3VysWKpLJR4khM6aDZt3JoMql9fXoNWzTWbcqpHyHQakbUXxXSHLTL3Gmn/4xB7DIxFmN/i0k7OLAyPasuqGuCf3NBNo0ndvAqIu9FiEVRTfEsG97TJEAWTYYnh4JQ/WorAZ+lFFVtcwFGPIoG46dq6zOsIBcXkwcR/UhU7mXyzahuMHzAl/Dqh2nUhMAoVgZgeooytrVKYSl5m+qJPXarwIyk6e0dPTyLibT4g4dI5duXRUgiLLG2P+jZTyJU5+F3f//W8G0+t0b6ygbep1hFjO8JrmC59W5yzFx9NvkyZql7wEUZh13+NFE3NAGRxGcOo46PvteV8U8a88WVFxs6L5UZL8+kpIfWpV/xxhuVZb7n9VuSAnhN5REtynqSlSgwlVBs5+BJJebmG8jGIPdUi3V52cTcZLfDnL6IjAXFH7tyZDjmj/HXij8nzDwc4IgjsolxBeA09XakR/kzwzOnOY9b64JoBfX8xk8fsqsyjPL1+0zv/mPTB/Hs7LRTxgcRO/1EOtMCCtVykGQYX+e0RAmUs26+AF9pNt6MsF31GGDCLWH4BRFMjgqXul7naT+FIuAhElTsqzNDLeof+2BVNxJ5bzlxpdcutUcNWNbH+i8nA05k+9hm7tgTWCwUh5bWdhfA1P4pJcQX34eUeX1FRX/rmyqku/ikoe4cJtCRRP6+etD/HORzqv/dSvDjAala96hqpa9PdmdVozMfbXRkJ46fsBrOz4gIVr+77Og+eggTcTPK4YecICB6m9w2DD/zMuDnZ4b5AFpR1Q1G7Oy8AxyHtKNhh9De2ftwl0c5aQBjwqAaetVqWpfDnrHdJoiZWwgwDmaqUWKP/7h17EHciBDy8nHaSZe9/0Mq/lCvjztwF18Tme7nOQwIXUsDjXsVGA2RXi86ZRZ+PVBSyccnfOY8ZIlTxV7E2uk5cSjZH1/O6vUFBIGqNda5+c+MNk08ka2SxboU+YBMADKO/cZTTfgH1R2rqii//dByyXNpLeDDJeeoFS+YUTKSnz23/ICgb4/H+lxoBeqTPdcqMo2yrMg3iZ6rA9fW8qu8aHLH9NMW4wwZ6ovdSYZbOGn8kpxDRER5gBgbEV7sv4weTG08jQb8cl9meEyfdlRft5scumHe6OG6CuWA/aDE9JafdYZSRPbDPhdbfIjJTPrnMs+KW8XJRoyX32k7l9gR9rvyJmr+8L4K0xH6In6NhFqspbOy5QvdvMefO4JKJiGkk3/5lpOv5n7mWFLoe3P/MXJQ1AI4wRkAmHa/GQM5eicUubysneclWSLB7MZtAWYh7DnCufO3luxbT/zgglN40JbUKKj58n3bV3ukMK4uRL/MyQF11xB9zL0GfQj9tBDYuGO2hpdVQ5jgSkRQfRECtPZJbSwrIPT42kxO7sg/1yvHC2VBNFiFQ/JiuLgjSVALclkhPdXAAsnP+PethNP5eFBDAMwrPQNVbU3K4Q7eig/RY6qFE1427vvP2HN+CMnRLa037s3PN1DEqUUm8/NvxfX98cywS+13vb94hFWZoQgfb9sCl5ANNJUov2LXBQ0Q+K5TYuK26L0XCsyf3V7JIFbYZP0uzECQjXrf7YzxL5dfcHswQ7kp2nOkC7Ehcet7CmnKCG/CN1qu+tCMWIFFlOF3sE3Ud4QiEBrDl3579N/ZKxPUYPlU219eOo+XjdG6C6Pw5dxqRyIRDkI6ev83zRssYgrgZhzuDSg1kjgqE3TLLsuxYYiSR5BOn6fw0s1PqnOqKOIuJ5CCsdGhB+p6ECd3UTzf3DmLNBWNYJjI+xLVktmR3d1Ya/mDGKEhgyzBUcTvz/DO3aHWANYlbBNBbk7ARYrZDcIbzNqwCZER/bG+oWtVQgRU8OOhRKvlgqSyZJpcPBOlpgxwoQAbNmSoGlJAA4u0iCgfBRXCmVdWsRLURRagG1f4Mrnx63QP4iOYZM8nWyVUNlVDU6Yuhvsu8FE97Kgxz3+gRC6ghBWdFlCPFD+CwkbxgbCxgNn1GTwJ1dymt7/EKBxmDlgYKtDgdV/E2fA98Wxwy6zTXpkuF2cIWBNNdck31bbFYQE24p3Vm58/PuHDRb6zDsgf8VYD0YsAXn+x6q3vqhOM5nc2qiFyddcHHpREeJ0xBMcjrw6Lc1Yc0uG/KaKV078G1Chpca47r7XjBscrJ4UqVKR+KfbN+rmOnqIC7ueWpExUC9xpXHviu58/uJDmYk1Rg0K7x9zQzlpv9H8q0W2hlLagIJObIpG1DXkaLh2AoP2M+1H1hmtk0pmLshMHQAvmYvJkJNACwUXPRg9WdxZswbIzMvnfytp80Ucpqee8bXpbgusAtXiLi/eGhX+n2qTHbEjVOQygrhEygiOr722EG4ReqpPrk+BDxUm9SE8YTGJWpzIS0Nsp5SL8Co0xNijlaFBzTt6JNRn3QyUQavfm0euyZP2oBJ1uJBW6F1T3gUNAs8qSs5sHO5xoap123gHjdiuByupf6MQGZQ0/0SuaaRRu33/tgRZmaVGkm5yivGFFEDdq5hvEgN+zmsjccugWpvi3pf4/LNIpQPuxXwihRzNiKPO0SoP04P5BN6XJy02E0M9d+nxMXOV5/gYvWZE6fjtm++QLtfcfAHADWPzpmasLl+Ex5YaymWVcwdjfuDIrRSdBMEDSyw6kfxpdO9kdGlsvdXML7/fe6jI0cOh5NkEeYQL5DywF4G/d41NxAmN/thZM2hNJCxgm97O9gIluG9jyu9FtgrHDDNEkb3oUx6UeFzQ78uzDg8oIHn+zMM0i1K+Uwb2RpZJq+yXiA0HwA28aBWNHxrovsH2/RG8mppPMjjNldzRWwgxUNf9xcjHX0sD3f84wjREX4eSibzLdspu5jFfGjqKSVnTdf5YRl1X2/1HmVpw0RYwUDu6L3DUp91fMbEoGG30ceZsDUgtYjVS04KeLHyPHepFkqnJmF+fPunwLcFDV46ZS/VqCUiZO0/qVG/E0cuk/JsYX6nWduZLm5Fgx/Adt30UEUqk2OtCUbvGofoqRSgPb1p4yMnXX+JfkfXGHYa/ba8DUwq+AW/mo11WczRgFFoYMSa7yZTqq7z5KcR9ojS6Fmcj/dzfqHxS4EhLE0nCmCwJCFNgtRshmAUMkjYRtTTo+b9qRlDVfWhLVbKr6WtCWZWPB2d1cMwTTrPRENEDuvSPUf+aJtbxsg6KOzo0rtOlusOEGd+vSBtjJIZF6BRalb0FGidYI/tlyJa1TR0LbXZBw/fRsSOBLB5ISEeI0IzuGpofbdEt9k9CVG4/bTWdQu5WxJeRvsl7xvbWp0070AtnuPsZnhsK0kVN9q6HQKM8+IFa8uIDYL56t8r+MrSWDsSbg+gumj9H9KwGswcwPOqBSVMC2Bf8fxJESeXHb+TWep0wEEcKsHbAPzgBfG9c87Qu6gE2UzjGbnGTUdBW6e0tayI0/T1bLifrDljn94mG16IJ3pQulxPwyHoK2iA/KbPjgipkeLagdNSiFUOPmNGbcl2mC1PksnzpmQIhFdyxqk7i0JFhIgOYPCvRyGx57/pNHVM6blqcukGXW10GWRZdnAJT2hG10hh01SEDeUVE6xVg7YX0xp+Va5AvBVR4tkWB+a0Td47TQ0Trzt2uENTqfbT6elwIw8XKLqh5uYKpQ87Y7xAWMvZSMATqB4uzF8OqDdkMpnl0cBJKy1rRR0Z15QPm9+LjpfLBBJalWRYbx0lV9A8cuNdQZMjWC/Dy+QNjLai9Jgk8M4kf8C1c2jznrnxqybj6TtfeZqQvaVonWkx46Wg0EyL4D4QQapFekD95nl4Hqrti1MEx/rCYqdULLZZN6iZi+hjGF5T6kQZ40vOrVGDwSzoKtvGGzVcEUtzPnhxnbC49gPCWNlMbS35MnqKFDYR0w78Ay8Of3WD+uj7hvuep4+F/2RFDfM2jvIAr/nYtrMkP/16euigVsoEWwoE/tS5B0bW4sImg8VLnczM+rosnFY0pAiWynjnG1Nr3EzPBNhP+An6U93ik4gqQ1nYiaUQ7eCZY4o9k1kWqUCODln3ZmCoetrO7PR4JBhrHqEYxTAbbngZs8OBDqftQMZcAO0Cbk2yqrNWNM8WoadV11wEHKy8rWIK9gWWRgOUpskCT0CXIFwPMuds5npMG1fC6Lo3EWEcOWXNAHuFwgY6JEjJ3p9bwgh/NQ/YSchtzxbAKSCUVW3x4DobJAgrXn1b930sWxmlbbTpU83Ey1rfKjge1tgR2Ct9jm4eQ2BwOUwvENpquOD36Q3orZ4iFeWTD6QMiu8VJv4DpIB+XgK2+dVnJqZa13jmDlEnoB7zhG1OCG6BDR4dZze2OxVQILbekNd8dcliSzdnWct7wywS/XokOK4WEDs3UGFm5xv2HGawq5KmwHDARaiCHCf9+5mKDAnBRV5KBfzkkAcVfmTXTYZ6anLBQRScx0AxFWpr+3X574kXjRmctjfJb+RYSjM28PAFhn8lvRHgpbBpTbTz4/WDfqNFnp5rLRHasCm24ZVB8bFm15bfcCo+smED3Q7kcBRgHIi+yxs4sU2mooO8pnnIaMBJcdhA1VvtMm2lYHD1YTNlioYEr/O3qC4DqetWh2P/k5YSNIJa+exnGZ/l3XTzgKARmd9pVXmZhA+rc9BjQjD9XJskBhzjgxo7DgiTVwXzuz3LDpKMu8tfHXh7Mw/AwHJyCZlvyPJwuaxI3EaIzTDOeDhyITnven7uSnCmIexxeRHOiqt0qnW62pewEj6JRDQjg9hN6gYogRjk3Syd8VWYe0pdX/mLMBqeDk+SwW6zGqa3MtTTgFG/5iWPW3zHz0tFMxj8Z3pg5qEi+H754DK76Cl3v9VqH40sevjgwjq4Gxry7mg7OfswA5u1U3jHD0v1U/6mhSNiml4ZYkLmt1AU86UvKRvSQIl19KnlqDgNNQ8Agf/MSfGvxu+yADZB+pTkPzkf23cTGhTZxugVV9r64vezbAVl0hFEz4Ev3W6Lc3eD2yIwZ71YGygZJbmr73nqQIgfIYB81C6nxg58udYAGsjBIY7/KScOoKLx+YDcXrq9pWiwVIAVO+h93QMj1hHrS3RvsrmIXoYV3ueFRdibbtPCkV5wGupIYhse2saCvGCX4vtYIp05UpIA6GTguFSfwFZPV24G1iKX2+DCb1Ug7VdS8Cm6L+l4sX1YbvTOTlEcJQB0F+5Qyfwp2PV1fYF1su5q2QBXCanvvYEOsAMHlnM6ogMMfPkCgCJx+qTY0+ylknywTLQhauhs0qsXDDGbCSAeUl/YEHwNl4uuFwtOuTl4L41ZpHrXzmUmQwbfXqigw7AAu6LpUAJyNgnDujjKTnosds+G/OCTalr0UDbtokSGRqN7nelyQQ059c6xeD+Mf3dwH0aw1Fe+xB3OiyTJDsugy+Mz1PmSBKQTbvkU6AoiqqsFOfZc8bP21G6XjJpU50eB9nNLvyKa7Xayk8PLEe5/PZr5OnlquSJ9CjlgQD7rHgFnLycubFMmJCibOFgfO2im+/u5wWjuqTmd57wYSLvzNhmCGqdYoTIMpFuRgzcudNj/OB10VIj6BcA59eI6+eSPPJ5qiTHgD9lfoxQ/3u+eJiV/hAn+TPHuOr8JPcl1muUZJPdE4uzoChD+T1H2UhTp1uMQLOlFviyjONqCFUFVmiKiG/PoP5Jd37o4lLiT4igwlyjM+2IpC0XYWgK11FMr80+4wo6X3QEv7dl4w16RHZ8IitvKeMUYRhwJL6Q4oGgu/cQZeFh/7HVqerxgMITFsFGHC9+2M1TK323Dhsz6KZdzvsRIM4RYmAAX1vO4FFIUyEcSMfxlIxvfWGtIUB8+JIEBLj49tt/SaQviRXgbgNp59yR+kpL1+R665ehBUO6SFgvOFzgANGNlfhp4z2DhYE0QtbczKioe9VZQHiqXH2QakJxMstdEqqfvi4QVWLJzb9yPbkUthrCRSC4SjzV4Ahgd6y4yKQi0IljHQV0SFf+sCFzHFafKXzNtOL05HHcM5wX9QnmH2X6KQI6uFPvitjuxAoJMGsWx+5EU5tu3hoZvljnGMBxjl/sqDFQrCfIgqz08r1vd0uIkDS4Ekio+05gTrac/1HPl76lyGIDav7AFpvCmAifSZX/Fb+8yX+J8lBOfSF/ztW76NiBALMe+ANQpSe8644Cv179BqnQjU9VeM5bmy2kzIgpbOfPL2w9GSoTX41X4XbbkB2anB1WRuL4QdCLayIs2DTHxIIXNPpWLScRJ2lvHcdgKng61hwrfp/hnprk451pWu2E70svI76xavkMEpYow6kvEJ6bE84DRs+Gxl/4JKHTWUCusLamQhRdqrD86I9WKThAdz+w1UaI4pZWaJ/+BkEQGGPv2qonmw5vSVt6df/MRk8c/tbYC4d56Eiz1Ls6h2OA2gJ5Vl3VzIOcd0cu8vdNMCTg983ZQ8I6AkOe4Fz4naUxr0eDHBbHkSOdI/fXMMFR6dfzffHydFsocKCm6Nq+/BjsP2RhWXvUU6eYi9Z8mMKNzkQPsmW00/y7KfrgiCpqy+fMvVAlMwN5yNX1plOtYVrS6tiLQcvZ0UpDbEvL17g9R7sv4Ek4QFiWbyppuU/zkg5sDwEhqz34+0BdX1IDYotMiN9Z2Ha64TkB2nd/0n2MeloXopJ67TZ8Il/Y3wquAwHGnSbsYbzLtaa8oHKIcmBNI+frt81RSN6Hx/9BBoV56V0Yjf3AEhURMVKiXR2ampTHeXkAoH2ach3q+ul5B+fVGi7VLg3k2eXY1nM7aMR3fnzLB3tKaAm9nHDfr7QTS3d3aQUNBrhH3zkbSyZwHAB+hCI/DZpsZicd9P0W1fUlz683Xi86eITj5yGHRnvgROAtrWDfJctIEr2llrAEv/rcTNd/sn8ojRbw7A6oyQH21E9ZJZ6fKsuLNEeYvRFMQBsB1FVMQIOtgkLYmziF620/11fxvTd6GT5MPZRVaedFYihf71zKxnABxfVOgH5wLFpmJWiGXdqvSdphy62DImIAY7u5zUUrHG5X5KLMZIiaSdVXK3NG21/4fGa7qQHa+5l/8TE6DOd0m1fazXRvxtxKuqDPv6ygwDQLvYuzef5YGka21up7TkKjdkYZzc6m5b8aaOrsrFm+T5Llij0kJID9dAPAeX6Z8h29hZS4uikVyeeY+5tEtOxjsp+Qd/SEcy01t2wON+TaPDzfeRU9DnMUZ4JwOk9yh2cBsMysuBCaY0WE29WNGpSOXD8WcES/P0ZjKIb/ZD0fY0S0eZm2tr0Jr8bqsChs0cJ0+q/U8L6MlinX6ZOxdzOYsZkoG5kbc+XSuNjikvtj9frqY9kMH3HGXi/fFKQbX+m0urxDMqIeK1EIi6g7S1PTdyrD2erZRxf9/4OBFZEhjLPtD++87rQTzlLVxxAkfmFDlDzltqfjD2fLkK5jz4D4IegOidrfzYtIXGsT52qOWydAmb35zHwn8W37q1fKWjo5GZFH8q76FjXACMnJ9qEzok6w7R+iTK0X8yFN/n7ohauMkUzqF+vncWbB96VFJS1imDxe9ymteDHeDlgvtHHMRsID4r4BO8w1wIWZYMpILvn516kvwPEVX51a+SDu/JvWVOIP50jT8FsuDio+75a9tEZB867uVB/Zv+wlVPojLtzKFWxPJ0HGKEvGTeKW+ZWh1ZkPE9JOBtckMh9gce+OQ0O6u16pxB3b6QCYysTtyipEUarGy+bDt5MHc2muFTS2nii/xH96YRL9sM2qNULo2yBIY0Bi8WEUccZ5BY4ed1wz5gwdE8SWXhp1PqpS0gG+hAQB1Kfz1lnJHnjZv06xTrGSwmYAmDyglEJ73trf9QSb2LvpdATRqDDRcIRmfw7GC1tq6lTNPimOxiFSElDtUrjIAT1ZLQ4Hz9QxzzohowFARgLyvJkgZzpTv/2nq3H8VnUpKXkb9d/ztTqh3LYRd//TyWqKDUy7CTQJnocRo5FOvybXpVcqL+0Tyy7FjUHmuq3Sat+ioGSBW4LQSgypK9NZBPF1M+H94Q9bR4yhwmp8+fCdFNkKG1jDMIcPpDIhYerw+5cgGAzpxBXg6BzYhRJcUx7h3cY3PBNgl+vFKGvwubMAdWTO2YvoFhQAoewO3OHtll8AgcDErLZjqbX3jlos4DpJ4Kt0P90R2LzNPJtU2e6FMr4gsbpzis1HSokQsCUftkT87bEIxS3b9XPAd++UazGP6kLeeHsMmRr2AFUturAnRGCo00Y1PAZhKGGc2dp9tOfIO8Jb3b8IfFTNhV74OFL/gGZiE2wZYHDnNjh8x0DPeh+tp+D/Y7BW9Yx/25lxFIlkvd3SSA594w4x0Tf4zBXJnUbBXas9OGFUf2EioCLKgQSeanl6wD/zhIiGf281iN3gxUzLtmykwzdktIoPZVw2Im4pixMtXW45pz325ZVyjipHdXuuSQOug8lNdoW1qPrH+QZ2ud7uOCnqMLBGwRELeLwgagcWj59sGoRA/BxS9aIuvTzbC3XRYtAOmA7NG3p0Yr/VmuRUaCy+dwNFDDTiY8APT7XIiCJWQKr4tXZqfFLj6dng6fcIHBnCyK0+q/GzPylaT7cFS3HjWatE5KIvt4FV5z+8aeb1I11LzXO7bxJILLvIcPNw1mIW5VwR3gWjrhOfB7TmAbsyo5rskcH1N5gM81PAJ9r5yNSirOTGbuoAYRd5LkByBg85XVwmxuorTgFdAalEChf2qektqtMfJptoXk/mmLYmIHhtKM8e09XD3YomMlJ2hdYLNx9zoduI3GhNoJKPiD5FkhgYfElsLSV4eliuR5y1TrHAdz3KohO09z1ELeL/IPGJmJR2wTGDy3sLsPCdw7sjEPxCQ+NzP3zxmzdCfWNaB7Ayz44ciK9aVNtPnvq+Jz1DEpC452jXvkN0WqP9vTpsoj7mt4azbq7cPHa2xDKpGbAX+reZBIIyDoL2dfb3IQAV6vvRMcWp/A7YAw09InvE02YVAsUIE+/Dj1ZPXnB36ZTGhT1DWcGALbtg4cqCWD02v03VxWYCJX67lpssW3ybBOMT3RkpLhM6SnxJiudrd5uIWq09rwkX9hKdEr5ac9YsI6plopYMmOwzYCx2+xYrRbJSpkGXUK3Ktz3t2+pW12CRKJW9LVNQv0IG0bkksj0KfRyBhVhZ6QZgw4bl27fqUSFsPEsJjeSkv11tmRdH26GE4luAQExBcbpGuhPZMdjk4Bh3HzDJf9m3RTGO4o6595QCkOCKtiuQKV3ulwQcbiEfnAkmx4o8DjD/OE5QHySLESF0El/OXGkSVPsfYLWOYvbPZeIBaVF4oiWQE/ZOqjtfRRX3OnyGlij+krZ1FdRUQRGAU5R3cd6HMY8+fEwXy5/XccrvVE6rF3q0nr+pjYVZdFtrniLdK8pFGMyDAHl8FmWBn605FaihHQcUa5Z9iZaoGUxPry5M3xgVaxuowp/s1tgs+YD7tM9rUmkYfjcnxqN5ze0QQsagrPMg4V2yZLhi39adphFtXZcKslOm13/XWqC06ou9n1L3YIiVQougQqKjOa69kNC+vEqWSxEbeD06ikltKEVuhPgWcuw529KcmSXPI1UCOSGUJiuUOzGrYQeqmUxv6Ts7AqJ97k3FT1dEudBg2VwQ/UnJ4degi771E0JhTc48X5110E2uT+33xI6wcvzKaNkBMxZePzyto3woSWCfF1x3fDByrmjrpweawPJZ6vQjmualSd4zND+RCkHjuGtZQKaqfnadyw/gDrTXltc9Y+vhPQb8HAQIkJapU758xokkz8TpAqpJtrDFJtsiQKGGu1F9YefOAvU+T5PAzjE2WMrXNSVq3bEHyWOj0b2XtrJyv2IsJWq0aTQfiapxs1F0xt5CTMs0XC9qTNnQK6Bu4bnPwvYv24GRjp+r8bpfiEqOD0MNgj1mwq0MpWFRi/7uyWv+M54kTXSFxVO2dNQauQyx0XzhgHpWOEFLJCPvbWkjC56FJmOL+lo8gWF2vLGEzw5HnrGXJdfXPyzDjsSwRmvsa60g6mut/scRGFvl2VVsTf9Zr15t7h/yfcPQhOXzvSE/HWZzT0JqjoSpafvKpc/o5W05myVvvy6Tw8f/Pxp8g6O03WIimUZGUgb7AAdLY8GrVo2mYKO2UWOHlGeEL9CVG7MkrwhudHdSU4Trle8qdeGoLezPFK+sT2y74yEuJJk1vKhunwvRzGKioIsEcazdLXgvYbRUxMXx9qxUr9k7Co1RoHwNFs4UQsKWyDPYR8D0qVACqgFQv2Zo/27uy/D5o2H/vZ/ADLBlUJNlQKIUHqGHA08IJB3I8I4nBt5v2qr+2s0NMP3zp41yH3UAAlioRwBZwsSMugTvLsjCMfGa+yk7MZkucubocO1CGz57ShiKvpxN4UMaYuhxq65rxoYtKGsWqXmLYY4xB0BA8tdtKe2NvCTISWNRl+8V0GtTNjUZ7oM625zMCNOYdMLUuH+uGysTc3OPW86pu2rOV0ZeK/c+vorAK8qkRmXJ6kZVvQFBZ2f2wy9ERnQYJz9BGlY9YGgtmEnMoD+ySK9VJp+mSpPSTkq4hZ6gxpuGXw1XJPT+bml5dItodHsfe4jg+uZEHazuSXyhGSiky/Hj5rHI5uoM2IEZwcc+VXdr+SblRXbzPhE3nQcsdgl3YkGOxCpQnJh0a4v3ZGYSBZESytw8rBdE+t1Z/Z9dN4Ey00TgXznZtgtRtYM9H/0fCcuF4arGr5UxEHHr9IOWYM8fa+zATDFs7eRysmOzZ9eR0yrDcGAcUzxwu7zHimf53EE+7V8YovKSkFRZg6bV1u1RenbIbHv6K6cX0C4dLCL1I99gHZSGpP8K9gwP9h5HxZnxz7UGLPOkgTDEowMVC41EKfNnpT7NG/zcEASAP3Edi/cD+LHqouR5XIyZ8phT/Cbc/fvvIVGKiUPJkkdVTzwn5dDW3/JTk++QXJi3SaYtF2xPITPNopQhhJPf176zxJeJWQbt1bIb4DarbXojGTHi3MYXKx6qKxnOdEtfutJzEUU464W99bchU+2cC9sUD6rSV/Tv9omuExUPGV1zvyK6FqeS6EOXs7x/JFOOyCukGYnzfOZphcxu7Wy+sMCQHGUi1NBShnstRFTM1Ag0Wb1y0pAEqEKnyneOAZI4f/0XW8uKbPG0LM0JtW8lOlwnjMYxqHK3zUmLBpohD9ay+8fFbxq3hX+zj3OrI4JAcxEfJY4QnONROqRKzWM+TxBMq2Am/UnGQ00bwTlmKI/yMuzcD5FSVtB0W0DrnWVmtV7nS20Dn+GeYIJJ3p1CX/MRrUhWdoGAHlmdpuwNEnOpLrjUOAQXl0WVQKl21X5djYwncYxfrJr7n6fndhzgTdQIhAAZRr6O3F5gtpgsOBvd30aEKn9OnZnnA/2UrSF3ay0shUXZseqlTStxcipsW+X/+62pL3tgRPLn7IO7faf2QfOCp/dvHQFoITIkuAAO7FTQ0o+tgvaQWdPnJ2VVW4j2tPi8hm8koAore/mFJrVdrRG1TkaNW58SqSy7LV9J4e69e0T4wU4Qc0+mWJr6/eDibI/9Bu042RY00VXw5fUyR3x435Cn9F/0yESVsbNa0LlW6CwQ/2RDk0xe/vH2EZiHNj7GUB2d6vH0tfMd9bdsnTCXCrlm3Y5ru2ZqhzWZABNVrOPXWX8BAV2C3jZ/nqIB11sb3dXmyMrf5VoU0UZl0aEopl8vFk+8zLU/1/21sdCRz8VPvpnj59yBsLn5wCC6FiwFPpPD5vF4y+hIH161/f3ep1O+gJ1vxsOGwbRLs3gQ1wXA3N+5pewYTkqQu+/PFM/YWguCBN5hPjBSUu9sSa8JOayh22BN+VWzsUQwvwv2S3Cjh+NB6msdxuWT2Mi8GpRA3f/NcjVM0T24jcujkEsQe1cdcxDAoDZ+8xeTmAKxk8OEQXQBcdgKg7jzyv78JkH4LhPazWt98dauWlL+nNj4tivMY5FxK7ewCADd64vietPLp6l6PVmiBGyNHRcESJ36MNUj9Uj97S9K1U/KMOUtTnpCX9U5BPbaeOxRNqko0K1TSmJKkBWpn/1wnXKvb2gxVFDMczuLvP7EwRRhaH4Cw3Z8RXKojYpkc010bLIF213PbbdLzB/rlX7VYIe1J5XZaOO9Q0RQZYZLxgo9yo5KzVOt0InKzS1xwnHjSpe2jZHlDvZiqkVdg8nK9CiaEkRLJyL0AL7ElUuTFO9K6nNi62/2FCwNEKxBhLe34AUYngD80EH4WzN6FujoQXAjSzY7fVq2sdCHdf1WrfVC4npwPJYJpl5RFOHxL9kivB6bCr1e/7hJWBarjkdKmk5TV+Ae8E8JqlNTkhw3jb09JIlXcu4dUxBMco7mDRHMvWkZj5bqeZUaBF1ChIm4Co7mSVtvdDVsoDjFT6IpsoUV8ViPIypIw0Ai60AP4QS1KURpDkP55k6Q7WdSkgI/XTUiC+u4weTfRMDCVi5hxxRNP95/Xz5ogwxDWH6TlhWLqDxzKtTWgFsMQHzZTJxQZR2nxBkejRdfmTqn1/AOcfLXsVrWWG/7LJnK/wi7zfKTJodm/4AB/dB+sPmxZg6Xi0T+VnsoYhvGMYo01EtL4S5OWiihe6Ljc8aawyNWquDi+zvbYX3bD5sNSuHz2PO4ELiFXxx7hTm1MVSnFWX46I+0YN0i0JPAQNEByP41YW6yti4kLCscpcO19Itxc/Zw3+I4j1l0GDuQEq3rWRP8mhHz/pC0iTCFIhetYowTIA6c6c46SaU4f49bXjLUnXCG5XZXZQuy/AamlWi1/dPzpmKuKhQMPCZT8rUzA3jCU9eenwlhRMNlzCM7Nu8zkprZeIJhhH4zAQXRK/Rf8PITvdg7bASp832vLYwS7iTLupaq5ayF4c9YmorzvUR/0cAkrUuRTkOC7FU+Vk/KccYS0e+bhf5vBI/6FziTi3mXTnqEbfhUrFPPS3i6qqY5xOJBguFmOY00cJsm/Bn4eUk/gAK8+VuADQ4dpQMwDMa41+1x0Z8mooGEzQf1K6xkCqNi30mz+fLD/j4FItL42o4mcKArQm8dGTOFQQFPS31o3GQnD7tf4BDR1HspnrJYQqhQgTWcseZcCfeJOzUMYZ9G6npR43T0FJKUucWiBi+bdboBJQ1xHuQhKw7gMIEceRWl4jXHjTuFOvnTUBa9AASoOdEFDmubOJbP/BjmKTCyP8gRI5gUDvmmbV/KItZpOXYGsErfr1Wp1WjoTRZGY0QHAZ5Sw9dMrLTJkbZ5AAmqA79htA8ZVJ5wYoEUZE71XiPflD9vQ3uVQISRIDZFav/X5v5yzMi5BbWQPxY9C5gbf68btVNKRtlbHPCt0rpa+h8JfV+LcZxJ4Wr58HN3fi720fITAEVWn0kFLpz4OnuqazQQtR0gukZi3iCFEg4V+n0cUoDpriE3HTMbC9lq+dCx0VOl0lWVJVCBuCTSJLOOyDOp6NMflYBECakT1cIoqSVOARASE11gcHMmQn9cfv5/wrrhT7QAFSO+298rIbYzSIGKa7obzelM6YawACeSNVQDQiWIDBZ8GbUoQHw3FXSLnqxfApijrBoeKFitKcxId07++2zRe61MQbu44+RBRMcNcKE5mzKkU/p877irj2vUdSZjOeAReh/wiI+bTe07ijfYavZOsiCQgzw8p9vT0UKcEjruBaaHoyYgyQw+lLvEqtnNaXPS/ftw8Zw3gchTwUk/P4o9jcjrE1GYJgAHa84aov86J6C7iYydvYVZFCTMn2/IMx5dnhwHxVat3sbM2XIrahnAhh+hdZKnAAD5DYiq5UtmMsXnrMgVEyqhUGttDk4H7beiWv69HhZ5JMdlfenqlE/U6IYoFISpvhV3Mn7JzH3QjHaoYKbD6xkrzkQDAIyoOvzI8KSk/zMHG7UH23AaXMg9s+Hg/difVvK7BZ9QvnvdUaz4RqCKgS1BVjeIUSOOjpclOmukNbDpXmo1te7J9cjpoGTHbv79EhdiuftyGaQZfoyGlkarpbDTO8Q+FIp6NIffe47dRSaLqCJVnY4QBha5vbkMMMUp//ejZ+7XWyHj33AVzXwlYNxEkOA/fNx4ItlQ5n582q8j5j4d/i+BnEP2IgWepkzmE2xWEBcj19pNqQDRm65NgjD6nAnU6LBxAgPqi0/qygj1WyiWt7OfaYq0obVxcFqZSMINj3MIB+LoZ6V0gfof++3JGGsiO34j/UCPjk1fDJ/41mPj16PDLtoRbG1aBK59oW9MQSM9bbmDuCFDm7eRhzvYTyclmDtDnfnDL6PqARqa91cC8itnvaCUZzokr7/N38PUORNuX1mih+4QqrBcQGWN0J7h1U5YuupUAgVjBdC6K/z9jRUdMTO3LsObWrOnePw5nLKgF3kZviOQXKz3H1zHg8OWpc7eN8TwT8hXCrqohDnykFD/QuX/rr3SWvCQ/xMmi1byF8JyKbXQI+r5lwSd50ZaebIEqwwqaPNYgLK6hxli+GE4kep5kWpQoxQPydFbDsk4m1YTAas25u/V/oeXEQ1lTUJl6702+GQGNFM+ycJwx/tQV0wG8IIMKoF2en2TxdsGyFTXR8nqNczarZ2yqjMyqIZkD3ExAJfvqC255d08z2Z2YTCxlGZkJRiDknPQAHgg1XxEWMRPxJDongM0uAgpJsulmlQNBOLCOWCP44byICdMHS+Uol26L4iSiG5G70f3yVeZsQzIRqRlh+Qf79Pj2UMmCzI2s+Nwkn0nzrkAPisHMzeJgXk+CQ7rOrxIEOz/nbi5Nyz5+F+Hx3wz3pdifkBdpMx5mvueRqoORdwmvyN40YZNQXqQQNEoXf+NsZI4wLbPzl6b2HE9x0bPLz2Phce0b4W+qY3EFSr+mnEHdHoBvwtc1j2WioqNydR5jlWRMsFEArv09XVMDEcUS7ncDb4MMx71MP+BO3oD57y+Lqku/hDAVymPyEkhOz9B7FMo7BnnXWHA8ePAJSgSKhiwAAkk+hgjEgss+zvjZ1yRk1DS4LxLmhuBqQy5lC01G89hn/g7tpZjvY80MDKKT5NLdrW5UGeg+gwwDlAZHMVKCyv+6KR+f7WE6d+ym/fnT4RXw0iXi48JpiEj8kr7CNiO8dhiHzm9hv5cqtIXCcQR4Pzm56yx19rH5V5nQMNWbozwsbtFo7Or3GNa9ogdsOIhLzrsMrITvgbPHqoU0BNe9Vr1oJHsm+2cbZicEeZcNoR6cc3vwcCyLg6CxFrf5kmwOJ9B1R/8ipgsxftDqjiPIo4yLvBGnm/Cggb/+sozqhgVVukMor2T89LJiHJ83KfXHsUZQxqXqboaqNnLJJmw4SNszT1OCYlMRSTFhvncA4AugrEwebojuDrlky7ICYw8Pis5YZ4r94z4+dRKefEP/Wt3vCoHgP3+YbNpi9BVQ7u4H3ms4NkMDnv2XoCjs23j8AxUsIABsuj3gSvUQTGpdfAR6MCDpD8foszOr6WUFOjhEQYU2s6smDSGglfdPL8YPaWS0ccCxKmkHhfuRjIfHcUfWsw0Mi4PMSKXIHjKPLICDpOoVQV4XKZR6N1Kl451u9lngibfa5aw746JDbmzhZolA+S9OEm2gifKhk4yfzkDeCkAuHMjV50XqPXgb31kSytfSSPySzUXxIA7odK/yAJseGjCPd3uk7xtiVRVVb7IBs9WWrIyo1Ue1dckRhAS5QHxImKziYhl7UvNZ8FRneiklIDApvcJ2FMMUAzktVJdRS+ZAkDN9AwrDsHwVg5XS5vCl5VxMuhqYXPD3kcR1J3/HGzSfomUPqKZrGlB6TgOjkDm48/qxO+uvELu3gwIcoLajxRBIRS1yy4qw/CCFecpjWM88evDIRv9KpTO4qbawmOEoRKvyah+MMRk2ZKEcBqO26S3c03T5+web2tVmCN4VynzBC7e2xR+LRhhQFD4xrpstSaMZZbB9mpnRC6FDrHZyVyhnUs6v9m9cI2eZfZ4Zt3CbsMXB+ZMzRnLT74CQ4llJVMzzyJHGXpxwJZm9BN2Af0zaH7S/XmC7BVpLnKsOsIH8mIBcFHqmZlf8sWNcbXCLqDK7HU8dgxq5kxNsxEv4cLpzqTeIoyASIId6gQpjUppdl/Ir222AORn0TE0b4TGrvh7meAkBOfnY5hCHhtRYcydRGW7LuRh8DxueUKCPsi3keKDzslFknMuHCmgh0/PXzDjhRbOxtrvrpTzystb9GYmXuQKRceCGeI34J5XUNSGdd3QjSgpOFGTOo7JFo7peGb3PaeJ3m8Jta1Z7Lg6DQPnhZXWhi7AGLpfaA/gmdfQ7cq96zq0rV2RRKSs7qmv6/tLWWMl7rE3s5pJ6tfnTmTzvkQqUqNHtx0dtWe/4oMe7/9KBlj1bUrxV1nE9RGbscX4Bha15Gek+bMizUG6XZf16UJQ7JA/MyL84ueDYmK7D9uVdhqWkhpXNkdo89d78r5rElL+J8/RIhvS7eVMm5w7YHbZJlW288mY6LUSzXZUMzvwBL4QLC47CQYDJRrrewHwJO8zNKD070MifAqrKtZ5RbQpY4tG7fM6ur4iIhGt7o9ARCPz6afLY86veDVOIPAIakc1wYYkQ9P1WSWM3R07XEtune5DKhdmf1FrilBSS6POI3ZalgE2wp7GaHyxOzKDT3KGHeRojFshou2NhN+URcVjC/Mj4pHiolxmchW0Qf0kb6Lf6KhBcY2/OpUM0UkfZKb4zJPbz+zVlA00m9D04RDuSiA6D09MrRip+dN2w0VIZ1TFeX2nMtVIuls1x/HsYkGZwMa9Zkd1FlqqNEHhjFZ0/1cfre4W0CpjH0jaUEDzB8hOS98lIt8WANPmT4bb+5ZIaYzA/jhiZ8IMh1xxKehOgImHNcBZ98MEL0rhln7r3SxSFeIpH5r/6RjhG0pEI+g+OMfudqiFe/e4JfEqpZcvLJY071jv5qYCxW1bVfy5pxlN/R9pCOD4xhCTPe7JhZIm26MKm9s4gMPjeZhuoyk6Kn6TDHw6JKtWwhcjiR634pGaTAqoRacM+hfVXl12/awh+lARpCw3nhrdAhZGGtSNjAqwdlf/AU/ulIVVxMXyWgM2s64noefh096k2+MPXUwdlVhhbIoQX9Q0R/jCDlSDTVWZoFX2iJWWIZ8r7iKAOd8mqJip809kYlobOWViAd9jF2uYxBbr6FsXjc4o2137dIRjfWr0j3Ebe56opRsFzS6qABjpDkKOdQnqNHx3i/ane00ijVDn2UA+Pq9gRQ1J+4GGetWtf1MXrGEkXlM6sEyQqjxnGgjDYKiCpExNjVXB7V5645c5N16ZWIxO8eJxKAkhEeTbiPwtnMsKvxRJOkYIuukuIf4D+FQUFe//rit+EHrpRUPvKPdASHt+VtauLsCU3DCoXuJaqYu7FMJjaVut7VFAv8VQzrmq3NUAMD6QH6+CACmCFogbYuT2iukjBcWu67IGBmH3dgcX92A1zYCMznmAOlvtzTSnutaMyAcyx21B+gd06kbW81xox6ONSTtOUTtkGUOqQ+eQX2e6A521ypTWqp0Jcpr/+ZKovZbe3FTIF90RGVFH2/e7Uc2Y6dxdzQ8nRKI+KkEeAQ2aYhHrBVHqve52nu+3DemsfbBdeHDtbIvL9LbAvb9xYTJsNTFDJLtu9h7UpU1Bhs2QRphJAiP7id0cIhGZK6PNbOzN+YKf3TLwHsTbRd5lOcyGnnPUJO3Wt4r83I3ys0Y5T1XmHRxdHO0D47hzYN1xpT13wANRpvVR9uD46zwOzL/DEE9G+wRKZjm+DpAQ/4/aJy0Ik2yeVKBPgzKexCwk7SBZh/k/Ln+QHwqvGzEM/NljtEopS3YvXDDQNObtk9g1V59R+T4ZJ8Um63v6ESP1qCBz0BKCI5i3hNxcXq211by+8r8IsbKSV+TvegMQDwyFjeGr42xN89+F6JKWBf6QSjBeJIq6TKddexj46yHsag0suqiOvHTVIBw+19W/AGDuyquToudCqG+4e4qyiBuxQ2Gm59EXrx+oqmLogthaWLqCUvLTsO/FRqVZNOtdOghXH1K8tfSkyOzTqHq27/zMaX5gZfaA0xHD01oLzMJ4ExwKlrpwOMLN4rxkGG8BvkFvF08Ab5aB9rzAj7dfLYRMpfJd/XsXxS13NSDKvgDsvISl0ypc4fs65YLEiGfqtPPXaygTcsNZJbSIcSG+VhnqGlTo2AsHp3nT1q+NnmMnpx3FcDwl5hR7b/e8r5+HMeKb74JJaKXwvCLnBwDEWuokjWt0tKP221cNMDkyArd+FhQDTCOL31KKen4qdWsB9dtqW+nA2e56UtgrVLz22xk3h/h81Nw3U9Gdj7wxErBwPSslB91xyxG2AkjXMOoRxRGfQRiYgrFTiGqDd75c4XJtW/RDHMyjgVj6bSzgBNxLMe1tyMBDbJrPypwtEK7cY3HCQkWuf4m5lyTQ7auAYX4uEe4Ij14j/UufmW48eFaQhWyOBPdkhQa7uWrFVLAAPTfGfaRHI/2oTldpa0Jsec4P1SRxfRAZGSVrivq3z+AbcflDB5qMhe08L7K63uEcaNkwfWwGN/g1DthPwjHRr3rQhMQB6m6Us5PYnQnA+K9BTcN4+ZJppaxxxyH63MsLv16uU/H8BHjrUcI0e9dUlPMj58rx8WC0bbW1Ak67us2RBLMrIDB2dxop4gwN2zUJpZCxl4jtfh92JSlC9KRZ3K+SVOQyoE2QbZywuQifTcMLaVmPKKNyF95lmrEa9Fe/FsbupvAbcJpKcOtiG9fqgUYN9KqrryVRZ2DW/zwKiSf5fu3/EBxq33S2a4nzXtHum27LVQy15dzhyp0pZVdVEZL5O/ZZjk3Vfq/y2yoe9KYx+mrpE//yRpAz6Pq1Lk585U9dOKMjW3uqWM1Kh6BrJm71YTLFccxVzAefyK87a5CfQLW0JsG68o6GdyvrJI1tk+nNTljNxYSTiJZywIynORwuD/ePlylaPttPWmcAuvN4yDRPGsMDEs5sf29/PN37e4jcI4iv1770TqKsq/KHsE3107w441Fy7piqdSI9ZX3GNMTHdkxw29qAKa//nxRj9GQyPhXTxUZgHFc7d8lNy/L5CEm+YLjKKTHoEa6TnutV8NlAG4uDPniLJbcLb+Ry+GRHejEWPWrsQaTv2pZcfBy69jG0qDvyZ+u1KcSfdh/4+viLfUI6+xGWgKh8PN4tetUU2rReKM1W1VWKDzRSXF1xrNvyh4SVxaZe586+IWPSX7Uvc42BxtfdwCgi3noNx971cxoDeSl8efydcBAmUNwyFaeN2WXHGyiyIeWc6+KU5d3AkvnNVTuoWU2ggtraZTd1lEz4WuKahlXuun+F8soIWVvf/30htquQuE0kLbbWh2b+qrMQyJoTeGRW7RVEaI7vipxAFPqcAC8o5j1/s/KuYNEOpz9djUJAUA91vcSZdb3lgVbgVUC5OomGlO2PLNyo8n6gB/EyWJeOPJ8CadMTMWWopzObGwjAt1yOnPoAI19f+I+M9F5txi+8SoHCA25ztysxo8vyjaQILn5N/cvNJJo3zgQNm4JNH+w+qjaSgnRUKW9lR3U1W5MmMriBJnW53B8UMKsgv0uvlGskI06rnJmUjIwj75bL1gmafhr7FS0643A6lC4+NE6R6iCfTuRWW2WCo5A7K8h2i1QVf9JtTYYiIi0inTvj0khY/It2yWzNCpB4UyahoCWyD3tosQRKRWXUCuhb57B28hyTVLE/Cs+/Wcft+JNciFrTk37EkbrWOISGCGKzrqDAO772UveQS7/WUvRmuKogWsAHi7/hmh4GyIj374uitUALK+w35KUt0OdsSY6W1BFHe+4xZ92BN19PfyxtryxZMVPXZSvubB9MTUDtQJqiVfckOOoIDWQ1mbFY+9cvXIwi2QakLQV2Qt3zUH0CBbey2Ud5J9d2Gcgkn0jKSRaK9/AJD4SIjfnkSKo5PVyR7PV7zcowBpmE5BEqZ++2nI9ybOcHKEKduL9r6BrEMTuY8l3HrizscjA1XLas3nhMyr8MdbL9UHMftiMfFKv8lq93rrbdPUIz2EyTW2qJtkk2FIACEpNt4TZlDEy6LUp+qZ1PrB9LIdNf1tgYxmOE1a++5Sv8LdtTYjN3jJqeHT0SpxZHaGL9j27q5da5t/ulsMjhyquZPcbN1VLs8zjleE20t0iSZuOGOelxfIDTen5iM143UVDlwDxJJzu+AAXAsCaOKuKaBikIDE6cIM+dtsetIqt0eLS/A5g4ry7Rdn63zis0kkKFSRKnaUpF+kRe+98nVdoyHBaq7dZuSCnAIqf2JfLy7HHco7jA6LBgwArWJnoC4wmT6xOSGMU1t8xTPlkvSiKVIp97/enqBGFFrgP+qIdJAbkKxLjOJuvU+ONyhxfri1AE/gY6QCg7jJAbQVkh40CmeNkWOYrPSBVvUAbCw1iJ5dm2Z1WW9OPXxYzg/1/7Vrs8mQe8rqe9G/St4FU/CdRmqJ6gsluJmAVeyo22GbOWdW+I18RichnDg/274ixnRGYiozt712fB47f66ompji90Qy6LR40nZkxlCXpmlUP0XjmgJpSjYglMTzzjfywbrBhDpvZO5YF29hP6WpDSq6ePcxwYtAYg2dNfH9d+mxKGLJ4fc38Oy38uRT4NWHGa1nLfiPGyuSyj6qglz59DcX56O0zTBTZTJCxGljDVorC3QTltemeDvqfTZx+jGrlw8Y505aVnxUKq2rEG1CXDQ2jaSCpTk9qfKjpUtB4ULUYsc6sdsADEGSDdqmHrrSLd/HfPGUZ3Eiy/VmoTS919CRkL1hDqs0YGTO1skQeIGT7SH6yR3WHMZTqMMyTwxnfUhtuRNWWzDhAB1iqX8MaCD26HyYOLlE7t7ojJYVKkJe8hw7+TXOX1AF2idRvBTeY7/e0nZPGi8Rpq4sOVszuUsMsUgHmd3xCPDs/ppNtztwxLOZ8LwMDAL4DoliScCZSF6blNU3udr8/k7SYnBqWMooPT2Xrg8R1ulBvhs5zRqyGujMqZUbIEUhh2HY4+8XBEhkjycjgO5KNLRA2AL3vVwiGZXKzfReJAZPPQElhBQZkvHz3UyO3Pq/hEw3KwbXtLLxOqgS3DLnvq0iJUcsMuqfGzQFESgwOaprrgATfQR6v/1EKu2cBgVtpIwy4kvQkJYkoeefpdmKXfxDGRVwy0ycyJyg7wWiBJLPGr43DUUVOR7o/PyutIMssN8BS9Jer1sPGGdvKWU+XFkTTap6HZ0U7mRL6+KoTGePkC3bY5H4zcHjgusTwR/GL4iaZe52duXYi11X4Qbldd0psdEia9GD8ZWlkgbdNA39l+yLFXljMyak8cgNF7KY5JVXyr+U1P3D8YzdkUJMUz54JsxLCxXk14ouoPQcLl+TLLcP9iEUgEgBkB+Q8oI7TuzmtW54xHi9fm2FP+PDkKBnjDHpAg+FjNtar8N5c3USD/kGmMUaJyLlK4bJjYprr99yv/AzbRepvnSe5BGRKtYA0K292EjXRBnHKHnwQS4RluPVdDwJ3eNLH+lPuZen0WG7NL0NCFUMCHHkXHnO1G/WBprtJD77WzeZY+kpOYQkAAktrIMEMK1qMDt10OZK4ZxcVPRdIvW8j0/TF9F4fw1DDraLV3UIVvJevitZe37SmFU3oM4szbAs6pjo70nIwmaJZTm792r1+4yMnJaTjeAjlAOGDjdCnMdVMwm8VMJZ9+FGTTzRcf8CwbkuSjjDe/EPv2cmG79tS0Dj1xBySnqevgVssOCDLPOh3g66OB8iSgubHMG31K/d2kJLq3AnSci2pZUEvaELR6gzTBTWvEBcjzEZ8ogjA4sPydbbig4o6RqFhSgxIvtEx6QFvo1nJ08g/046CA8yu/7gCHMu9hsrf5ivHayyHZn91fHFkmKkQdtgAoU28Hhj+YWg+NPtZ6j6ZqSCWl8TpJxFiLWanjblbyqSPepzxdXZB76KfdkgweE29HT6SUMVSDyDrG+gOAJN/9LVyKHbRfLBKPmxOxIlUtXN2pUy6t/4NrljaN24Icq6TgOeagDaczTCass6ORP9pUTrn7z/iFSRq8Ab30rL8UG7DktegBpeGqqcla3EWmqKuakH2J/25m2X+AML1/ekUK81AF19ulH0JlCnnU5PaTI1pVIvd3MPyPpPUpEdGsj+luN2IMIneleH4/119dNQWniet85HXSOp0oTr7w1ux6MsFHfm9oCEmoAPBUdRZKOPFHwGor6CzRcSpXORldu+rlro1DmyMqhWCAAEfbxcwvZ/WQE/JgK5so1tU8f2Vw++R5lGsrPi/vKGxFNGC9Z9rxqWjDoSfEV6kN2XJr4z9tBHEx+8JkBa5IYs0+IHcDUyLNQMB9fTvu9xbc0iyuUKiQavflriZPW/znsGKbAgrbzv/XZ3bNhxuErpDb36iHkNJx9I9mlmHAhLzVKLHqKDfC4g026jVvIzKur1b6uPbuDi6PjTe7EBxLdpGPevpdPY9YDoeWTfNJYolr5ZltV9xTm39JyUvEoblOCy4VmfCjPdBJiz2Y0TfHITUs+T02cTeLp/h1pqkT3lhoKgaDov9gSSW25F20bjKtTp9CNcvDrAL57d/VxukAk1+SzR8D8P9juUcX6oyrRnZhT6X+qztaZMKIW6Akw8NQg3cBTwTjpuon4/iaRMvYqFWkEUdExH2iEEjViYXaubUNvCLdRpv/q008wqYGybjCYKoiImJ01UOheBTSVH/b/Ujrf/iSvy4iP1ZHs2ue3hLmG/aKmdXGcx0KvMPs0jhwVHWaE2LayKu4aRWZFfTgLJlfeh9MjdWWhg/AJQkguA0oOJa1ETPRKG5yslSK63qACtijnlb2K0oZCHOImftnvLv8kt8z5Ag02ncthDT/sUcpo8w+MrT28GACcnxnDovOqKpjCLMJYBr7hXOFFjpL/mIXntMoR9BPTi/+72FE+rpRNcki0khCP6FvAKjphmZGbg2VV9OywyhKeBW1CJgOQm7uMCCtq0CR3+9dAfDS2WDhvtzBLDSkvs3r/hssuY/jOTvfF3AHyS9Fg92QzDHto9WdXBbwzROEmfrRd4pHxiToUT6rJbMLfj4rL3KF4U+baEj+EDMIcJweJ/9LUfLIEhD92bQZk2da0dvXyZTlYhB05BRjfogrMz4NJe2PXCTnRr1VuyXQrLoZTUeZ2lF/cLZ41tekEUSfYgE6o7QszhnwN5A/o5jSDhAZrfwIJbFLkxnGnB/q0TdtK50+Vm6Sd41pOA4xLHM8fCCIZpsAQ4SNKGEBqhQ+xbN49yN33uZqiQdrPnjiNsKOVCHVu6AE/9aE3y7tGWLw6dv8MxTt5jZ09iXIoC7ZK1e4vW5r2f5h+LBpsd0iBRJlHaeVhOHtXMaHZvdvmxTRMQ4CfqX1P2ypFn9B+hMp9/SWBPsH4CQr8uMsw8GoMaPjQZicb7LgOI0CxRuiXBkQk56DWm5la9sAI82U6jhXGLNMtL4yxIfbN4PNtRNWsTspy0OuGSVOzW8XXjNIxrkaA9hjXjk4MYWpFUsY1GMMlAAq4nntuIuY/wqCu2se2VlLwy0EsFlqWN3I1SToS+v6jfJ7ZFQagO+NPIEfemD4ELM3ftF6WRUpzsc6j+KdgpCBeEP0SRBqZv6O90Y2sKWvAiloIFmwIhTBYdmeLBlqZ7rSEaBzfMEhCVQd3zGpUinlWMFlmx5sH2Jd6cj1r3bqZRsXfgY4PNFivCb7sZvTd9Pex9y1uhykGCPgM6BFMvCSPfg7Grik6kpTqHpgsn9XztkHBQ4KEbxm6Zy8Y8rIRuHrlWEqzGrfzwxWk+dbnRJeR5xPn+CkimQ1hXKTomFGyBkpeMrQUk4TodLlF+Dzstffmazxqu5uLJCsnvRJISg6CBpNpldcwKG38V1NkUNK4XQGMGKT5WnfL7wXBczLauUY+nut1+YvjgkYFgAXFbRlaR305H+Wcq/UhYWvoKAXEjw7WOORdI9bBa0JB1NsbFT85ZFA67L5Qjh5Lcu0AvsaoaXUFXWa6ODhoG6QfTsDCXzp18g7DTeOqzJYVa1aqNWswNjuvhTE4voxR7vX7r6Li8ug/uju/jRsot8TfalZtveDrvJDruYW0YlGsfRVG2xUrhQW+gf5jLf2E4Set14xX4PnyUFOQWD8XorX5hndAKHFAhgOlEdfdFvh7QJFes7EWRK3xkxUwlPywKeVv4cXNqPQ3MAQemgESK8I5/LzayHXKsB7DvdUzhDPc2vYDKzU5hp7ES2Rs8V8Sy1HLbLEm/N6L/UDxtIpHhQfNj5KNrtSu0Zka1Hdn3wfr1sZ79jvcgVCNbuYPkiwjDntIIqzD8ltIZRhDaoKvSs8gCVms/uS4pHYoDrYKIqYoDVQNahEO+VLKufCKvdf3FKsNDewf9m9YnnFZTM1hPDkmT/jyHiTkOYMHQcnb4tIM45FuQKvsiWrdhurJpgBN8mFMUmXIsrh2jy54fz/EdyIv/W9+053w3OkGM5QgzBD+LPSK587P95M5PluaGN0j8nyE4Xw7Tn6/0YN5cAB/ldGMtxeUD6xobD10uqiQWk6MD7idAVksrUB7BP249xeVEs2zcpwSgO6LRHbOFaTd6smQ+wMnEKGyf1VR1iVfwCAUV4w/buAbtMIB7ec3yWeuapyqcGnRZmk3De3KdFBY9Ze4H00POIghKdeE2iK/dkVLykUE0SV60gegpnngl5CIrFR6PtyWasNjjTFYG7EVdzTk2HF4FozXNi5xlsrqkyp/XQMnmpLq0OGYSV85GDc0oAYZVDAKVj44UbBf6TFBrg5MsC7L6cEvxhDLqJ33sO1YgHwPMAXEBjJ5f50aq+cci3aXEtcBL64pYQTamAHRJEiZtf1MaWtLaq1lAQfl+4i6WNc/UpVzWhb94rziHFUA9FPrCCfnpqKPRtSWIYgpfW/9luVncDH+h0YEbkqadqw4e5BDEcDPl2SoAvrv2lh0Rl7jLDS4tNl0FQL1QSiubIOfj7lXG6zBOoEy/aVxFxBRwZLHCOYQASXRTKe15bNOMJWC8t3KFIt3gQ8kL6Jk31w/+h2N4NfLOSZhh17t00ceYZ/JsRJnHmnbFILiuA4KKlB8i/q1WYezC7u8gkSJnO2IUsVNsHp4LO6sFBO9SOo6CkKaf4/7T0o7u9kxXFcGOH8nJqTCp+CmAiEEWCtx8WoZbJ34weQ7lofyLaoTX4QyUMRcRPYMB7UF4cjB6h2Fh/9gGm/3rHP86crzIlDViEo3nF9b9SGeKrudNz09Y8L7znYRl8hiXjuNL4hFEO0cDmccpyzasq8lZs25xXtznyafExp/arHkOaL9lhkzzzOxMvWX3oj4wTBYnVWcVmYVpBYMLhU/8JPSkU/ruUczDap+t1q+w9SBurmcho58kKNHeKK0aeRppjGOlm8PW8SHRa5140V9UQG7o6U9isS71w8FDxTBjgXOYw2mS9MbDIJ9RmZlBMmorsBYMK5U0itDf2THUv3o0S/OvLxq7hRxr0jDlvE6Xuu0cVbMm2tmBcSBKNEk519ZmNf3EdhMIdyMySU6IA2iTcvVIiYfnvsLnQLrk+Zx+8Ys9CJwyJ8E8MrNqkJ8UWRr8nDR0iHODr4eVey8JUT1JJdzhbY4Bhe9w980lvpm4k1nSug71xpXKOcIinsqqJ9PiW385waSP4MMvNaLZk43NP1vhge+893JB/O7wgaub76hNQFoyonFDSCC8FSBl4rwSFpVAAy5XqAwirfx3VAiPImdzwWLtzsPU9N3OE+v7oYGK5OMmEitV/XhyLtqwLcTUhNy7vKAt/BeUasj42bmtaU+2ptOwxC4cOKvuQX/TZnn3ZZrpqdiHaWhF+b0tyH3X0W1NV75CxPafbY1dG8u6Gj78HgKY9inQpacGzW4UEUMf3U33XhlJmf4yKCK4MJ8Hq4mudiK7gDkOffLT4o9a8swaHBglDJ4Kea986JkTla+8btrcfD0hnY4BqYGRMRmhDQbBnhVg8g3FYim14gXFwdmbi5KYZT+Rddt+QVfs33Cb5Z6Ty1hCYGqFVwk9Y1YINFjEBAYBNRG6hFU3ahUwccdcA7PVhQsvQzSJ4hRGxWytKlrLsAzsQJxa0fru3IM5ygO/R2Y+AAXvay0El7YQy6gmxjy7KLikfsnzkMw+7MjIVmUMtt+szVaVoKBEAj5Xga6t5K6yUB4NeRna3yLLzY202f1ldHgiF5TEZZAdXTt52vPhQwsJf2sfYQ026EdJhxmRprxjxP7Q1M6IC63J0cYAqpfecF3Hy6SFY7C8zeSpVc4orLlQf7WHwhHnYBDIoRzeugArq3VE4DWXLVOMiDWrJttInawLo+wXUHOjvQvDa0bQ01aQFBtqFY9TXOqLFttdVxa+FdSnlR+upkbiAq0DJWo8yL4vnKaJARoqJ7jnrWDF3sZLzv0IAnigIrhxaMmBT/X4483CNesQ9E8i2EwAp3Nl/bkz6m29SmRj9Rtm3jHP6RpLkl2q55V2WshZLoMRlbTjgIz5sZpqIUVMdcgrMy9C4pNIb6aqVMCCeA8J1ZzabgLQInh1yOdgT3/X5TjK9p4cGZDs/MFjqXC7BJOsM4etNI5AgtELmkO5/o7tdHoy3XANBF1X9vM8q7Yjan10X0RIdAO4U2z0gd/38COLMC12mGzI0oJ1AnXKCONtPWrqRfe9joEjIxXpXeJeQMktop8MjhsGvkzEmiVjETVryspV1bqVdcB6pDacAaLFb4wNLYe6x+4rGLRBc22X+i+4ZQH2S2+axs8f+27IbBVg4N/8fFkNgyTow5ylIW1KEmovziczchi+yLr5hpQYcvlCNDB3C5q65xjCbnRgcveiRJutw3uLua6XyTfrbK63y4+vrnSo7ScPPz3ykwOYIP1h0Jya1eUFzW21XF68h9cIcKyXo3dvoPTQJVcHR4xDNyfFAMUIcgzkIh78lIzbghACK6y9cCPPNz4rFomO4N46R747DtCSMNhn7xibB8JnZfZTffJN/SX9MFyH7dA5jinxAPtDlQPhMUVDPVyS565k9tO2B6UcBXhLMTQFNPEHEB0T8DAI7mQWx6V14n1RZYV17Fz/NYAZSHOZ2BkvWPUQs1BSyHbAfEeosE8jce2YQnbxB57sWRCXr2yg6d50lpYNlRsf/b5Nelej+O7j+6e/DJk7jKr3tZd+NHJ4iOkRXbvVA4bxNaVBcQOG9QIH7DkKgV7WUJUWKm2joxVqU7t6ZEgAV2SLkhtG7bvoOjGMXoZdG2tU0G9Qs09i4onG/49Ay8GVyxmavtWg4eWAR4P0FKlpEUaMbJJVNEEfPWaanPwaKokmdzXg9a2sebIFR1lEbM8lVoKIbMizfSxRSI9X+LsKtQ7fdcyYocENN92t08DjU8LHTE4qOY2fdlam6XMAkrbImdJH5DWh0eH26+zjXaS5OvFeG0aWwc0+wqsZ1VMDEz8UacaFXDE07UTSDgvSbo4638d2SfobWYr6NtvKlqBKJCj5B8mLvH2z7kryd0tf9Tq88Ee723fRkQU31IMKn4HjuiI0cek708paQ/ws/4K7I5PkcwSBwN7H6FnCNCuBzsIYA7PRfSL09Lkt4nO0gXgrNApTFzk5VNoCxcisEodRBtCb11q/8Mahg2t4uyKkXaJLskREaIGaMhW6qxgBQMNrYOhr3gTmfsani4gE9lieJuRjGa8vWzo3H+UhKPxP3HpFPeH11G67BKfsE6PhuYnCagaIi6RO2hPjvXgXS2S/kIC+53MvrtmhQqErg3EwWJfku1WZQk3wP1p8Mmj17+h6Kmk8etMzKQz7z3lfPTD5JVO7Do3cwnBGo9EaK/pbBHeIikIQDz1raOCWl5rrirLCRb7wGu/bp9ffhspNblk0PaL9pQ7gV/DfymEAWXmYKRnbq1z6tptPeB1/GYOtWuPjDHUrjO3QEYGfH4pb2KCGJndtvViD7pVqW3DGImzvXGGUUCHqgo9+5GVh4C5pdMD8NmWenqXqz/RrL0uB43aM+cuwxLs1QbU5lKM8yTsiCj4Uk1H33nfb8MViudYQV545GPBQL+WZy6IcZvxvNCzqq+3k1jVgyJ/+sQLq9N0SNE/GtT6tlPDhl5BT5Lx5O47BhPdDputF9VCT9gSubhuMtOS4uHHY0JFKesggEizxj8gWSNGE467El0YevXdmpoklojNC+Wt7y2Q9QBAHWL3tBSZuBkLU6gVK10d+/wC2hGJpcmN9h9cDANupaAHe8t8p6eWF9ZSqouheGdcO8Gc5E7F/RqJVHo45H4p68SyUxfD0zViPkbbo3Cm2IKflO0Pt8rP7PCQOgJg6fFoEyWqf5SdO9WFGASmWIAsMtvzuyqiiyRlvBSghyZN8sz7iP/HkFKz5onaHOXDEd8jkOyH5MEhEbddNRL+NX6w2sJa6T1ze9UXpK14OOjVqXxbI2j+Lc3dmSTwgFkqvRjLD1bE3cZ+zkKiIE1ulp75rtNY/q/L0ueX4KhUTyRfvsqMNBH98mqZXCYmYDviY/ddsXlZnt5hSl2A1VWkHdSbIV9GFkEttYHHEZ7wi7k9VRJwhNtcqeGQAF6Ei/Ja9CrlaaLxRs4aa8G3GjaGhn8S/uyG2U51aVHO+uzV/LhrittGRzGy/ZROz2aFpG1VTWBDPL2Q5qpNIJeGApbfkMAxtG1LjQwSYNpC+wUerCek8zRyPj71/xONutE9qixwmXqhUu1p495WudSbOKhJ3cl3ySsFqFHVtAnnUopW1leQecMSux4xsGlh0Su5rOGfZ2qD7Vq/7ojvk963cT3a3E57UCGeigpSHnwP0F9ook9LggCBk31dPOSaMMVfUnnP8MRNbRalW613lNnyzqA67LQdATZh2+KPo/QNDXAc9ep3wjE0jq82ZgHMUF7hE6MoxO6hk+6na65do6hM9d8avnKaDXEQ4TXETr6hnTN72jjStQxvtDzQfoIK/Iw1DqPuT9MVOega2FxBvcZrv3YfTlkRnYOuy30uhuGya/kngHb/jDe7MPTAYyz8RDovgRbbhpBoNkn/UA8LE/5EIi1BSQNt6QX5IT7Kx7IuZtVHZvR2DrAEHWcDXMvqhnCg8NvsfP2HSAnmKPIrsL1PARXL/GWhCWAWpaIT4HqY5FS37qBgUTJPxNwGpVl0U+8ml58Yrn8AAILWExupDJGGeJRZx9mOqdhlRZitv0DirKcAF94dVHsRF4XZXm3GjapR6JiAEsqXdoiqr6iVoVixl2NUTSqRd145zMo31PtI4WMwoV7wDwr52H/cXhVT3GTgrN5dtqjLjTPSW7WnAaevtg4sS2FD9hei16vvnp885QNPx7/SAl5SuvqjgeKsO5N4AptLh9roLyT66bNHKRDj+5MOgda39Q2ZzPTVcD50KKI7XQtIq+49QqD8k/X6KpexdWAaMPkyM+qmc3DFFVX6G92sUikUsxuoGGxj3M1TkGrCNJx2Z4RiQSUt2sJZEUkeJnFU7/w0crlW95VkNEHN/lwx9sGQeSaa5IyVMSjHpjY92+/9+xOrHz9VFQ3Wi+oLm1F3uF2rZXrQjJH2+Tj33aVByilmwPoNlxQQTy1jzvdhJ12HDfRPLA4Gr3OZXxspmw8heWtSsWYUDC0tSaNs6N19RM/crQVk8ZI9atOcjYC6NpsYMloASC7V+OZu18zjOcV04ITMki297dKKIUtTn0uXE0fAO5nVu0dBAetqiN0s6A27LfdIC1pkKeFM/n0JmxHbxFxtRIrz+hNJNAhrvf3JRGET6Gw1Q1EhbpDOl7LA4bijbzmsAhVRrrNJWA+UQSYPLDwPFbs0jjDPROmHkIZg/mclfxEPOuT3xfQR7Acl/UGb9C8IjTytCKc5ff525FZb/E5Z4aXcpv5/dBQSpN84PwqhJrveTJM2oCoIvM+XvXV6izz6PI1LAOqSYecjX0UncjLF0DF1B3FzLDBRsDFN3a+iU0u0ujBP5TpUwn6G56euHwQ0M8YNoWHe78USMhRtwgHPxXulgr+tVlTTBUfXACipjypObIGgpqO6KxaEzzRkf2Shfncc2GnmhdVp5/sKL0AcZuYGukFTS9DRA02j28GPDv3l7N/ARxOCF/JoxV9z5vC8XpNwr1TGsmgc/l3CJHzliq5HPkqBUJFbN8TFTn//piqV40IPly0yPfL2MJjCTegg0WBjbx96kXgHcYp+gzE3qq0D8Ih7i2wnzH08YIJ2Od5qPxDUtXPIM4v4QV9vLnZjLRbFF8ezboK9TnJVaPgBb3pIw51bCAFnZonLjHKnQKpSPAWZ4R+Ec08niF7WnPkJyTrd2jyR1NCHIRcMPd2RFNnUZQ9sufPtYgpnBW9y9Srmdk8oWSaPYypR1uenp2+MRfNMhf/augN64N0YMIh6JoJn5JOos3eV+ewRYcaLHLzzg5lgW9Izzc5DTFZ+VO+nVlTVqnGD7FO5gRtfAzItP4GSU9KFewCoa7aZ1y+wUp9olkvHhW65seWRH6bDRliPZIQBmF2zULCNNcyAyIjuBw0cQBHdFQswtvhk6GE2SvImVhUkhoRDokWcWMH4joqE3J5axTH1koK73YatMg7JIJbkF+xWMT+oHid+EP5G5pUYAVZmRxE/TrfdQSSTfo2xjAkvdvrVA+FnQXMrC1MvYTjcX+69vLPoKOFdJ04Tzsgpyb0mIofbR+U5ONGSEOLisUMfviDPvG3jhIh2Gquc9eML60DKOKRHmFtvEe5pF+1RLNe/g6Tm4VS2u/UjFXjsNT99a9vjXScf0flfVDp+Yu/nwlC5eoC1NC00o5keTTk7uzood5xHG2TNCh+Dr4chW/hu9N0m+bKR0MJn0cji78M0zuIPMSE3nx8p499+1d1Ohweosvc2/qjasJBK6Tg3hAz/S54w3NpAjRrZrNhqDcKhjs3+svc7liBlSPXrIjylRWwI+U/wJNYjzxv9v5vF1zxeImj55CcmEmykyxrvzUwKhhJDO7Vrqq4ZwbFgRKYNWCu/BBMS+ZDLRbWB8tc82HSmuJx71I6I8Nl2Ru/Fz7Pyx7lfE0x6Q7ZeQUC6klJGalHHbimtrP/0BpzbldUw1B2MsUYWalvQuTA2l1LmbhZ6D0uTafifAsYJur2O6YRHkTVctXbEtTPv7GvkEsevVEVDPlUOa6D6XfuwcRHMr8v1QA4yVsRCbOt172Sp60q1QHKaK7eTxgC8pF4nMu78Dd9QUfwCgIij83+YHDlRqBEai6i/BT64vbyOrzfcF2GzSw4IGRviw/ImjdfCBM777Ps/ZbP8LPu2tPiTgKJ8BTNFxnlCuKONyL+ZNUxKy63P4czXa+gG9GQZmoQEs9+bbGwc5QlzZ05AQQj3rItbPS5nEFGKuHlYY0UYkgOdUjTvgF0GqVBJ48UGMbFW99i/W2OBU4ylgJrQ7ME9usSSAHwy7gJfs2FKsWqXnAV1I8sGBuBsXaBYatJUsAeXfWsMsDAsY4FLKa2lr7XsfvrQzWJmYR3UnIeUvvr3zoD7gAOuDvGu+7KrWrfEucvPZ4nb8wYVWkrtK3uotHHsXWDgg8+zsbeYqAMb69E4TxhzwbkJmCPjYfWieEiD0dxTU+owh3e41ynMWPw70bXyhsgG98+H//1I10shMSg0RmGPjYAOqSmUx3IdkDcgnfp9/CzMmTjnVJIvWnhM6uyJ5jtjLQCkDB5W51Lqx+u5N5yMk2QGoSEgF6EULARs/Z//KS6f3lsHA8LIG7ZImlhO1dxbkwIA3EJhKfSs8pXo0HA4Qc2K85emP9l3eHgt8LFFVMHxPanbXwOihgvge8ekLuR7ky8WW0R3IKax8hsND47zJlRrc141gcFhzejtZtdnQyiCMLWMhpCS2iqPYLVa5jk/EEgjyE8Q8gcss5xvWQtFrBBCBZvBnvYr6KvOVE1oDMJrljyU3OmuGnDNCq6jY4l41Fzx4Z8s5BTWT8lkFYUsvjOrpsyZUL9qA7UsNkCu2VbmdWQR6tSeLmzPN4RQVhSnSv7OJO4rrlypAshu487Df+M8K3boWuHjM5hVFJvfEw7FvGLRedM1n5YA0o0LTlXN6Qy3lh2ncGycn2WHkfEDiEfGevj4lSkcYltvMysONilh9YOj4Y1dbYchNLNcvziQVDTUlQ9MT1pKIlU7rxmBl2FxmdsIZcv1/HwQarai3TY59Wo/2JpvNQSEmD8+IJBJiqGI+PzKrj/q+eEttjc+Mk7HLJmH+8FQWr1/kiPj7yOvm1Y70CsWIL36Sz5WxY4xsx8vzj3/vJR6xAN/sRcG+ZhPLcIoDZcXF1tQTL/WKteMom4DteRde0PPTWKTrdheRADwMahB2H6uTZv37F7jAthPjFRcEIwZK5MB4xSmKiY9w+LqRjioFPhcx6Ppjmj1adTN0qbdKhJyIS8FaP9NnFaW6r9F9LZnG/NMngYdNoNVr3VlDeo+0xlDcd0PiLhqOnB2XUTIGEkvO19Ze8Rg/f84lrG0XAyykSluqWujQmc2jJmqx/bTKJs4gZ85zs04bSYxPynFdbi1GDQdHZ37RiJCxUin9U3z/S73Im8wD9B/gvUND/Vsdom+qcB0mE/niLafrJeEla4iAUd4+maeCIiec2tABLRQAhbEf5V6dF7VBUHVmaaXRfsq7P4JtjmjcDg0sLJ0Mc3c7HfkvB8VGS4dRxsfQZBf+8RPLxpohJuM87XvwVYZWD7aXHB4gyU3RiI6nh8tn8r8yY6KhvCzyyCk/1L+ssaUmpBRplj+S593tOCLB/f1JWud1UJy+KhKqUQOPkSunFJt8woIYU7NPrkYXel1DZS+1GEouUv8eE0ne6rnrgQhmOpdqcQGAqV1kOo/SVPpG445FtzZyDZZtrznK1zdc8woWo25jMLq1RmmrDVD5jqf4zSSWM77f6QVXO+Eby5ib6Cn0E/z4+ow3sAlk96kL0T3nMvhrR0DOqi7a1f4lW9v0PWqhiPffjfGdH9SGzFlrDgRRXzB9YrGATyCP+qZA7v2rdSIFY+CksP6wP0ciocxrFO5L1OE962z7eKoaC7jmxAG4dXklHFC7l+mOwamgdruwnFkoz7LDWSklBACLtsxBICdExXTqnJZ7WQTFQD8jYZuNUlXNxeYQcK5aUK5gcICzdnlDSqqcUNvpthFItmg+OaOLadSZH8yko5sgw0WxX5MtACfq5H6Ys4eRyDD1Sl4j66cOmT5vkR/pLRv6sRmydL5xhPdxySyFpc34sbUgMqi9QGLQXUqvoYsS7ZYWLeMBKhvpq1qIkhWbFDutFhiFAcUjryGngCFMKLw7rJBpG2qFBq/3DT8oALat1WrmgxxXUlXT8R0PIuTt5orBweU09KsTG3iP5M+PxFnnHnAfk0702z9d3Gt0tEERaFBl3gZuofXHZzFDOAv23LASwyt7YZRNcKY9TlW+neqS9VsnEQEmUraFx6wQakbNTTxEAqkGd6I2VnVM0zGg9Dzsp+twj2vKPYUWilhw9m+3vBqBXYDAo96BjKb/oRlT1tjglgSLbvQR42kVfthIx5ncl9jUu7Se8didq98V9wb21ypGo6bBWyQ1uf6ZLZjTaghbgcUz7d7qYkoQbpSNp3w0ynO3GNRKdr5GYTFkG9wd+gQXiw94XvGSxnJWBwOT2Re/pfdtkPEv/k1QxSGUB+OBFNNVou2q0eI3IKPq9B+PzJ2iVQ0n3b2+NmvxjF3JIdjC7PBkrvF0duz0Oct73R+oxyr1JYuTpy/R6c1cSbL3H3Ic3tB/djLGHAsDcL2CKLxz9XWTfMKTqgMYdXLpsi+Sg52cyNAmBYV5OiWt4nIMNgt85JUk9SU8PNOZxLKG1y+Y5nHK01YXo33oPfiC1JNaK3+I5mdm1eFyhZEwUCZqntJgTi/IRznlMkZ0AWrquaT7hNscDY1OJP9di8MZ4QgjezuRp0yIh0uEdzch1cf6jCKBdsrD294tYSu7ad9dTVRzctxMOzFHrzBH5E07C2Yz2Houv06iXgkhlCqex+lvfw+HmnzeHK3jWZfFfqOoc7o99B1cC4pc/mbm5QGRdyUoLJl8FkLIx4JulmVL9+/Xwh33X4f3zlSqWvWJUBtQynhhXbZEzTqUEBa6o8d4DeRP6qqpubVZiXrIPSpBlr/NQay0FbVvSscFWHqyMF8YoshKjfOnCJe4TSSEoawzf8TrhwSjEqoTCOwrQWfcnWajJScXGDiFgprEzCgUwua2pexIUaqn/2ObNNA6iL0Soy12ZaFtIaTAKZFp8vhzlBBeEZVkQMWvjaPJpDqCq1NCjQMYoVrBK7w6WyzC7E52TLU5En3cqUT5RM9/AmY7aU98JBBxjPk/M0nRWeChN3J7izxvsl6Wp2kANw/jVdOmrH5lOXNo7nvrZDBaoIIOmZe8OtA4/uj8aYxi46BKAoBiA9kQhkGGjCfHhZzXJSYIwTPdM6juJIbSIQqvgZ/QakgN8rE/z1QJj95gW4uss5uIQyLlwESkodPAW6gwPv25O5Aw/zlXi9/Jv0xM0wehfcnS17ZoZ7JnrubVTxqhw9vXgZy/DyKQ2ULvzXVuS9TuEFQ1qlSXJUJUt6SUGUi0iMTAiJxgSnPL8CrFzE4tz5COoQSRU0HCAejxiPUMkOSN/TsTQhUP2s+0+BnhguVTnz0JqsOqai2Uz7TmgV7OyZaiaXHHlWD0ULR2Zb6xsvFAhYyDMuT8/XyfEcdM365aOx30YLEDQdc3DTBdXgVtUeI6lM/KH8n+4fQlkBRqk/ZAo5zincPDNtk/QvQ07Noy40k7I5yFsdjmkwTZPf/P18P5uD5i4QGajuTHFRqWaZUuRe4ozpmuK3ELfntVOJ3cHIIwfNm735/g/XIestt7JcETXzW6nxuIugzzoroaKg/I5aPSXMwmPgDusoXif9ke/j8PaPQdhMuVN2QjGGm4ooOP3KYcJHJZu9Oc+O70EfP5hL7Ve2+DGcOTxuCyCEQd7Q6Mh9hingBRs60iLg/3FJlOXABumJBWE4Sy/ezTWu3uivzYd/cea5Fi/RZI3MjYuRIl4tBm87qG6T0jMEg/gheCB03kQfCcthJk8w9tJYOeGyb2MWd/P8gG2tzDsTvNrWotl77tRpgJdvCiImp5Ven4ZIiqzPCRhiGDNya0nP8d2T+l1AE2rblxso92E61ZWaDHt6FUl1kj8JwRDh3LY46lPzJjbnXAMrV8I9DpFvS4+H3BdV+SgVG+aXVQCN5xU5p4+NgX28BD8qze0mA0NPjs5HN+5zy6MCMC4lzDM3oCOuOukT+uux3D9xSYvhuUtAmP2JG++kLVyPBIsEeEZ3a43StmCRJWGlu3yH2qRl1ef8FD6ShxLU6QAgoFHCcLUzcp89Nn+RIIpY+GdFuMKOt/DlAvpmxa42G1dsEXCEi97AsaDAZn8uhof7rq7Bvgfr3A0ofCMxcKjdyGqdavxNwEfF1hGAEzgzERX18GEMf3YRrB04I9pemHbgpeyGItE7l3+IBhw7d6hVTE1t2jWm1i49HBIALk9QvFFKciJYl9hBJJ1bKc3WaNwjDVLap6jd6PsKHoh67llD6oPF256ZiSMTaCaX0hC2+mXM0H9HzJO+1rH6ynNivhXN6zPDVZlfUSj6V45Yn1TA7Q2BT2dAn2fWtDBhBcxf7mnw4aCLqM4+yF5H8evksj1ZaZf5hsIZyUD6lfUGZlocFVscsejTCAbVdJZseA26XGYU8pUANs6F4kxqxVU2oj4dg+HOeB7pglT4zSR+08QaSXWoiuKZLWMo4kfi9gom3hg0gcTd/6GgLtS52GyHl5Kwc2PP2H/YDB1/ujYUf6A7RVT9X0BF9LqNdsZsCSVLnXAIeDRHiVeqFbQpvZU980Lv26MoQOTFhIR2gg4wGt5VCzzzvQO71NYTA+t/PZrVxby4Blr6hEySojWAWimQsLa5FNH9Oj7BjfrD7/PGAro3+zLRF5jjdqmNOzxWi/AVospK371zyMot/3S+x9P9Nfgbpbmw9QMG3VMIfJiZGMoxJISTpFhv9wTud7TUOtdISWd1plFC/l+FChjpNIHG4+mGJEZjtfMej8uJgb2RCujUs1zSBilDI9e8aBnIHl6fu8X+Kk9nfRx1/rTwvUxmyv7Ix3bUZ66cBnzt61YOrEaxxnXVjXamQvu7cFZSs4OrfUmPXSZGgFHFN/YTMGSKYwQ9FOX/V5kY+68Kbr/dQb+R8Pz6ILNEqx687OHrxqgu9sRNVOQpQ22OfW6Z5ABivu8TZQA8JP1E1ck6Smja2wiLQvDaRhtJ+Fj7B0RkMCVDJlGBmTgzXMJ0NpGfEBFcVKIzYikQejCOCeHB3wNVS4ynXeotAEdrlJd0yToHgmvuENylgIaFA3zHgUc2L8sydjG00NIHPaKnxMhx1rn13W+xSYkmQxW1310ahAkiCbPZwZRjyv+uxOOio6oYDyqcTmEILYMcLfh1itPFo+UhgFU6WuzlJ/qEIpg8UuUbgcGC45HR97twcVoa4Hj1YaHGez33wwNS8tVKwZM8TvoE3uoywJG6V6x97CHNighIjZYVALFyypk5AZ5V7pmnVdaQks0DJceTJ+UoPurUbq5EpZbeZM4sqRhLk+oRNDHAymGGgRVcGgFK5OEmgrMze3p0lLL2BTt0eZl/LKDC0Yn3KMIC3sNYpbmOybkN5RrYQZp9Ky7TSCmTAoStTiydgpKdmemey+OMsk8+KkxxU99RdqTVlI6HPCyIEZRq5hWr2AzfFgodUxGgP+l4kskSX5sOs1cswMbo2tIGKy9DZt+AILmfBnWeR1GYAF2RYfF2NRi16HXxk62uARQAxSoMECA6brW18DHyEVv+QBA8xoCMMuOKiLXjTCJkSW/hs9OEuGmo++NYOnOydr+wPDG1IUEhh5mlJyXfXbybnwJW3JChLAq/1HWEIXVFSq/2Yqp5pRVRwzZ5j3LYKnj1jPy2tThP7G4m/s5cTsZDeIlW/K9uFWeUy6N7rdhhDFi/VvtjkG16aRmP1a0I2ulHhYXMc0FCesstJU6iR6Y0H2M9FkNRMXM5dLK31MLxIGIsmUHKdVvv3PG18Elb5YAMPgiMKSJvXlerQK6BLe0M3LzYY/3Q6yhr4KewEiUhWGWUnZBSk2cU/o1VTD8ZxvONgKNz4znhQk76aYUF3P1GFBNsQEo5+WeclwRZge6I9Jh4Ql9pFSknQeNG4d8kBKdhhH9sc8hXYJx9ZIDLOJ+oAaNKo8B0oH34XoWaHrGyEO8gTh43Wh+6PMYzvh+y+u982moPb2w9j1LskVIep3OfnLCy3SpFv0tq+qjSTpvhMIWc5lNoq97hBYcJymIvS4yrWAHQ2eMxFqW4VFDy7bSWC5brTYgTQe7u/LS5BBazkLg+nUbHUB+77ji7J82e98dERt/6t77Qw6uI10DVp2tAhfqKQic6ONnuuIHvaGkTI/CeknCyz82otIRqyO3uIVMIXHUZWzmkJ5tSN2AEQ1RbGUdRThuFOIkJfeQc3GS2HxomiYipMwh4FeyjKXP5fqNiY5pbCvo4fM6nE9BMEWNlAqsYgoVMIXNNIR4O2mcMDCOyEsyliwzyF3/vuaC2ZCVLQvdxNdn4IUriXSTaJG1nMGVq1vUmOIUbJalOBVIyKgxlPiKUVOc/39EqOIiGKT/2IXuqv/VPRwBNg/wvc0HwNjhTFw+xq1HWPTEAu0wPPKDycU4F2owXzzdNn1qezIOnGFvm5FauxeIOgChandfVlL2ecKDVfqAOBZos1fkQESpnNjFVX6qK1mnJfdJUykaTVE5qnM5G2/zFMCaK7IXdDzkzVdol1AAhWvKDRXnojQkLe88ZwOvOHcIoy6wvWDq41fBrpDxxc6ic+/RnxmgPoPHBU5G/AvE0ifiKROdBpSAZMc6bJzODh8R4FI8weEv+rNBr/tnpUktx75kZu0aTW4C7D4KSbVoQESmcSEwa13LrS+wnxbZVUXXm/uCieZqQsRS2b3LodLzUillZeA30clymEsall2dHrBS4D+qWHk4NS+khYAAA==) left bottom/cover no-repeat;-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 16%);mask-image:linear-gradient(180deg,transparent 0,#000 16%)}
+.acesso-form-wrap{padding:clamp(20px,4.5vh,46px) clamp(18px,2.8vw,40px);display:flex;align-items:flex-start;justify-content:center}
+#acessoConteudo{width:100%;max-width:520px}
+.acesso-form-wrap .bloco{margin:0 0 14px;border:1px solid #DCE6F0;border-radius:16px;padding:30px 34px 28px;box-shadow:0 12px 34px rgba(11,42,99,.12)}
+.acesso-login-head{display:flex;gap:14px;align-items:center;margin-bottom:22px}
+.acesso-login-head .ac-icon{width:34px;height:34px;flex:none;color:var(--accent)}
+.acesso-login-head .ac-icon svg,.acesso-sem .sem-icon svg{width:100%;height:100%;fill:currentColor;display:block}
+.acesso-login-head h2{font-family:var(--titulo);font-size:1.45rem;line-height:1.1;margin:0 0 3px;color:var(--marinho)}
+.acesso-login-head p{margin:0;color:var(--muted);font-size:.88rem;line-height:1.3}
+.acesso-form-wrap .campo{color:var(--ink);font-size:.92rem;font-weight:700;gap:6px;margin-bottom:14px}
+.acesso-form-wrap input,.acesso-form-wrap select{border:1px solid #C9D6E3;border-radius:8px;min-height:48px;font-weight:400}
+.acesso-form-wrap input::placeholder{color:#97A3B2;font-weight:400}
+.acesso-code-wrap{position:relative}
+.acesso-code-wrap input{padding-right:50px;letter-spacing:.06em}
+#acVerCodigo{position:absolute;right:3px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:#6F7E90;width:44px;height:44px;display:grid;place-items:center;cursor:pointer;border-radius:8px}
+#acVerCodigo svg{width:21px;height:21px;fill:currentColor}
+.acesso-form-wrap #acEntrar,.acesso-form-wrap #acPedir{width:100%;border-radius:8px;min-height:50px;font-size:1rem;margin-top:4px}
+.acesso-esqueceu{text-align:center;margin:14px 0 0}
+.acesso-esqueceu .link{font-size:.92rem}
+.acesso-divisor{display:flex;align-items:center;gap:12px;margin:20px 0 18px;color:var(--muted);font-size:.84rem}
+.acesso-divisor::before,.acesso-divisor::after{content:"";height:1px;background:var(--line);flex:1}
+.acesso-sem{background:#EAF4FE;border-radius:12px;padding:18px}
+.acesso-sem-topo{display:grid;grid-template-columns:40px 1fr;gap:14px;align-items:start}
+.acesso-sem .sem-icon{width:40px;height:40px;color:var(--accent)}
+.acesso-sem h3{font-family:var(--titulo);font-size:1.25rem;line-height:1.15;color:var(--marinho);margin:2px 0 6px}
+.acesso-sem p{font-size:.9rem;line-height:1.4;color:#3E4F66;margin:0}
+.acesso-solicitar{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:16px;min-height:48px;border:1.5px solid var(--accent);border-radius:8px;background:#fff;color:var(--accent);font:inherit;font-weight:700;cursor:pointer;font-size:.98rem}
+.acesso-form-wrap .grade{grid-template-columns:1fr 1fr}
+.acesso-form-wrap .acoes-l{display:flex;flex-direction:column;align-items:stretch;gap:10px}
+.acesso-form-wrap .radios{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 16px}
+.acesso-form-wrap .radio{border-radius:10px}
+.acesso-form-wrap .radio.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.acesso-form-wrap .check{border-radius:10px;background:#F5F8FC;padding:12px;margin-top:12px;color:#4A5B70;font-size:.88rem;line-height:1.4}
+.acesso-cadastro h2,.acesso-enviado h2{font-family:var(--titulo);color:var(--marinho);margin:0 0 5px;font-size:1.45rem}
+.acesso-voltar{margin-bottom:14px}
+@media (max-width:920px){
+  .acesso-shell{display:flex;flex-direction:column}
+  .acesso-hero{display:contents}
+  .acesso-marca{order:1;padding:30px 20px 0}
+  .acesso-marca h1{font-size:clamp(2.2rem,10vw,3.4rem)}
+  .acesso-faixa{margin:12px 0 16px}
+  .acesso-hero h2{order:2;padding:0 20px;margin:0}
+  .acesso-hero h2 span{display:inline}
+  .acesso-paisagem{order:3;margin:2px 0 0;height:180px}
+  .acesso-form-wrap{order:4;margin-top:-40px;padding:0 16px;position:relative}
+  .acesso-form-wrap .bloco{padding:22px 20px}
+  .acesso-intro{order:5;padding:12px 20px 0;max-width:none}
+  .acesso-beneficios{order:6;padding:0 16px 32px;margin:20px 0 0;max-width:none}
+}
+@media (max-width:560px){
+  .acesso-form-wrap .grade,.acesso-form-wrap .radios{grid-template-columns:1fr}
+  .acesso-beneficio .ico{width:46px;height:46px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -327,8 +586,8 @@ tr.cancelado td{color:var(--muted)}
 
 <header class="topo">
   <div class="marca">
-    <svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="4" fill="none" stroke="#1B1B1B" stroke-width="2.5"/><path d="M2 2 13 13M38 2 27 13M2 38 13 27M38 38 27 27" stroke="#1B1B1B" stroke-width="2.5"/><rect x="13" y="13" width="7" height="7" fill="#E2231A"/><rect x="20" y="13" width="7" height="7" fill="#F7B500"/><rect x="13" y="20" width="7" height="7" fill="#13924B"/><rect x="20" y="20" width="7" height="7" fill="#1F5FAD"/></svg>
-    <h1>Odontograma<span class="sub">SESAI · Saúde bucal</span></h1>
+    <svg width="30" height="30" viewBox="0 0 34 34" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="31" rx="7" fill="#fff" stroke="#14201A" stroke-width="2.5"/><path d="M5 5 29 29M29 5 5 29" stroke="#14201A" stroke-width="2.2"/><rect x="11" y="11" width="6" height="6" fill="#E2231A"/><rect x="17" y="11" width="6" height="6" fill="#F7B500"/><rect x="11" y="17" width="6" height="6" fill="#1F5FAD"/><rect x="17" y="17" width="6" height="6" fill="#13924B"/></svg>
+    <h1>Odontograma<span class="sub">Dia B · Saúde Indígena</span></h1>
   </div>
   <button id="rede" class="rede" type="button" title="Enviar exames pendentes"><span class="ponto"></span><span id="redeTxt">Online</span></button>
 </header>
@@ -341,10 +600,11 @@ tr.cancelado td{color:var(--muted)}
     <div id="avisoConfig" class="aviso" hidden>Entre com o seu acesso para registrar exames. <button class="link" data-ir="acesso">Entrar</button></div>
     <div id="avisoEdicao" class="aviso" hidden>Você está editando um exame já salvo. <button class="link" id="cancelarEdicao">Descartar alterações</button></div>
 
-    <p class="prof" id="profLinha"></p>
+    <div class="ex-cab"><div><p class="titulo" id="exTitulo">Novo exame</p><p class="sub" id="exSub"></p><p class="prof" id="profLinha" style="margin:4px 0 0"></p></div><button class="link" id="novoExame">Começar novo exame</button></div>
+    <nav class="etapas" id="etapas" aria-label="Etapas do exame"></nav>
 
-    <div class="bloco">
-      <div class="bloco-topo"><h2>Local do atendimento</h2><button class="link" id="novoExame">Começar novo exame</button></div>
+    <div class="bloco" id="blocoLocal">
+      <h2 style="margin-bottom:12px">Local do atendimento</h2>
       <div class="grade">
         <label class="campo">UF<select data-campo="uf" class="lista-uf"></select></label>
         <label class="campo">DSEI<select data-campo="dsei" id="exDsei"></select></label>
@@ -352,21 +612,22 @@ tr.cancelado td{color:var(--muted)}
         <label class="campo">Aldeia ou comunidade<input data-campo="aldeia" autocomplete="off" placeholder="Só o nome, ex.: Kamaiurá"></label>
         <label class="campo">Data do exame<input type="date" data-campo="dataExame"></label>
       </div>
+      <div class="campo" style="margin-top:14px">Local de atendimento<div class="locais" id="locais" role="group" aria-label="Local de atendimento"></div></div>
     </div>
 
-    <div class="bloco">
+    <div class="bloco" id="blocoInd">
       <h2 style="margin-bottom:6px">Indivíduo</h2>
-      <p class="dica" style="margin:0 0 14px">Não registre nome, Cartão SUS, CPF, filiação ou endereço. O indivíduo é identificado por um código gerado a partir do local do atendimento e do seu CRO.</p>
-      <div class="grade">
-        <label class="campo">Data de nascimento<input type="date" data-campo="crianca.nascimento"></label>
-        <label class="campo">Sexo<select data-campo="crianca.sexo"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
+      <p class="dica" style="margin:0 0 14px">Não registre nome, Cartão SUS, CPF, filiação ou endereço. O indivíduo é identificado pelo código de acompanhamento.</p>
+      <div id="identTopo"></div>
+      <div class="grade" id="indGrade">
+        <label class="campo">Data de nascimento<input type="date" data-campo="crianca.nascimento" id="inNasc"></label>
+        <label class="campo">Sexo<select data-campo="crianca.sexo" id="inSexo"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
         <div class="campo">Idade no exame<output id="idade" style="font-size:1rem;color:var(--ink);padding:10px 0">Informe a data de nascimento</output></div>
-        <div class="campo">Código do indivíduo<output id="codigo" style="font-size:1rem;color:var(--ink);padding:10px 0;font-weight:700"></output></div>
       </div>
       <div id="pessoaBox"></div>
     </div>
 
-    <div class="bloco">
+    <div class="bloco" id="blocoOdonto">
       <div class="bloco-topo">
         <h2>Odontograma</h2>
         <div class="seg" role="group" aria-label="Dentição" id="segDenticao">
@@ -378,6 +639,20 @@ tr.cancelado td{color:var(--muted)}
       <p class="dica" id="dicaFerr"></p>
       <div id="paleta" style="margin-top:10px"></div>
       <div class="odonto"><div class="odonto-in" id="odonto"></div></div>
+      <button class="varios" id="btVarios" type="button"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M17.5 14v7M14 17.5h7"/></svg>Aplicar a vários dentes</button>
+    </div>
+
+    <div class="bloco" id="blocoCond">
+      <h2 style="margin-bottom:4px">Vigilância em saúde bucal</h2>
+      <p class="dica" style="margin:0 0 10px">Marque o que foi identificado, com os mesmos termos dos prontuários eletrônicos. Se nada foi identificado, marque "Não identificado". Dor de dente e abscesso dentoalveolar levam à classe F.</p>
+      <div class="vig" id="vig"></div>
+      <div id="dicaVig"></div>
+    </div>
+
+    <div class="bloco">
+      <h2 style="margin-bottom:6px">Necessidade de prótese</h2>
+      <div class="linha-op"><span>Arcada superior</span><div class="seg" role="group" aria-label="Necessidade de prótese superior" data-protese="sup"><button data-v="">Não avaliado</button><button data-v="nao">Não</button><button data-v="sim">Sim</button></div></div>
+      <div class="linha-op"><span>Arcada inferior</span><div class="seg" role="group" aria-label="Necessidade de prótese inferior" data-protese="inf"><button data-v="">Não avaliado</button><button data-v="nao">Não</button><button data-v="sim">Sim</button></div></div>
     </div>
 
     <div class="bloco">
@@ -385,7 +660,6 @@ tr.cancelado td{color:var(--muted)}
       <div class="linha-opcoes">
         <div class="opcao"><span>Placa visível</span><div class="seg" role="group" aria-label="Placa visível" data-bool="placa"><button data-v="0">Não</button><button data-v="1">Sim</button></div></div>
         <div class="opcao"><span>Gengivite (sangramento gengival)</span><div class="seg" role="group" aria-label="Gengivite" data-bool="gengivite"><button data-v="0">Não</button><button data-v="1">Sim</button></div></div>
-        <div class="opcao"><span>Fluorose moderada ou severa</span><div class="seg" role="group" aria-label="Fluorose moderada ou severa" data-bool="fluorose"><button data-v="0">Não</button><button data-v="1">Sim</button></div></div>
       </div>
       <h4 style="margin:18px 0 4px;font-size:.95rem">Procedimentos coletivos e de boca toda realizados</h4>
       <div class="checks" id="gerais"></div>
@@ -397,17 +671,19 @@ tr.cancelado td{color:var(--muted)}
 
   <!-- LISTA -->
   <section id="aba-lista" hidden>
-    <div class="bloco">
-      <div class="bloco-topo"><h2>Meus exames</h2><button class="sec" id="nuvemAtualizar">Atualizar da nuvem</button></div>
-      <p class="dica" id="listaResumo"></p>
-      <div class="lista-topo" style="margin-top:12px">
-        <button class="prim" id="enviarTudo">Enviar pendentes</button>
+    <div class="ex-cab"><div><p class="titulo">Meus exames</p><p class="sub" id="listaResumo"></p></div></div>
+    <label class="busca"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="listaBusca" type="search" placeholder="Buscar por código ou aldeia" autocomplete="off" aria-label="Buscar por código ou aldeia"></label>
+    <div class="filtros-chip" id="listaFiltros" role="group" aria-label="Filtrar exames"></div>
+    <div class="envio" id="listaEnvio" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4 4 0 0 1 0 9"/><path d="M12 12v8m-3-5 3-3 3 3"/></svg>
+      <div><b id="envioTit"></b><span>Vão sozinhos quando houver internet.</span></div><button class="prim" id="enviarTudo">Enviar</button></div>
+    <div id="lista"></div>
+    <details class="mais"><summary>Mais opções</summary>
+      <div class="lista-topo">
+        <button class="sec" id="nuvemAtualizar">Atualizar da nuvem</button>
         <button class="sec" id="csvExames">Baixar exames (CSV)</button>
         <button class="sec" id="csvDentes">Baixar dentes (CSV)</button>
         <button class="sec" id="reenviarTodos">Reenviar todos</button>
-      </div>
-      <div id="lista"></div>
-    </div>
+      </div></details>
   </section>
 
   <!-- PAINEL -->
@@ -459,7 +735,23 @@ tr.cancelado td{color:var(--muted)}
   </section>
   <!-- ACESSO (sem conta neste aparelho) -->
   <section id="aba-acesso" hidden>
-    <div id="acessoConteudo"></div>
+    <div class="acesso-shell">
+      <aside class="acesso-hero">
+        <div class="acesso-marca">
+          <h1>ODONTOGRAMA</h1>
+          <span class="acesso-faixa" aria-hidden="true"></span>
+        </div>
+        <h2><span>Acompanhamento das ações do Dia B</span> <span>da Saúde Bucal na Saúde Indígena</span></h2>
+        <p class="acesso-intro">Aplicativo para o registro de exames odontológicos e acompanhamento das ações do Dia B, contribuindo para o monitoramento das ações de saúde bucal nos territórios indígenas.</p>
+        <ul class="acesso-beneficios">
+          <li class="acesso-beneficio"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 4.5h6v3H9z"/><path d="m9 12 1.5 1.5L13 11M9 17h6"/></svg></span><span>Registro dos<br>exames odontológicos</span></li>
+          <li class="acesso-beneficio"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V6M19 20V3"/></svg></span><span>Acompanhamento<br>das ações do Dia B</span></li>
+          <li class="acesso-beneficio"><span class="ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3"/><circle cx="5.5" cy="9" r="2.4"/><circle cx="18.5" cy="9" r="2.4"/><path d="M7 19v-2a5 5 0 0 1 10 0v2M1.5 19v-1.5a4 4 0 0 1 5-3.8M22.5 19v-1.5a4 4 0 0 0-5-3.8"/></svg></span><span>Geração de informações<br>para a saúde bucal<br>das populações indígenas</span></li>
+        </ul>
+        <div class="acesso-paisagem" role="img" aria-label="Ilustração de uma aldeia à beira de um rio, com mata e serras ao fundo"></div>
+      </aside>
+      <div class="acesso-form-wrap"><div id="acessoConteudo"></div></div>
+    </div>
   </section>
 
   <!-- EQUIPE (referência técnica e coordenação) -->
@@ -485,13 +777,15 @@ tr.cancelado td{color:var(--muted)}
 
 <footer class="resultado" id="resultado">
   <div class="res-in">
-    <div class="classe" id="resClasse" data-c="A">A</div>
-    <div class="res-txt"><strong id="resRisco">Baixo risco</strong><span id="resDesc"></span><button class="link" id="verMotivos" aria-expanded="false">Ver motivos</button></div>
-    <div class="indices"><div><b id="resCeod">0</b>ceo-d</div><div><b id="resCpod">0</b>CPO-D</div></div>
-    <div class="res-acoes"><button class="prim" id="salvar">Salvar exame</button></div>
+    <button class="res-toggle" id="verMotivos" type="button" aria-expanded="false" aria-controls="motivos" title="Ver os motivos da classe de risco">
+      <span class="classe" id="resClasse" data-c="A">A</span>
+      <span class="res-txt"><b id="resRisco">Baixo risco</b> <small>· ceo-d <span id="resCeod">0</span> · CPO-D <span id="resCpod">0</span></small><span class="seta" aria-hidden="true">⌃</span></span>
+    </button>
+    <button class="prim" id="salvar">Salvar</button>
   </div>
-  <ul class="motivos" id="motivos" hidden></ul>
+  <div class="motivos" id="motivos" hidden><p id="resDesc"></p><ul id="motivosLista"></ul></div>
 </footer>
+<div class="fundo" id="varios" hidden></div>
 
 <div class="fundo" id="fundo" hidden></div>
 <div class="fundo" id="leitura" hidden></div>
@@ -543,24 +837,25 @@ const CRONO = {
     inf: {1:[6,7], 2:[7,8], 3:[9,10],  4:[10,12], 5:[11,12], 6:[6,7], 7:[11,13], 8:[17,21]}
   }
 };
+// Nomes e siglas como nos odontogramas dos prontuários eletrônicos (a planilha mantém os nomes de antes).
 const FACES = [
-  {k:"",     nome:"Hígida"},
-  {k:"ca",   nome:"Cárie ativa (cavidade)",       estilo:"fill:var(--carie)"},
-  {k:"cc",   nome:"Cárie crônica (cavidade)",     estilo:"fill:var(--carie-cr)"},
-  {k:"mba",  nome:"Mancha branca ativa",          estilo:"fill:var(--mba)"},
-  {k:"mbi",  nome:"Mancha branca inativa",        estilo:"fill:var(--mbi)"},
-  {k:"rest", nome:"Restaurada",                   estilo:"fill:var(--rest)"},
-  {k:"restc",nome:"Restaurada com cárie",         estilo:"fill:url(#pRestC)"},
-  {k:"sel",  nome:"Selante",                      estilo:"fill:var(--sel)"}
+  {k:"",     nome:"Hígida (H)",                   curto:"Hígida"},
+  {k:"ca",   nome:"Cariado (C) · lesão ativa",    curto:"C ativa",  estilo:"fill:var(--carie)"},
+  {k:"cc",   nome:"Cariado (C) · lesão crônica",  curto:"C crônica", estilo:"fill:var(--carie-cr)"},
+  {k:"mba",  nome:"Mancha branca ativa (M)",      curto:"M",  estilo:"fill:var(--mba)"},
+  {k:"mbi",  nome:"Mancha branca inativa (Mi)",   curto:"Mi", estilo:"fill:var(--mbi)"},
+  {k:"rest", nome:"Restaurado (R)",               curto:"R",  estilo:"fill:var(--rest)"},
+  {k:"restc",nome:"Restaurado com cárie (Rc)",    curto:"Rc", estilo:"fill:url(#pRestC)"},
+  {k:"sel",  nome:"Hígido selado (Hs)",           curto:"Hs", estilo:"fill:var(--sel)"}
 ];
 const FACE_NOME = Object.fromEntries(FACES.map(f => [f.k, f.nome]));
 const STATUS = [
   {k:"presente",      nome:"Presente"},
-  {k:"nao_erupc",     nome:"Não erupcionado"},
-  {k:"ausente",       nome:"Ausente (esfoliado ou outro motivo)"},
-  {k:"ausente_carie", nome:"Extraído por cárie"},
-  {k:"extr_ind",      nome:"Extração indicada"},
-  {k:"raiz",          nome:"Raiz residual"}
+  {k:"nao_erupc",     nome:"Não erupcionado (NE)"},
+  {k:"ausente",       nome:"Ausente (A) · esfoliado ou outro motivo"},
+  {k:"ausente_carie", nome:"Extraído por cárie (E)"},
+  {k:"extr_ind",      nome:"Extração indicada (Ei)"},
+  {k:"raiz",          nome:"Resto radicular (RR)"}
 ];
 const STATUS_NOME = Object.assign(Object.fromEntries(STATUS.map(s => [s.k, s.nome])), {a_confirmar: "A confirmar na boca"});
 const PROCS = [
@@ -581,19 +876,21 @@ const CLASSES = {
   F:"Presença de dor e/ou abscesso."
 };
 const FERRAMENTAS = [
-  {grupo:"Selecionar", itens:[{k:"detalhe", nome:"Detalhar dente", am:'<span class="amostra">⋯</span>'}]},
-  {grupo:"Marcar face", itens:FACES.filter(f=>f.k).map(f => ({k:"f:"+f.k, nome:f.nome, am:`<span class="amostra" style="background:${f.k==="restc"?"repeating-linear-gradient(45deg,var(--rest) 0 4px,var(--carie) 4px 7px)":f.estilo.replace("fill:","")}"></span>`}))},
-  {grupo:"Marcar dente", itens:[
-    {k:"s:presente", nome:"Presente", am:'<span class="amostra"></span>'},
-    {k:"s:nao_erupc", nome:"Não erupcionado", am:'<span class="amostra" style="border-style:dashed;background:transparent"></span>'},
-    {k:"s:ausente", nome:"Ausente", am:'<span class="amostra" style="color:#6D8594">✕</span>'},
-    {k:"s:ausente_carie", nome:"Extraído por cárie", am:'<span class="amostra" style="color:var(--rest)">✕</span>'},
-    {k:"s:extr_ind", nome:"Extração indicada", am:'<span class="amostra" style="color:var(--carie)">✕</span>'},
-    {k:"s:raiz", nome:"Raiz residual", am:'<span class="amostra" style="color:var(--carie)">R</span>'},
+  {grupo:"Face", itens:[{k:"detalhe", nome:"Detalhar dente", am:'<span class="amostra">⋯</span>'},
+    ...FACES.filter(f=>f.k).map(f => ({k:"f:"+f.k, nome:f.nome, am:`<span class="amostra" style="background:${f.k==="restc"?"repeating-linear-gradient(45deg,var(--rest) 0 4px,var(--carie) 4px 7px)":f.estilo.replace("fill:","")}"></span>`}))]},
+  {grupo:"Dente", itens:[
+    {k:"s:presente", nome:"Hígido (H)", am:'<span class="amostra"></span>'},
+    {k:"s:nao_erupc", nome:"Não erupcionado (NE)", am:'<span class="amostra" style="border-style:dashed;background:transparent"></span>'},
+    {k:"s:ausente", nome:"Ausente (A)", am:'<span class="amostra" style="color:#6D8594">✕</span>'},
+    {k:"s:ausente_carie", nome:"Extraído por cárie (E)", am:'<span class="amostra" style="color:var(--rest)">✕</span>'},
+    {k:"s:extr_ind", nome:"Extração indicada (Ei)", am:'<span class="amostra" style="color:var(--carie)">✕</span>'},
+    {k:"s:raiz", nome:"Resto radicular (RR)", am:'<span class="amostra" style="color:var(--carie)">R</span>'},
     {k:"dor", nome:"Dor ou abscesso", am:'<span class="amostra" style="background:var(--dor);color:#fff;border-radius:50%">!</span>'},
     {k:"apagar", nome:"Limpar dente", am:'<span class="amostra">⌫</span>'}
   ]}
 ];
+const CLS_SIGLA = {H:"h", Hs:"hs", C:"c", R:"r", Rc:"rc", M:"m", Mi:"m", A:"a", E:"x", Ei:"x", RR:"x", NE:"ne", "?":"q"};
+const siglaHtml = d => { const t = siglaDente(d); return t ? `<span class="sg ${CLS_SIGLA[t] || ""}" aria-hidden="true">${t}</span>` : ""; };
 
 /* ---------- utilidades ---------- */
 const $ = s => document.querySelector(s);
@@ -701,7 +998,7 @@ function idadeEm(nasc, ref) {
 }
 
 /* ---------- configuração ---------- */
-const cfgPadrao = {nome:"", cro:"", municipio:"", uf:"", dsei:"", polo:"", url:"", chave:"", agrupamento:"dois"};
+const cfgPadrao = {nome:"", cro:"", municipio:"", uf:"", dsei:"", polo:"", local:"", url:"", chave:"", agrupamento:"dois"};
 const cfg = () => Object.assign({}, cfgPadrao, store.get(K_CFG, {}));
 function salvarCfg(parcial) { store.set(K_CFG, Object.assign(cfg(), parcial)); }
 function cadastroFaltando() {
@@ -723,7 +1020,7 @@ function codigoDe(ex, seq) {
   return `${(ex.uf || "").toUpperCase()}-${tres(ex.polo)}-${tres(ex.aldeia)}-${ex.croCod || croCod(cfg().cro) || "CRO"}-${n ? String(n).padStart(4, "0") : "????"}`;
 }
 function renderCodigo() {
-  const ex = estado.ex, el = $("#codigo");
+  const ex = estado.ex, el = $("#codigo"); if (!el) return;
   if (ex.vinculo) { el.textContent = `${ex.vinculo.codigoIndividuo} (${ex.vinculo.numero || ex.numeroExame || 2}º exame)`; return; }
   if (ex.codigoIndividuo && estado.editando) { el.textContent = ex.codigoIndividuo + (ex.numeroExame > 1 ? ` (${ex.numeroExame}º exame)` : ""); return; }
   if (!ex.uf || !(ex.polo || "").trim() || !(ex.aldeia || "").trim()) { el.textContent = "Preencha UF, polo base e aldeia"; return; }
@@ -735,15 +1032,23 @@ function novoExame() {
   const c = cfg();
   return {id: uid(), criadoEm: new Date().toISOString(), dataExame: hoje(), uf: c.uf || "", dsei: c.dsei || "", polo: c.polo || "", aldeia: "", seq: null, croCod: "",
     crianca: {nascimento:"", sexo:""},
+    localAtendimento: c.local || "", vigilancia: [], protese: {sup: "", inf: ""},
     denticao: "mista", placa:false, gengivite:false, fluorose:false, gerais:[], insumos:[], observacoes:"", dentes:{}, _tocado:false,
-    vinculo: null, _cand: null, _recusados: [], _anterior: null};
+    vinculo: null, codigoFixo: null, _cand: null, _recusados: [], _anterior: null, _id: {modo: ""}, _travado: false};
 }
 function garantirDentes(ex) { const idade = idadeDecimal(ex); for (const n of dentesDe(ex.denticao)) if (!ex.dentes[n]) ex.dentes[n] = denteNovo(n, ex.denticao, idade); }
 const estado = {ex: store.get(K_RASC, null) || novoExame(), editando: null, ferr: "detalhe", sel: null, aba: "exame", enviando: false};
 if (estado.ex._editando) estado.editando = estado.ex._editando;
+// Rascunho de uma versão anterior: ganha os campos novos (a fluorose passa para a vigilância).
+function completarCampos(ex) {
+  if (!Array.isArray(ex.vigilancia)) ex.vigilancia = ex.fluorose ? [VIG_FLUOROSE] : [];
+  ex.protese = Object.assign({sup: "", inf: ""}, ex.protese || {});
+  if (ex.localAtendimento == null) ex.localAtendimento = "";
+  return ex;
+}
 garantirDentes(estado.ex);
 let tRasc;
-function alterado() { estado.ex._tocado = true; clearTimeout(tRasc); tRasc = setTimeout(() => store.set(K_RASC, Object.assign(estado.ex, {_editando: estado.editando})), 300); }
+function alterado() { estado.ex._tocado = true; clearTimeout(tRasc); tRasc = setTimeout(() => store.set(K_RASC, Object.assign(estado.ex, {_editando: estado.editando})), 300); renderEtapas(); }
 
 /* ---------- avaliação: classe de risco e índices ---------- */
 function avaliar(ex) {
@@ -771,7 +1076,9 @@ function avaliar(ex) {
   ceod.total = ceod.c + ceod.e + ceod.o; cpod.total = cpod.c + cpod.p + cpod.o;
   const lista = a => a.join(", ");
   const motivos = [];
+  const vigF = (ex.vigilancia || []).filter(v => v === "Dor de dente" || v === "Abscesso dentoalveolar");
   if (F.length) motivos.push(`Dor ou abscesso: ${lista(F)}`);
+  if (vigF.length) motivos.push(`${listaE(vigF)} (vigilância em saúde bucal)`);
   if (E.length) motivos.push(`Cavidade ativa: ${lista(E)}`);
   if (Dm.length) motivos.push(`Mancha branca ativa: ${lista(Dm)}`);
   if (ex.placa) motivos.push("Placa visível");
@@ -779,7 +1086,7 @@ function avaliar(ex) {
   if (C.length) motivos.push(`Cavidade crônica, raiz residual ou extração indicada: ${lista(C)}`);
   if (B.length) motivos.push(`Restauração, mancha inativa ou extração por cárie: ${lista(B)}`);
   let classe = "A";
-  if (F.length) classe = "F";
+  if (F.length || vigF.length) classe = "F";
   else if (E.length) classe = "E";
   else if (Dm.length || ex.placa || ex.gengivite) classe = "D";
   else if (C.length) classe = "C";
@@ -814,7 +1121,7 @@ function svgDente(n, d, extra) {
 
 /* ---------- renderização: exame ---------- */
 function renderPaleta() {
-  $("#paleta").innerHTML = FERRAMENTAS.map(g => `<div class="paleta-grupo"><span class="paleta-rot">${g.grupo}</span>${
+  $("#paleta").innerHTML = FERRAMENTAS.map(g => `<div class="legenda-grupo"><span class="paleta-rot">${g.grupo}</span>${
     g.itens.map(i => `<button class="ferr" data-ferr="${i.k}" aria-pressed="${estado.ferr === i.k}">${i.am}${esc(i.nome)}</button>`).join("")}</div>`).join("");
   const f = estado.ferr;
   $("#dicaFerr").textContent = f === "detalhe"
@@ -826,7 +1133,7 @@ function celula(n) {
   const d = estado.ex.dentes[n], sup = ehSup(n);
   const num = `<button class="num" aria-label="Detalhar dente ${n}">${n}</button>`;
   const tr = d && d.status === "a_confirmar", al = (estado.alertas || {})[n];
-  return `<div class="dente ${ehDecid(n) ? "dec" : "perm"} ${estado.sel === n ? "ativo" : ""} ${tr ? "confirmar" : ""} ${al ? "alerta-" + al : ""}" data-n="${n}" title="${n}: ${esc(nomeDente(n))}${tr ? " (conferir na boca)" : ""}">${sup ? num : ""}${svgDente(n, d)}${sup ? "" : num}</div>`;
+  return `<div class="dente ${ehDecid(n) ? "dec" : "perm"} ${estado.sel === n ? "ativo" : ""} ${tr ? "confirmar" : ""} ${al ? "alerta-" + al : ""}" data-n="${n}" title="${n}: ${esc(nomeDente(n))} · ${esc(siglaDente(d))}${tr ? " (conferir na boca)" : ""}">${sup ? num : siglaHtml(d)}${svgDente(n, d)}${sup ? siglaHtml(d) : num}</div>`;
 }
 function renderOdonto() {
   const ex = estado.ex; garantirDentes(ex);
@@ -847,15 +1154,16 @@ function renderOdonto() {
 function renderResultado() {
   const r = avaliar(estado.ex);
   const el = $("#resClasse"); el.textContent = r.classe; el.dataset.c = r.classe;
-  $("#resRisco").textContent = `Classe ${r.classe}: ${r.risco.toLowerCase()}`;
-  $("#resDesc").textContent = r.descricao;
+  $("#resRisco").textContent = r.risco;
+  $("#resDesc").innerHTML = `<b>Classe ${r.classe}:</b> ${esc(r.descricao)}`;
   const temDec = estado.ex.denticao !== "permanente", temPerm = estado.ex.denticao !== "decidua";
   $("#resCeod").textContent = temDec ? r.ceod.total : "–";
   $("#resCpod").textContent = temPerm ? r.cpod.total : "–";
-  $("#motivos").innerHTML = r.motivos.map(m => `<li>${esc(m)}</li>`).join("") +
+  $("#verMotivos").setAttribute("aria-label", `Classe ${r.classe}, ${r.risco.toLowerCase()}. Ver motivos`);
+  $("#motivosLista").innerHTML = r.motivos.map(m => `<li>${esc(m)}</li>`).join("") +
     (temDec ? `<li>ceo-d ${r.ceod.total} (c ${r.ceod.c}, e ${r.ceod.e}, o ${r.ceod.o})</li>` : "") +
     (temPerm ? `<li>CPO-D ${r.cpod.total} (C ${r.cpod.c}, P ${r.cpod.p}, O ${r.cpod.o})</li>` : "");
-  $("#salvar").textContent = estado.editando ? "Salvar alterações" : "Salvar exame";
+  $("#salvar").textContent = estado.editando ? "Salvar alterações" : "Salvar";
   renderConf();
 }
 function renderFormulario() {
@@ -864,18 +1172,44 @@ function renderFormulario() {
   $$("[data-campo]").forEach(i => { const v = i.dataset.campo.split(".").reduce((o, k) => o && o[k], ex); i.value = v == null ? "" : v; });
   renderCodigo();
   $$("[data-bool]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", (b.dataset.v === "1") === !!ex[g.dataset.bool])));
+  $("#locais").innerHTML = LOCAIS_ATENDIMENTO.map(l => `<button class="chip" type="button" data-local="${esc(l)}" aria-pressed="${ex.localAtendimento === l}">${esc(l)}</button>`).join("");
+  $$("[data-protese]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === ((ex.protese || {})[g.dataset.protese] || ""))));
+  renderVig();
   $("#insumos").innerHTML = INSUMOS.map((g, i) => `<label class="check"><input type="checkbox" data-insumo="${i}" ${(ex.insumos || []).includes(g) ? "checked" : ""}>${esc(g)}</label>`).join("");
   $("#gerais").innerHTML = GERAIS.map((g, i) => `<label class="check"><input type="checkbox" data-geral="${i}" ${ex.gerais.includes(g) ? "checked" : ""}>${esc(g)}</label>`).join("");
   renderIdade();
   $("#avisoEdicao").hidden = !estado.editando;
   const c = cfg(); $("#avisoConfig").hidden = !cadastroFaltando().length;
-  $("#profLinha").innerHTML = c.nome ? `Profissional: <b>${esc(c.nome)}</b>, CRO ${esc(c.cro || "não informado")} <button class="link" data-ir="config">Minha conta</button>` : "";
+  $("#profLinha").innerHTML = c.nome ? `<span class="dica">${esc(c.nome)} · CRO ${esc(c.cro || "não informado")}</span>` : "";
 }
 function renderIdade() {
   const id = idadeEm(estado.ex.crianca.nascimento, estado.ex.dataExame);
   $("#idade").textContent = id ? `${id.anos} ${id.anos === 1 ? "ano" : "anos"} e ${id.meses} ${id.meses === 1 ? "mês" : "meses"}` : "Informe a data de nascimento";
 }
-function renderExame() { renderFormulario(); renderPaleta(); renderOdonto(); renderResultado(); renderPessoa(); }
+function renderVig() {
+  const ex = estado.ex, v = ex.vigilancia || [];
+  $("#vig").innerHTML = VIGILANCIA.map((t, i) => `<label class="${v.includes(t) ? "on" : ""}"><input type="checkbox" data-vig="${i}" ${v.includes(t) ? "checked" : ""}>${esc(t)}</label>`).join("");
+  const comDor = dentesDe(ex.denticao).filter(n => ex.dentes[n] && ex.dentes[n].dor);
+  const temVig = v.includes("Dor de dente") || v.includes("Abscesso dentoalveolar");
+  $("#dicaVig").innerHTML = comDor.length && !temVig ? `<p class="dica-vig">${comDor.length === 1 ? "O dente" : "Os dentes"} ${listaE(comDor.map(String))} ${comDor.length === 1 ? "está marcado" : "estão marcados"} com dor ou abscesso. Se for o caso, marque também “Dor de dente” ou “Abscesso dentoalveolar” aqui.</p>` : "";
+}
+// Etapas do exame: o dentista vê onde está e o que falta. Tocar numa etapa leva até ela.
+function etapasDe(ex) {
+  const local = !!(ex.uf && ex.dsei && (ex.polo || "").trim() && (ex.aldeia || "").trim() && ex.dataExame && ex.localAtendimento);
+  const ind = !!((ex.vinculo || ex.codigoFixo || estado.editando) && ex.crianca.nascimento);
+  const al = ex.vinculo && ex._anterior ? conferirVinculo(ex._anterior, {dataExame: ex.dataExame, dentes: ex.dentes}) : [];
+  const odonto = !!ex.crianca.nascimento && !pendentes(ex).length && !al.some(a => a.nivel === "impossivel" || !((ex.vinculo || {}).chaves || []).includes(a.chave));
+  const cond = (ex.vigilancia || []).length > 0;
+  return [["local", "Local", local, "#blocoLocal"], ["ind", "Indivíduo", ind, "#blocoInd"], ["odonto", "Odonto­grama", odonto, "#blocoOdonto"], ["cond", "Condições", cond, "#blocoCond"]];
+}
+function renderEtapas() {
+  const el = $("#etapas"); if (!el) return;
+  const ex = estado.ex, et = etapasDe(ex), atual = et.findIndex(e => !e[2]);
+  el.innerHTML = et.map(([k, t, feita, alvo], i) => `<button class="etapa ${feita ? "feita" : ""} ${i === atual ? "atual" : ""}" type="button" data-etapa="${alvo}" aria-label="${t.replace("­", "")}: ${feita ? "feito" : "falta"}"><i>${feita ? "✓" : i + 1}</i>${t}</button>`).join("");
+  $("#exTitulo").textContent = estado.editando ? "Editando exame" : "Novo exame";
+  $("#exSub").innerHTML = [ex.localAtendimento, ex.aldeia && ex.aldeia.trim(), fmtData(ex.dataExame)].filter(Boolean).map(esc).join(" · ") || "Comece pelo local do atendimento";
+}
+function renderExame() { renderFormulario(); renderPaleta(); renderOdonto(); renderResultado(); renderPessoa(); renderEtapas(); }
 
 /* ---------- painel do dente ---------- */
 function abrirPainel(n) { estado.sel = n; renderPainel(); $("#fundo").hidden = false; renderOdonto(); document.body.style.overflow = "hidden"; setTimeout(() => $(".painel .fechar")?.focus(), 30); }
@@ -885,7 +1219,7 @@ function renderPainel(focoSel) {
   const semFaces = ["nao_erupc","ausente","ausente_carie","raiz","a_confirmar"].includes(d.status);
   const rolagem = $(".painel")?.scrollTop || 0;
   $("#fundo").innerHTML = `<div class="painel" role="dialog" aria-modal="true" aria-labelledby="pTit">
-    <div class="p-topo">${svgDente(n, d)}<div><h3 id="pTit">Dente ${n}</h3><p>${esc(nomeDente(n))}</p></div><button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
+    <div class="p-topo">${svgDente(n, d)}<div><h3 id="pTit">Dente ${n} ${siglaHtml(d)}</h3><p>${esc(nomeDente(n))}</p></div><button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
     ${d.status === "a_confirmar" ? (() => { const ops = opsConfirmar(n, estado.ex);
       const ant = d.ops && estado.ex._anterior && (estado.ex._anterior.dentes || {})[n];
       const porque = ant ? `No exame de ${fmtData(estado.ex._anterior.dataExame)}, este dente estava <b>${esc((STATUS_NOME[ant.status] || ant.status).toLowerCase())}</b>, diferente do que a idade sugere.` : ops.includes("ausente") ? "Pela idade, este decíduo pode já ter caído." : "Pela idade, este dente pode ainda não ter nascido.";
@@ -905,7 +1239,7 @@ function renderPainel(focoSel) {
   const p = $(".painel"); p.scrollTop = rolagem;
   if (focoSel) p.querySelector(focoSel)?.focus();
 }
-function mudouDente() { alterado(); renderOdonto(); renderResultado(); }
+function mudouDente() { alterado(); renderOdonto(); renderResultado(); renderVig(); }
 
 /* ---------- aplicar ferramenta ---------- */
 function aplicarFerr(n, face) {
@@ -929,6 +1263,53 @@ function aplicarFerr(n, face) {
   mudouDente();
 }
 
+/* ---------- aplicar procedimento a vários dentes ---------- */
+const estV = {proc: "verniz", val: "realizado", dentes: []};
+const podeProc = d => !!d && ["presente", "extr_ind", "raiz"].includes(d.status);
+function abrirVarios() {
+  const ex = estado.ex; garantirDentes(ex);
+  estV.dentes = estV.dentes.filter(n => dentesDe(ex.denticao).includes(n) && podeProc(ex.dentes[n]));
+  renderVarios(); $("#varios").hidden = false; document.body.style.overflow = "hidden";
+  setTimeout(() => $("#varios .fechar")?.focus(), 30);
+}
+function fecharVarios() { $("#varios").hidden = true; $("#varios").innerHTML = ""; document.body.style.overflow = ""; $("#btVarios").focus(); }
+function renderVarios() {
+  const ex = estado.ex, ls = linhas(ex.denticao), sel = new Set(estV.dentes), rol = $("#varios .painel")?.scrollTop || 0;
+  const NOME_L = {perm: {sup: "Permanentes superiores", inf: "Permanentes inferiores"}, dec: {sup: "Decíduos superiores", inf: "Decíduos inferiores"}};
+  const n = estV.dentes.length, nomeP = PROC_NOME[estV.proc].toLowerCase();
+  $("#varios").innerHTML = `<div class="painel" role="dialog" aria-modal="true" aria-labelledby="vTit">
+    <div class="p-topo"><div><h3 id="vTit">Aplicar a vários dentes</h3><p>Escolha o procedimento e os dentes. O resto do registro de cada dente não muda.</p></div><button class="fechar" data-v-acao="fechar" aria-label="Fechar">×</button></div>
+    <div class="grade"><label class="campo">Procedimento<select id="vProc">${PROCS.map(([k, t]) => `<option value="${k}" ${k === estV.proc ? "selected" : ""}>${esc(t)}</option>`).join("")}</select></label>
+      <div class="campo">Marcar como<div class="seg" role="group" aria-label="Marcar como">${[["indicado", "Indicado"], ["realizado", "Realizado"], ["", "Tirar"]].map(([v, t]) => `<button data-v-val="${v}" aria-pressed="${estV.val === v}">${t}</button>`).join("")}</div></div></div>
+    <h4>Dentes</h4>
+    <div class="vs-grupos">${[["todos", "Todos os presentes"], ["perm", "Permanentes"], ["dec", "Decíduos"], ["sup", "Superiores"], ["inf", "Inferiores"], ["nenhum", "Limpar seleção"]].filter(([k]) => !((k === "perm" && ex.denticao === "decidua") || (k === "dec" && ex.denticao === "permanente"))).map(([k, t]) => `<button class="chip" data-v-grupo="${k}">${t}</button>`).join("")}</div>
+    ${ls.map(l => `<div class="vs-linha"><span>${NOME_L[l.tipo][l.arco]}</span><div class="vs-dentes">${[...l.l, ...l.r].map(k => { const ok = podeProc(ex.dentes[k]);
+      return `<button data-v-dente="${k}" aria-pressed="${sel.has(k)}" ${ok ? "" : `disabled title="${esc(STATUS_NOME[ex.dentes[k].status])}"`}>${k}</button>`; }).join("")}</div></div>`).join("")}
+    <p class="dica" style="margin-top:10px">Dentes riscados não recebem procedimento: não erupcionados, ausentes ou ainda a conferir na boca.</p>
+    <div class="p-acoes"><button class="sec" data-v-acao="fechar">Voltar</button><button class="prim" data-v-acao="aplicar" ${n ? "" : "disabled"}>${estV.val ? `${esc(PROC_NOME[estV.proc])} ${estV.val}` : `Tirar ${esc(nomeP)}`} em ${n} ${n === 1 ? "dente" : "dentes"}</button></div></div>`;
+  $("#varios .painel").scrollTop = rol;
+}
+$("#btVarios").addEventListener("click", abrirVarios);
+$("#varios").addEventListener("change", e => { if (e.target.id === "vProc") { estV.proc = e.target.value; renderVarios(); } });
+$("#varios").addEventListener("click", e => {
+  if (e.target.id === "varios") return fecharVarios();
+  const t = e.target, ac = t.closest("[data-v-acao]")?.dataset.vAcao, ex = estado.ex;
+  if (ac === "fechar") return fecharVarios();
+  if (ac === "aplicar") {
+    const l = estV.dentes.filter(n => podeProc(ex.dentes[n])).sort((a, b) => a - b);
+    l.forEach(n => { const p = ex.dentes[n].procs = ex.dentes[n].procs || {}; if (estV.val) p[estV.proc] = estV.val; else delete p[estV.proc]; });
+    fecharVarios(); mudouDente();
+    return toast(`${PROC_NOME[estV.proc]} ${estV.val ? `(${estV.val})` : "retirado"} em ${l.length} ${l.length === 1 ? "dente" : "dentes"}.`);
+  }
+  const vv = t.closest("[data-v-val]"); if (vv) { estV.val = vv.dataset.vVal; return renderVarios(); }
+  const g = t.closest("[data-v-grupo]");
+  if (g) { const k = g.dataset.vGrupo, f = {todos: () => true, perm: n => !ehDecid(n), dec: ehDecid, sup: ehSup, inf: n => !ehSup(n), nenhum: () => false}[k];
+    estV.dentes = dentesDe(ex.denticao).filter(n => podeProc(ex.dentes[n]) && f(n)); return renderVarios(); }
+  const d = t.closest("[data-v-dente]");
+  if (d && !d.disabled) { const n = +d.dataset.vDente; estV.dentes = estV.dentes.includes(n) ? estV.dentes.filter(x => x !== n) : [...estV.dentes, n]; renderVarios(); $(`[data-v-dente="${n}"]`)?.focus(); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#varios").hidden) fecharVarios(); });
+
 /* ---------- salvar / lista ---------- */
 const exames = () => store.get(K_EXAMES, []);
 // Cada exame guardado no aparelho tem dono: só quem fez vê, edita e envia. Exames antigos, sem dono, valem pelo CRO.
@@ -946,11 +1327,12 @@ function montarRegistro(ex) {
   const c = cfg(), r = avaliar(ex), idade = idadeEm(ex.crianca.nascimento, ex.dataExame);
   const dentes = {}; for (const n of dentesDe(ex.denticao)) dentes[n] = clone(ex.dentes[n]);
   return {id: ex.id, versao: 1, dono: ((sessao() || {}).usuario || {}).id || "", criadoEm: ex.criadoEm, atualizadoEm: new Date().toISOString(), dataExame: ex.dataExame,
-    profissional: {nome: c.nome, cro: c.cro}, municipio: c.municipio, uf: ex.uf, dsei: ex.dsei, polo: ex.polo.trim(), aldeia: ex.aldeia.trim(), seq: ex.seq, croCod: ex.croCod, codigo: codigoDe(ex),
+    profissional: {nome: c.nome, cro: c.cro}, municipio: c.municipio, uf: ex.uf, dsei: ex.dsei, polo: ex.polo.trim(), aldeia: ex.aldeia.trim(), seq: ex.seq, croCod: ex.croCod, codigo: ex.codigoFixo || codigoDe(ex),
     crianca: {nascimento: ex.crianca.nascimento || "", sexo: ex.crianca.sexo || ""}, idadeAnos: idade ? idade.decimal : "", denticao: ex.denticao,
-    placa: ex.placa, gengivite: ex.gengivite, fluorose: !!ex.fluorose, gerais: ex.gerais.slice(), insumos: (ex.insumos || []).slice(), observacoes: ex.observacoes, dentes,
+    localAtendimento: ex.localAtendimento || "", vigilancia: (ex.vigilancia || []).slice(), protese: {sup: (ex.protese || {}).sup || "", inf: (ex.protese || {}).inf || ""},
+    placa: ex.placa, gengivite: ex.gengivite, fluorose: (ex.vigilancia || []).includes(VIG_FLUOROSE), gerais: ex.gerais.slice(), insumos: (ex.insumos || []).slice(), observacoes: ex.observacoes, dentes,
     resultado: {classe: r.classe, risco: r.risco, descricao: r.descricao, motivos: r.motivos, ceod: r.ceod, cpod: r.cpod, agrupamento: c.agrupamento},
-    codigoIndividuo: ex.vinculo ? ex.vinculo.codigoIndividuo : (ex.codigoIndividuo || codigoDe(ex)), numeroExame: ex.vinculo ? (ex.vinculo.numero || ex.numeroExame || 2) : (ex.numeroExame || 1),
+    codigoIndividuo: ex.vinculo ? ex.vinculo.codigoIndividuo : (ex.codigoIndividuo || ex.codigoFixo || codigoDe(ex)), numeroExame: ex.vinculo ? (ex.vinculo.numero || ex.numeroExame || 2) : (ex.numeroExame || 1),
     vinculo: ex.vinculo ? {codigoIndividuo: ex.vinculo.codigoIndividuo, chaves: (ex.vinculo.chaves || []).slice(), numero: ex.vinculo.numero || ex.numeroExame} : null,
     situacao: "valido", envio: {estado: "pendente", tentativas: 0}};
 }
@@ -959,6 +1341,10 @@ function salvarExame() {
   if (cadastroFaltando().length) { toast("Entre com o seu acesso de profissional para salvar exames."); return irAba("acesso"); }
   if (!ex.uf || !ex.dsei) { toast("Escolha a UF e o DSEI do atendimento."); return $(ex.uf ? '[data-campo="dsei"]' : '[data-campo="uf"]').focus(); }
   if (!(ex.polo || "").trim() || !(ex.aldeia || "").trim()) { toast("Informe o polo base e a aldeia ou comunidade."); return $((ex.polo || "").trim() ? '[data-campo="aldeia"]' : '[data-campo="polo"]').focus(); }
+  if (!estado.editando && !ex.vinculo && !ex.codigoFixo) {
+    toast("Identifique o indivíduo antes de salvar: use o código de acompanhamento ou busque possíveis exames anteriores.");
+    return $("#blocoInd").scrollIntoView({block: "center", behavior: "smooth"});
+  }
   if (!ex.crianca.nascimento) { toast("Informe a data de nascimento."); return $('[data-campo="crianca.nascimento"]').focus(); }
   const pend = pendentes(ex);
   if (pend.length) { toast(`Confira na boca ${pend.length === 1 ? "o dente" : "os dentes"} com ?: ${pend.join(", ")}.`); $("#odonto").scrollIntoView({block: "center"}); return; }
@@ -971,6 +1357,7 @@ function salvarExame() {
   if (ex.vinculo) ex.vinculo.chaves = al.filter(a => a.nivel === "confira").map(a => a.chave);
   if (!ex.seq) { const n = store.get(K_SEQ, 0) + 1; store.set(K_SEQ, n); ex.seq = n; }
   if (!ex.croCod) ex.croCod = croCod(c.cro);
+  if (ex.localAtendimento) salvarCfg({local: ex.localAtendimento});
   const reg = montarRegistro(ex);
   const lista = exames(), i = lista.findIndex(e => e.id === reg.id);
   if (i >= 0) { reg.criadoEm = lista[i].criadoEm; lista[i] = reg; } else lista.push(reg);
@@ -985,10 +1372,11 @@ function abrirExame(id) {
   if (estado.ex._tocado && !estado.editando && !confirm("Há um exame em andamento que ainda não foi salvo. Deseja descartá-lo para abrir este?")) return;
   estado.ex = {id: reg.id, criadoEm: reg.criadoEm, dataExame: reg.dataExame, uf: reg.uf || "", dsei: reg.dsei || "", polo: reg.polo || "", aldeia: reg.aldeia || "", seq: reg.seq || null, croCod: reg.croCod || "", crianca: {nascimento: reg.crianca.nascimento || "", sexo: reg.crianca.sexo || ""}, denticao: reg.denticao,
     placa: reg.placa, gengivite: reg.gengivite, fluorose: !!reg.fluorose, gerais: reg.gerais.slice(), insumos: (reg.insumos || []).slice(), observacoes: reg.observacoes || "", dentes: clone(reg.dentes), _tocado: true,
+    localAtendimento: reg.localAtendimento || "", vigilancia: Array.isArray(reg.vigilancia) ? reg.vigilancia.slice() : null, protese: Object.assign({sup: "", inf: ""}, reg.protese || {}),
     codigoIndividuo: reg.codigoIndividuo || reg.codigo, numeroExame: reg.numeroExame || 1,
     vinculo: reg.vinculo && reg.vinculo.codigoIndividuo ? {codigoIndividuo: reg.vinculo.codigoIndividuo, chaves: (reg.vinculo.chaves || []).slice(), numero: reg.numeroExame || reg.vinculo.numero} : null,
-    _cand: null, _recusados: [], _anterior: null};
-  garantirDentes(estado.ex); estado.editando = id; store.set(K_RASC, Object.assign(clone(estado.ex), {_editando: id}));
+    _cand: null, _recusados: [], _anterior: null, _id: {modo: ""}, _travado: !!(reg.vinculo && reg.vinculo.codigoIndividuo), codigoFixo: reg.codigo || null};
+  completarCampos(estado.ex); garantirDentes(estado.ex); estado.editando = id; store.set(K_RASC, Object.assign(clone(estado.ex), {_editando: id}));
   irAba("exame"); renderExame(); window.scrollTo({top: 0});
   if (estado.ex.vinculo) carregarAnterior();
 }
@@ -998,32 +1386,52 @@ function excluirExame(id) {
   if (!confirm(`Excluir o exame ${reg.codigo || "sem código"} deste aparelho?` + aviso)) return;
   gravarExames(exames().filter(e => e.id !== id)); renderLista();
 }
+const estL = {filtro: "todos", busca: ""};
+function rotDia(d) {
+  const h = hoje(); if (d === h) return "Hoje";
+  const o = new Date(h + "T12:00:00"); o.setDate(o.getDate() - 1);
+  return d === isoDia(o) ? "Ontem" : d ? fmtData(d) : "Sem data";
+}
 function renderLista() {
   const locais = meus(), idsLocais = new Set(locais.map(e => e.id)), deOutros = exames().filter(e => !ehMeu(e) && e.envio.estado !== "enviado").length;
   const daNuvem = (estado.nuvem || []).filter(e => !idsLocais.has(e.id)).map(e => Object.assign({}, e, {envio: {estado: "nuvem"}}));
-  const l = [...locais, ...daNuvem].sort((a, b) => (b.atualizadoEm || "").localeCompare(a.atualizadoEm || ""));
-  const pend = locais.filter(e => e.envio.estado !== "enviado").length;
-  $("#listaResumo").textContent = (!l.length ? "" : `${l.length} ${l.length === 1 ? "exame" : "exames"}, ${pend} aguardando envio.` + (estado.nuvem ? " A lista inclui os exames que você enviou de outros aparelhos." : navigator.onLine ? " Buscando os exames da nuvem…" : " Sem internet: mostrando só os exames deste aparelho."))
+  const todos = [...locais, ...daNuvem].sort((a, b) => String(b.dataExame || "").localeCompare(String(a.dataExame || "")) || String(b.atualizadoEm || "").localeCompare(String(a.atualizadoEm || "")));
+  const pend = locais.filter(e => e.envio.estado !== "enviado").length, nCanc = todos.filter(e => !exameValido(e)).length;
+  $("#listaResumo").textContent = (!todos.length ? "" : `${todos.length} ${todos.length === 1 ? "exame" : "exames"}` + (estado.nuvem ? ", de todos os seus aparelhos." : navigator.onLine ? ". Buscando os exames da nuvem…" : ". Sem internet: mostrando só os exames deste aparelho."))
     + (deOutros ? ` Há também ${deOutros} ${deOutros === 1 ? "exame de outro profissional guardado" : "exames de outros profissionais guardados"} neste aparelho, esperando que ${deOutros === 1 ? "ele entre" : "eles entrem"} para enviar.` : "");
+  $("#listaFiltros").innerHTML = [["todos", "Todos"], ["enviar", `A enviar${pend ? " · " + pend : ""}`], ["nuvem", "Na nuvem"], ["cancelados", `Cancelados${nCanc ? " · " + nCanc : ""}`]]
+    .map(([k, t]) => `<button class="chip" type="button" data-lfiltro="${k}" aria-pressed="${estL.filtro === k}">${t}</button>`).join("");
+  $("#listaEnvio").hidden = !pend;
+  $("#envioTit").textContent = `${pend} ${pend === 1 ? "exame aguardando" : "exames aguardando"} envio`;
   $("#enviarTudo").disabled = !pend || estado.enviando;
-  $("#enviarTudo").textContent = estado.enviando ? "Enviando…" : `Enviar pendentes${pend ? ` (${pend})` : ""}`;
-  $("#csvExames").disabled = $("#csvDentes").disabled = !l.length;
+  $("#enviarTudo").textContent = estado.enviando ? "Enviando…" : "Enviar";
+  $("#csvExames").disabled = $("#csvDentes").disabled = !todos.length;
   $("#reenviarTodos").disabled = !locais.length || estado.enviando;
-  estado.listaCompleta = l;
-  const rot = {enviado: "Na nuvem", nuvem: "Na nuvem", pendente: "Aguardando envio", erro: "Erro no envio"};
-  $("#lista").innerHTML = !l.length ? `<div class="vazio">Nenhum exame ainda. Os exames salvos aparecem aqui, ficam guardados mesmo sem internet e vão para a nuvem quando houver conexão.</div>` :
-    l.map(e => { const canc = !exameValido(e), naNuvem = e.envio.estado === "enviado" || e.envio.estado === "nuvem", n = e.numeroExame || 1;
-      return `<div class="exame ${canc ? "cancelado" : ""}">
-      <div class="classe mini" data-c="${e.resultado.classe}">${e.resultado.classe}</div>
-      <div class="info"><strong>${esc(codigoIndividuoDe(e) || "Exame sem código")}</strong>
-        <span>${n > 1 || e.vinculo ? `<b>${n}º exame da pessoa</b> · ` : ""}${fmtData(e.dataExame)}, ${e.idadeAnos !== "" && e.idadeAnos != null ? Math.floor(e.idadeAnos) + " anos, " : ""}${e.crianca.sexo === "F" ? "feminino, " : e.crianca.sexo === "M" ? "masculino, " : ""}${esc(e.aldeia || "sem aldeia")}, ${esc(e.resultado.risco.toLowerCase())}</span>
-        ${canc ? `<span class="dica" style="display:block">Cancelado em ${fmtData((e.cancelamento || {}).em)}: ${esc((e.cancelamento || {}).motivo || "")}${(e.cancelamento || {}).observacao ? " · " + esc(e.cancelamento.observacao) : ""}. Fora do painel e dos índices.</span>` : ""}
-        ${e.envio.estado === "erro" ? `<span class="perigo" style="display:block">${esc(e.envio.erro || "")}</span>` : ""}${e.envio.estado === "nuvem" ? `<span class="dica" style="display:block">Enviado de outro aparelho</span>` : ""}</div>
-      ${canc ? `<span class="estado erro">Cancelado</span>` : `<span class="estado ${e.envio.estado === "nuvem" ? "enviado" : e.envio.estado}">${rot[e.envio.estado]}</span>`}
-      ${canc ? `<button class="sec" data-ver-local="${e.id}">Ver</button>` : `<button class="sec" data-abrir="${e.id}" data-nuvem="${e.envio.estado === "nuvem" ? 1 : ""}">Abrir</button>`}
-      ${!canc && naNuvem ? `<button class="link perigo" data-cancelar="${e.id}">Cancelar exame</button>` : ""}
-      ${e.envio.estado !== "nuvem" ? `<button class="link perigo" data-excluir="${e.id}">${e.envio.estado === "enviado" ? "Tirar do aparelho" : "Excluir"}</button>` : ""}</div>`; }).join("");
+  estado.listaCompleta = todos;
+  const q = normTexto(estL.busca);
+  const naNuvem = e => e.envio.estado === "enviado" || e.envio.estado === "nuvem";
+  const l = todos.filter(e => (estL.filtro === "todos" || (estL.filtro === "enviar" ? !naNuvem(e) : estL.filtro === "nuvem" ? naNuvem(e) && exameValido(e) : !exameValido(e)))
+    && (!q || normTexto(codigoIndividuoDe(e)).includes(q) || normTexto(e.codigo).includes(q) || normTexto(e.aldeia).includes(q)));
+  const rot = {enviado: "Na nuvem", nuvem: "Na nuvem", pendente: "A enviar", erro: "Erro no envio"};
+  const item = e => { const canc = !exameValido(e), nn = naNuvem(e), n = e.numeroExame || 1, cl = (e.resultado || {}).classe || "?", c = e.cancelamento || {};
+    const idade = e.idadeAnos !== "" && e.idadeAnos != null ? Math.floor(e.idadeAnos) + " anos" : "", sx = {F: "feminino", M: "masculino"}[(e.crianca || {}).sexo] || "";
+    const sub = canc ? `Cancelado em ${fmtData(c.em)}: ${esc(c.motivo || "")}${c.observacao ? " · " + esc(c.observacao) : ""}. Fora do painel e dos índices.`
+      : [n > 1 || e.vinculo ? `${n}º exame da pessoa` : "1º exame", idade, sx, esc(e.aldeia || "sem aldeia")].filter(Boolean).join(" · ") + (e.envio.estado === "nuvem" ? " · enviado de outro aparelho" : "");
+    const cod = codigoIndividuoDe(e);
+    return `<details class="item ${canc ? "cancelado" : ""}"><summary><span class="classe" data-c="${esc(cl)}">${esc(cl)}</span><span style="min-width:0"><b class="cod">${esc(cod || "Exame sem código")}</b><span class="it-sub">${sub}</span>${e.envio.estado === "erro" ? `<span class="it-erro">${esc(e.envio.erro || "")}</span>` : ""}</span>
+      ${canc ? `<span class="estado erro">Cancelado</span>` : `<span class="estado ${nn ? "enviado" : e.envio.estado}">${rot[e.envio.estado]}</span>`}</summary>
+      <div class="it-acoes">${canc ? `<button class="sec mini" data-ver-local="${e.id}">Ver</button>` : `<button class="prim mini" data-abrir="${e.id}" data-nuvem="${e.envio.estado === "nuvem" ? 1 : ""}">Abrir</button>`}
+        ${cod ? `<button class="sec mini" data-id-acao="copiar" data-cod="${esc(cod)}">Copiar código</button>` : ""}
+        ${!canc && nn ? `<button class="link perigo" data-cancelar="${e.id}">Cancelar exame</button>` : ""}
+        ${e.envio.estado !== "nuvem" ? `<button class="link perigo" data-excluir="${e.id}">${e.envio.estado === "enviado" ? "Tirar do aparelho" : "Excluir"}</button>` : ""}</div></details>`; };
+  const grupos = [];
+  l.forEach(e => { const r = rotDia(e.dataExame); const g = grupos.at(-1); if (g && g[0] === r) g[1].push(e); else grupos.push([r, [e]]); });
+  $("#lista").innerHTML = !todos.length ? `<div class="bloco vazio">Nenhum exame ainda. Os exames salvos aparecem aqui, ficam guardados mesmo sem internet e vão para a nuvem quando houver conexão.</div>`
+    : !l.length ? `<div class="bloco vazio">Nenhum exame ${q ? "com essa busca" : "neste filtro"}.</div>`
+    : grupos.map(([r, es]) => `<p class="dia">${r}</p><div class="lista-g">${es.map(item).join("")}</div>`).join("");
 }
+$("#listaFiltros").addEventListener("click", e => { const b = e.target.closest("[data-lfiltro]"); if (b) { estL.filtro = b.dataset.lfiltro; renderLista(); } });
+$("#listaBusca").addEventListener("input", e => { estL.busca = e.target.value; renderLista(); });
 /* ---------- cancelar exame (só quem fez) ---------- */
 const MOTIVOS = [["Digitado errado", "Muitos campos errados; vou refazer o exame"], ["Exame em duplicidade", "Esta pessoa já tem este exame registrado"],
   ["Pessoa errada", "Os dados são de outra pessoa"], ["Outro", "Explique abaixo"]];
@@ -1079,31 +1487,79 @@ function alertasAtuais() {
   if (!ex.vinculo || !ex._anterior) return [];
   return conferirVinculo(ex._anterior, {dataExame: ex.dataExame, dentes: ex.dentes});
 }
-let tBusca;
-function agendarBusca() { clearTimeout(tBusca); tBusca = setTimeout(buscarPessoa, 600); }
-async function buscarPessoa() {
-  const ex = estado.ex, sx = ex.crianca.sexo;
-  if (estado.editando || ex.vinculo) return;
-  if (!ex.dsei || !(ex.aldeia || "").trim() || !ex.crianca.nascimento || (sx !== "F" && sx !== "M")) { ex._cand = null; return renderPessoa(); }
-  const chave = [ex.dsei, normTexto(ex.aldeia), ex.crianca.nascimento, sx].join("|");
-  let cands, offline = false;
-  if (navigator.onLine && sessao() && cfg().url) {
-    try { cands = (await api("buscarPessoa", {dsei: ex.dsei, aldeia: ex.aldeia, nascimento: ex.crianca.nascimento, sexo: sx, excetoId: ex.id})).candidatos; }
-    catch (err) { cands = null; }
+/* ---------- identificação do indivíduo (fluxo em passos) ---------- */
+const idTxtDe = (nasc, data) => { const i = idadeEm(nasc, data); return i ? `${i.anos} ${i.anos === 1 ? "ano" : "anos"}${i.meses ? ` e ${i.meses} ${i.meses === 1 ? "mês" : "meses"}` : ""}` : "–"; };
+const idEst = () => (estado.ex._id = estado.ex._id || {modo: ""});
+// Sem internet: procura nos exames deste aparelho.
+function candidatosLocais(filtro) {
+  const g = {};
+  meus().filter(e => exameValido(e) && e.id !== estado.ex.id && filtro(e)).forEach(e => (g[codigoIndividuoDe(e)] = g[codigoIndividuoDe(e)] || []).push(e));
+  return Object.entries(g).map(([k, l]) => { l.sort(ordemExame); return {codigoIndividuo: k, exames: l.length, ultimo: l.at(-1)}; });
+}
+async function buscarPorDados() {
+  const ex = estado.ex, sx = ex.crianca.sexo, st = idEst();
+  if (!ex.dsei || !(ex.aldeia || "").trim()) return toast("Preencha o DSEI e a aldeia ou comunidade, no Local do atendimento.");
+  if (!ex.crianca.nascimento || (sx !== "F" && sx !== "M")) return toast("Informe a data de nascimento e o sexo para buscar.");
+  st.buscando = true; renderPessoa();
+  let cands = null, offline = false;
+  if (navigator.onLine && sessao()) {
+    try { cands = (await api("buscarPessoa", {dsei: ex.dsei, aldeia: ex.aldeia, nascimento: ex.crianca.nascimento, sexo: sx, excetoId: ex.id})).candidatos; } catch (err) { cands = null; }
   }
-  if (!cands) {
-    // Sem internet: procura nos exames deste aparelho.
-    offline = true;
-    const g = {};
-    meus().filter(e => exameValido(e) && e.id !== ex.id && e.dsei === ex.dsei && normTexto(e.aldeia) === normTexto(ex.aldeia) && e.crianca.nascimento === ex.crianca.nascimento && e.crianca.sexo === sx)
-      .forEach(e => (g[codigoIndividuoDe(e)] = g[codigoIndividuoDe(e)] || []).push(e));
-    cands = Object.entries(g).map(([k, l]) => { l.sort(ordemExame); return {codigoIndividuo: k, exames: l.length, ultimo: l.at(-1)}; });
-  }
-  // A resposta só vale se os dados não mudaram enquanto buscava.
-  if (estado.ex !== ex || [ex.dsei, normTexto(ex.aldeia), ex.crianca.nascimento, ex.crianca.sexo].join("|") !== chave) return;
-  ex._cand = cands.filter(c => !(ex._recusados || []).includes(c.codigoIndividuo));
-  ex._candOffline = offline;
+  if (!cands) { offline = true; cands = candidatosLocais(e => e.dsei === ex.dsei && normTexto(e.aldeia) === normTexto(ex.aldeia) && e.crianca.nascimento === ex.crianca.nascimento && e.crianca.sexo === sx); }
+  if (estado.ex !== ex) return;
+  st.buscando = false; st.buscou = true; ex._cand = cands.filter(c => !(ex._recusados || []).includes(c.codigoIndividuo)); ex._candOffline = offline;
+  alterado(); renderPessoa();
+}
+async function buscarPorCodigo() {
+  const ex = estado.ex, st = idEst(), cod = String(($("#idCodigo") || {}).value || st.codigo || "").trim().toUpperCase();
+  st.codigo = cod; st.achado = null; st.naoAchado = false; st.outroDsei = "";
+  if (!cod) return toast("Digite o código de acompanhamento.");
+  if (!ex.dsei) return toast("Escolha o DSEI do atendimento, no Local do atendimento.");
+  st.buscando = true; renderPessoa();
+  let r = null, offline = false;
+  if (navigator.onLine && sessao()) { try { r = await api("buscarCodigo", {codigoBusca: cod, dsei: ex.dsei, excetoId: ex.id}); } catch (err) { r = null; } }
+  if (!r) { offline = true; const c = candidatosLocais(e => (codigoIndividuoDe(e) === cod || e.codigo === cod) && e.dsei === ex.dsei)[0]; r = {pessoa: c || null}; }
+  if (estado.ex !== ex) return;
+  st.buscando = false; st.offline = offline;
+  if (r.pessoa) st.achado = r.pessoa; else if (r.outroDsei) st.outroDsei = r.outroDsei; else st.naoAchado = true;
   renderPessoa();
+}
+function vincular(c, travar) {
+  const ex = estado.ex, u = c.ultimo || {};
+  ex.vinculo = {codigoIndividuo: c.codigoIndividuo, chaves: [], numero: c.exames ? c.exames + 1 : null}; ex._anterior = c.ultimo || null; ex._cand = null; ex.codigoFixo = null;
+  if (travar && u.crianca) { ex.crianca.nascimento = u.crianca.nascimento || ex.crianca.nascimento; ex.crianca.sexo = u.crianca.sexo || ex.crianca.sexo; ex._travado = true; }
+  if (!estado.editando) aplicarPrevisao(ex, true);
+  const nConf = aplicarAnterior(ex);
+  alterado(); renderExame();
+  toast(`Pessoa vinculada: ${c.codigoIndividuo}${c.exames ? `, ${c.exames + 1}º exame` : ""}.` + (nConf ? ` ${nConf} ${nConf === 1 ? "dente ficou" : "dentes ficaram"} com ? para conferir na boca, porque o exame anterior registrou diferente da idade.` : ""));
+}
+function reservarCodigo() {
+  const ex = estado.ex, c = cfg();
+  if (!ex.uf || !(ex.polo || "").trim() || !(ex.aldeia || "").trim()) { toast("Preencha UF, polo base e aldeia no Local do atendimento: eles fazem parte do código."); return null; }
+  if (!ex.seq) { const n = store.get(K_SEQ, 0) + 1; store.set(K_SEQ, n); ex.seq = n; }
+  if (!ex.croCod) ex.croCod = croCod(c.cro);
+  ex.codigoFixo = codigoDe(ex); ex.vinculo = null; ex._anterior = null; ex._travado = false;
+  alterado(); return ex.codigoFixo;
+}
+function trocarIdentificacao() {
+  const ex = estado.ex;
+  if (ex.vinculo) ex._recusados = [...(ex._recusados || []), ex.vinculo.codigoIndividuo];
+  ex.vinculo = null; ex._anterior = null; ex.codigoFixo = null; ex._travado = false; ex.codigoIndividuo = null; ex.numeroExame = 1; ex._cand = null; ex._id = {modo: ""}; estado.alertas = {};
+  // Editando um exame já salvo: ele vira o 1º exame de uma pessoa nova, com o próprio código.
+  if (estado.editando) ex.codigoFixo = codigoDe(ex);
+  alterado(); renderExame();
+}
+async function copiarTexto(t) {
+  try { await navigator.clipboard.writeText(t); toast("Código copiado. Se quiser, cole no campo de observações do paciente no prontuário eletrônico."); }
+  catch (e) { toast(`Anote o código: ${t}`); }
+}
+function abrirModal(html) { const m = $("#leitura"); m.innerHTML = html; m.hidden = false; document.body.style.overflow = "hidden"; }
+async function verHistorico(c) {
+  if (navigator.onLine && sessao()) {
+    try { const p = await api("pessoa", {codigoIndividuo: c.codigoIndividuo}); return abrirModal(`<div class="painel" role="dialog" aria-modal="true" style="max-width:900px"><div class="p-topo"><div><h3>Histórico da pessoa</h3><p>Somente leitura</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>${htmlPessoa(p)}</div>`); }
+    catch (err) { if (!c.ultimo) return toast(err.message); }
+  }
+  if (c.ultimo) abrirModal(htmlLeitura(c.ultimo)); else toast("O histórico precisa de internet.");
 }
 async function carregarAnterior() {
   const ex = estado.ex; if (!ex.vinculo || ex._anterior || !navigator.onLine || !sessao()) return renderPessoa();
@@ -1114,28 +1570,117 @@ async function carregarAnterior() {
     if (estado.ex === ex) { ex._anterior = antes.length ? antes.at(-1) : outros[0] || null; renderExame(); }
   } catch (err) { renderPessoa(); }
 }
-function fichaPessoa(c) {
-  const u = c.ultimo, res = u.resultado || {};
-  return `<div class="ficha"><div><span>Código do indivíduo</span><b class="cod">${esc(c.codigoIndividuo)}</b></div><div><span>Exames anteriores</span><b>${c.exames} ${c.exames === 1 ? "exame" : "exames"}</b></div>
-    <div><span>Último exame</span><b>${fmtData(u.dataExame)} · classe ${esc(res.classe || "?")}</b></div><div><span>Feito por</span><b>${esc(nomeProf(u) || "–")}</b></div></div>`;
+function cartaoPessoa(c, botoes) {
+  const u = c.ultimo || {};
+  return `<div class="cartao-pessoa"><div class="cp-cod"><span>Código de acompanhamento</span><b class="cod">${esc(c.codigoIndividuo)}</b></div>
+    <ul class="cp-dados"><li>${c.exames ? `${c.exames} ${c.exames === 1 ? "exame anterior" : "exames anteriores"}` : "exames anteriores a confirmar no envio"}</li>${u.dataExame ? `<li>Último em ${fmtData(u.dataExame)}${nomeProf(u) ? ` · ${esc(nomeProf(u))}` : ""}</li>` : ""}${u.crianca ? `<li>${{F: "Feminino", M: "Masculino"}[u.crianca.sexo] || "Sexo não informado"} · nascimento ${fmtData(u.crianca.nascimento)}</li>` : ""}</ul>
+    <div class="cp-bts">${botoes}</div></div>`;
+}
+const IC_PESSOA = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>';
+const IC_COPIA = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>';
+// Cartão compacto da pessoa identificada, com o botão de copiar o código de acompanhamento.
+function cartaoCompacto(cod, linha, nova) {
+  return `<div class="pessoa-card ${nova ? "nova" : ""}"><div class="av">${IC_PESSOA}</div><div class="pc-txt"><b class="cod">${esc(cod)}</b><span>${linha}</span></div>
+    <button class="copia-cod" type="button" data-id-acao="copiar" data-cod="${esc(cod)}" aria-label="Copiar o código de acompanhamento">${IC_COPIA}Copiar</button></div>`;
 }
 function renderPessoa() {
-  const ex = estado.ex, box = $("#pessoaBox"); if (!box) return;
-  renderCodigo();
-  if (ex.vinculo) {
-    const a = ex._anterior;
-    box.innerHTML = `<div class="vinculo-box"><div><span>Mesma pessoa de</span><b class="cod">${esc(ex.vinculo.codigoIndividuo)}</b></div><div><span>Este exame</span><b>${ex.vinculo.numero || ex.numeroExame || 2}º exame</b></div>
-      <div><span>Exame anterior</span><b>${a ? `${fmtData(a.dataExame)} · classe ${esc((a.resultado || {}).classe || "?")} · ${esc(nomeProf(a))}` : navigator.onLine ? "carregando…" : "sem internet: a conferência dos dentes é feita no envio"}</b></div>
-      <div class="bts">${a ? `<button class="sec mini" data-pessoa="ver">Ver exame anterior</button>` : ""}<button class="link perigo" data-pessoa="desfazer">Não é esta pessoa</button></div></div>`;
+  const ex = estado.ex, topo = $("#identTopo"), box = $("#pessoaBox"), grade = $("#indGrade"); if (!box) return;
+  const st = idEst(), trav = !!(ex.vinculo && ex._travado);
+  $("#inNasc").disabled = $("#inSexo").disabled = trav;
+  const travaNota = trav ? `<p class="dica trava">Data de nascimento e sexo vêm dos exames anteriores desta pessoa e não podem ser mudados aqui.</p>` : "";
+  // Exame já salvo, sendo editado
+  if (estado.editando) {
+    grade.hidden = false; topo.innerHTML = "";
+    const cod = ex.vinculo ? ex.vinculo.codigoIndividuo : (ex.codigoIndividuo || ex.codigoFixo || "");
+    box.innerHTML = travaNota + cartaoCompacto(cod, `${ex.numeroExame || (ex.vinculo && ex.vinculo.numero) || 1}º exame desta pessoa`) +
+      (ex.vinculo ? `<div class="pc-acoes">${ex._anterior ? `<button class="sec mini" data-id-acao="historico-vinc">Ver histórico</button>` : ""}<button class="link perigo" data-id-acao="trocar">Não é esta pessoa</button></div>` : "");
     return;
   }
-  const cs = ex._cand || [];
-  if (!cs.length || estado.editando) { box.innerHTML = ""; return; }
-  box.innerHTML = `<div class="sugestao"><h3>${cs.length === 1 ? "Esta pessoa já foi examinada?" : "Alguma destas pessoas já examinadas é esta?"}</h3>
-    <p>${cs.length === 1 ? "Encontramos" : `Encontramos ${cs.length} pessoas`} no DSEI ${esc(ex.dsei)} ${cs.length === 1 ? "uma pessoa " : ""}com a mesma aldeia, data de nascimento e sexo.${ex._candOffline ? " Sem internet: busquei só nos exames deste aparelho." : ""}</p>
-    ${cs.map((c, i) => fichaPessoa(c) + `<div class="acoes-l" style="margin:6px 0 4px"><button class="prim mini" data-pessoa="sim" data-i="${i}">Sim, é ${cs.length === 1 ? "a mesma pessoa" : "esta pessoa"} (${c.exames + 1}º exame)</button></div>`).join("")}
-    <div class="acoes-l"><button class="sec mini" data-pessoa="nao">${cs.length === 1 ? "Não, é outra pessoa" : "Não, nenhuma delas"}</button></div></div>`;
+  // 4. Pessoa vinculada
+  if (ex.vinculo) {
+    grade.hidden = false; topo.innerHTML = "";
+    const a = ex._anterior;
+    const sx = {F: "feminino", M: "masculino"}[ex.crianca.sexo] || "sexo não informado";
+    box.innerHTML = travaNota + cartaoCompacto(ex.vinculo.codigoIndividuo, `<b style="display:inline;font-size:inherit">Pessoa vinculada</b> · ${ex.vinculo.numero ? ex.vinculo.numero + "º exame" : "nº confirmado no envio"} · ${idTxtDe(ex.crianca.nascimento, ex.dataExame)} · ${sx}`) +
+      `<p class="pc-nota">Exame anterior: ${a ? `${fmtData(a.dataExame)} · classe ${esc((a.resultado || {}).classe || "?")}${nomeProf(a) ? " · " + esc(nomeProf(a)) : ""}` : "sem internet, conferido no envio"}.</p>
+      <div class="pc-acoes">${a ? `<button class="sec mini" data-id-acao="historico-vinc">Ver histórico</button>` : ""}<button class="link perigo" data-id-acao="trocar">Trocar identificação</button></div>`;
+    return;
+  }
+  // 8. Nova pessoa, com código reservado
+  if (ex.codigoFixo) {
+    grade.hidden = false; topo.innerHTML = "";
+    box.innerHTML = cartaoCompacto(ex.codigoFixo, "Nova pessoa · 1º exame", true) +
+      `<p class="pc-nota">Anote este código na ficha utilizada pela equipe ou cole nas observações do paciente no prontuário eletrônico. Ele serve para localizar esta pessoa nos próximos atendimentos. <button class="link perigo" data-id-acao="trocar">Trocar identificação</button></p>`;
+    return;
+  }
+  // 1. Escolha
+  topo.innerHTML = `<div class="radios id-modo" role="radiogroup" aria-label="Como identificar o indivíduo">
+      <label class="radio ${st.modo === "codigo" ? "on" : ""}"><input type="radio" name="idModo" value="codigo" ${st.modo === "codigo" ? "checked" : ""}><span><b>Tenho o código de acompanhamento</b><small>Use quando a pessoa já tiver sido atendida antes.</small></span></label>
+      <label class="radio ${st.modo === "novo" ? "on" : ""}"><input type="radio" name="idModo" value="novo" ${st.modo === "novo" ? "checked" : ""}><span><b>Não tenho o código</b><small>Use quando for o primeiro atendimento ou não lembrar o código.</small></span></label></div>`;
+  grade.hidden = st.modo !== "novo";
+  if (st.modo === "codigo") {
+    // 2–3. Código
+    let res = "";
+    if (st.buscando) res = `<p class="dica">Buscando…</p>`;
+    else if (st.achado) res = `<div class="achado"><h3>Pessoa localizada</h3><p class="dica">Esta pessoa já possui exames registrados no DSEI ${esc(ex.dsei)}.</p>` +
+      cartaoPessoa(st.achado, `<button class="sec mini" data-id-acao="historico-achado">Ver histórico</button><button class="prim mini" data-id-acao="usar-achado">Usar esta pessoa →</button>`) + `</div>`;
+    else if (st.outroDsei) res = `<div class="aviso-id">Este código é de uma pessoa examinada no DSEI <b>${esc(st.outroDsei)}</b>. Só dá para juntar exames do mesmo DSEI: confira o DSEI do atendimento ou use "Não tenho o código".</div>`;
+    else if (st.naoAchado) res = `<div class="aviso-id">${st.offline ? `Sem internet: não encontrei este código nos exames deste aparelho. Se tiver certeza do código, use mesmo assim: ele é conferido quando o exame for enviado.
+        <div class="acoes-l"><button class="sec mini" data-id-acao="usar-mesmo-assim">Usar este código mesmo assim</button></div>` : `Não encontramos o código <b>${esc(st.codigo)}</b> no DSEI ${esc(ex.dsei || "")}. Confira o código ou use "Não tenho o código".`}</div>`;
+    box.innerHTML = `<label class="campo">Código de acompanhamento<input id="idCodigo" value="${esc(st.codigo || "")}" placeholder="Ex.: PR-TES-TES-1486626-0003" autocomplete="off" autocapitalize="characters"></label>
+      <div class="acoes-l"><button class="prim" data-id-acao="buscar-codigo">Buscar</button></div>
+      <p class="info-id">Use o código quando a pessoa já tiver sido atendida antes. Ele fica anotado na ficha da equipe.</p>${res}`;
+    return;
+  }
+  if (st.modo === "novo") {
+    // 5–7. Sem código: busca por dados
+    const cs = ex._cand || [];
+    let res = "";
+    if (st.buscando) res = `<p class="dica">Buscando…</p>`;
+    else if (st.buscou) res = (cs.length ? `<p class="dica" style="margin-top:12px"><b>Possíveis pessoas encontradas</b> com os dados informados${ex._candOffline ? " (sem internet: só nos exames deste aparelho)" : ""}:</p>` +
+        cs.map((c, i) => cartaoPessoa(c, `<button class="sec mini" data-id-acao="historico-cand" data-i="${i}">Ver histórico</button><button class="prim mini" data-id-acao="usar-cand" data-i="${i}">É esta pessoa →</button>`)).join("") : `<p class="dica" style="margin-top:12px">Nenhum exame anterior encontrado no DSEI ${esc(ex.dsei)} com esta aldeia, data de nascimento e sexo${ex._candOffline ? " (sem internet: busquei só neste aparelho)" : ""}.</p>`) +
+      `<div class="nenhuma"><b>${cs.length ? "Nenhuma dessas opções corresponde" : "É o primeiro atendimento desta pessoa"}</b><p>${cs.length ? "Na dúvida, use esta opção para evitar vincular a pessoa errada." : "O app gera o código de acompanhamento dela."}</p>
+        <button class="prim" data-id-acao="nova-pessoa">+ Continuar como nova pessoa</button></div>`;
+    box.innerHTML = `<p class="info-id">O app usa o DSEI e a aldeia ou comunidade informados acima, com a data de nascimento e o sexo, para buscar possíveis exames anteriores.</p>
+      ${!st.buscou ? `<div class="acoes-l"><button class="prim" data-id-acao="buscar-dados">Buscar possíveis exames anteriores</button></div>` : ""}${res}`;
+    return;
+  }
+  box.innerHTML = "";
 }
+document.addEventListener("change", e => {
+  if (e.target.name !== "idModo") return;
+  const st = idEst(); st.modo = e.target.value; st.buscou = false; st.achado = null; st.naoAchado = false; st.outroDsei = ""; estado.ex._cand = null;
+  alterado(); renderPessoa();
+});
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "idCodigo") { e.preventDefault(); buscarPorCodigo(); } });
+document.addEventListener("input", e => { if (e.target.id === "idCodigo") idEst().codigo = e.target.value; });
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-id-acao]"); if (!b) return;
+  const ex = estado.ex, st = idEst(), a = b.dataset.idAcao;
+  if (a === "buscar-codigo") return buscarPorCodigo();
+  if (a === "buscar-dados") return buscarPorDados();
+  if (a === "usar-achado" && st.achado) return vincular(st.achado, true);
+  if (a === "usar-cand") return vincular(ex._cand[+b.dataset.i], true);
+  if (a === "historico-achado" && st.achado) return verHistorico(st.achado);
+  if (a === "historico-cand") return verHistorico(ex._cand[+b.dataset.i]);
+  if (a === "historico-vinc" && ex.vinculo) return verHistorico({codigoIndividuo: ex.vinculo.codigoIndividuo, ultimo: ex._anterior});
+  if (a === "usar-mesmo-assim") { ex.vinculo = {codigoIndividuo: st.codigo, chaves: [], numero: null}; ex._anterior = null; ex._travado = false; alterado(); renderExame(); return toast("Código usado. Ele é conferido quando o exame for enviado."); }
+  if (a === "copiar") return copiarTexto(b.dataset.cod);
+  if (a === "trocar") return trocarIdentificacao();
+  if (a === "nova-pessoa") {
+    if (ex._cand && ex._cand.length) ex._recusados = [...(ex._recusados || []), ...ex._cand.map(c => c.codigoIndividuo)];
+    const cod = reservarCodigo(); if (!cod) return;
+    abrirModal(`<div class="painel modal-cod" role="dialog" aria-modal="true" aria-labelledby="ncTit" style="max-width:520px"><button class="fechar" data-fecha-leitura data-id-acao="fecha-novo" aria-label="Fechar">×</button>
+      <div class="nc-ok" aria-hidden="true">✓</div><h3 id="ncTit">Novo código de acompanhamento gerado</h3>
+      <p class="dica">Esta pessoa não possui exames anteriores. Um novo código foi gerado.</p>
+      <div class="nc-cod cod">${esc(cod)}</div>
+      <p class="dica">Use este código para anotar na ficha e localizar esta pessoa em atendimentos futuros.</p>
+      <div class="p-acoes"><button class="sec" data-id-acao="copiar" data-cod="${esc(cod)}">Copiar código</button><button class="prim" data-fecha-leitura data-id-acao="fecha-novo">Continuar preenchimento →</button></div></div>`);
+    return;
+  }
+  if (a === "fecha-novo") { renderExame(); }
+});
+
 function renderConf() {
   const ex = estado.ex, box = $("#confBox"); if (!box) return;
   const al = alertasAtuais(), antes = JSON.stringify(estado.alertas || {});
@@ -1149,25 +1694,8 @@ function renderConf() {
       <label class="check conferi"><input type="checkbox" data-conferi="${esc(a.chave)}" ${chaves.includes(a.chave) ? "checked" : ""}>Conferi na boca: está assim mesmo</label>`}
       <button class="link" data-abre-dente="${a.dente}">Abrir o dente ${a.dente}</button></span><span class="estado ${a.nivel === "impossivel" ? "erro" : "pendente"}">${a.nivel === "impossivel" ? "impossível" : "confira"}</span></li>`).join("")}</ul>
     <p class="dica">Para salvar como ${ex.vinculo.numero || 2}º exame desta pessoa, os dentes "impossível" precisam ser corrigidos e cada dente "confira" precisa ser corrigido ou marcado como conferido.</p>
-    <div class="acoes-l"><button class="sec mini" data-pessoa="desfazer">Não é a mesma pessoa</button></div></div>`;
+    <div class="acoes-l"><button class="sec mini" data-id-acao="trocar">Não é a mesma pessoa</button></div></div>`;
 }
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-pessoa]"); if (!b) return;
-  const ex = estado.ex, a = b.dataset.pessoa;
-  if (a === "sim") {
-    const c = ex._cand[+b.dataset.i];
-    ex.vinculo = {codigoIndividuo: c.codigoIndividuo, chaves: [], numero: c.exames + 1}; ex._anterior = c.ultimo; ex._cand = null;
-    const nConf = aplicarAnterior(ex);
-    alterado(); renderExame(); toast(`Ligado à pessoa ${c.codigoIndividuo}: este é o ${c.exames + 1}º exame dela.` + (nConf ? ` ${nConf} ${nConf === 1 ? "dente ficou" : "dentes ficaram"} com ? para conferir na boca, porque o exame anterior registrou diferente da idade.` : ""));
-  }
-  if (a === "nao") { ex._recusados = [...(ex._recusados || []), ...(ex._cand || []).map(c => c.codigoIndividuo)]; ex._cand = []; alterado(); renderPessoa(); }
-  if (a === "desfazer") {
-    if (ex.vinculo) ex._recusados = [...(ex._recusados || []), ex.vinculo.codigoIndividuo];
-    ex.vinculo = null; ex._anterior = null; ex.codigoIndividuo = null; ex.numeroExame = 1; estado.alertas = {};
-    alterado(); renderExame(); toast("Este exame fica como o 1º exame de uma pessoa nova.");
-  }
-  if (a === "ver" && ex._anterior) { const m = $("#leitura"); m.innerHTML = htmlLeitura(ex._anterior); m.hidden = false; document.body.style.overflow = "hidden"; }
-});
 document.addEventListener("change", e => {
   const c = e.target.closest("[data-conferi]"); if (!c || !estado.ex.vinculo) return;
   const v = estado.ex.vinculo, k = c.dataset.conferi;
@@ -1238,7 +1766,8 @@ function irAba(a) {
   if (a === "admin") carregarAdmin();
   if (a === "lista" && navigator.onLine && (!estado.nuvemEm || Date.now() - estado.nuvemEm > 60000)) { estado.nuvemEm = Date.now(); carregarNuvem(); }
   $("#resultado").hidden = a !== "exame";
-  document.body.style.paddingBottom = a === "exame" ? "" : "24px";
+  document.body.classList.toggle("sem-barra", a !== "exame");
+  document.body.classList.toggle("na-entrada", a === "acesso");
   if (a === "lista") renderLista();
   if (a === "config") renderConfig();
   if (a === "painel") abrirPainelAba();
@@ -1261,7 +1790,7 @@ $("#aba-exame").addEventListener("input", e => {
     const ks = i.dataset.campo.split("."); let o = estado.ex; ks.slice(0, -1).forEach(k => o = o[k]); o[ks.at(-1)] = i.value;
     if (i.dataset.campo === "uf") { preencherDsei($("#exDsei"), estado.ex.uf, estado.ex.dsei); estado.ex.dsei = $("#exDsei").value; }
     if (["uf","polo","aldeia"].includes(i.dataset.campo)) renderCodigo();
-    if (["dsei","aldeia","crianca.nascimento","crianca.sexo"].includes(i.dataset.campo)) agendarBusca();
+    if (["dsei","aldeia","crianca.nascimento","crianca.sexo"].includes(i.dataset.campo) && estado.ex._id && estado.ex._id.buscou && !estado.ex.vinculo && !estado.ex.codigoFixo) { estado.ex._id.buscou = false; estado.ex._cand = null; renderPessoa(); }
     if (i.dataset.campo === "crianca.nascimento" || i.dataset.campo === "dataExame") {
       renderIdade();
       if (!estado.editando) {
@@ -1281,6 +1810,19 @@ $("#aba-exame").addEventListener("change", e => {
   if (ins != null) { const nome = INSUMOS[+ins], atual = estado.ex.insumos || []; estado.ex.insumos = e.target.checked ? [...new Set([...atual, nome])] : atual.filter(x => x !== nome); alterado(); }
   if (g != null) { const nome = GERAIS[+g]; estado.ex.gerais = e.target.checked ? [...new Set([...estado.ex.gerais, nome])] : estado.ex.gerais.filter(x => x !== nome); alterado(); }
 });
+$("#aba-exame").addEventListener("change", e => {
+  const v = e.target.dataset.vig; if (v == null) return;
+  const nome = VIGILANCIA[+v], ex = estado.ex; let l = ex.vigilancia || [];
+  if (e.target.checked) l = nome === VIG_NENHUM ? [VIG_NENHUM] : [...l.filter(x => x !== VIG_NENHUM), nome]; else l = l.filter(x => x !== nome);
+  ex.vigilancia = VIGILANCIA.filter(x => l.includes(x)); ex.fluorose = ex.vigilancia.includes(VIG_FLUOROSE);
+  alterado(); renderVig(); renderResultado();
+});
+$("#locais").addEventListener("click", e => { const b = e.target.closest("[data-local]"); if (!b) return; estado.ex.localAtendimento = estado.ex.localAtendimento === b.dataset.local ? "" : b.dataset.local; alterado(); renderFormulario(); });
+$$("[data-protese]").forEach(grp => grp.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  estado.ex.protese = Object.assign({sup: "", inf: ""}, estado.ex.protese, {[grp.dataset.protese]: b.dataset.v}); alterado(); renderFormulario();
+}));
+$("#etapas").addEventListener("click", e => { const b = e.target.closest("[data-etapa]"); if (b) $(b.dataset.etapa).scrollIntoView({block: "start", behavior: "smooth"}); });
 $$("[data-bool]").forEach(grp => grp.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   estado.ex[grp.dataset.bool] = b.dataset.v === "1"; alterado(); renderFormulario(); renderResultado();
@@ -1306,7 +1848,7 @@ $("#cancelarEdicao").addEventListener("click", () => {
   estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null; store.set(K_RASC, null); renderExame();
 });
 $("#salvar").addEventListener("click", salvarExame);
-$("#verMotivos").addEventListener("click", e => { const m = $("#motivos"); m.hidden = !m.hidden; e.target.setAttribute("aria-expanded", !m.hidden); e.target.textContent = m.hidden ? "Ver motivos" : "Ocultar motivos"; });
+$("#verMotivos").addEventListener("click", () => { const m = $("#motivos"); m.hidden = !m.hidden; $("#verMotivos").setAttribute("aria-expanded", String(!m.hidden)); });
 
 // painel
 $("#fundo").addEventListener("click", e => {
@@ -1369,6 +1911,29 @@ function faixaEtaria(i) {
 }
 /** @param {any} e */
 function sexoDe(e) { return e.crianca && (e.crianca.sexo === "F" || e.crianca.sexo === "M") ? e.crianca.sexo : "NI"; }
+// Listas usadas no exame (termos genéricos dos prontuários eletrônicos da atenção primária).
+var LOCAIS_ATENDIMENTO = ["UBSI", "Polo base", "CASAI", "Domicílio", "Escola ou creche", "Unidade móvel", "Outro"];
+var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", "Fendas ou fissuras lábio palatais", "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
+var VIG_FLUOROSE = "Fluorose dentária moderada ou severa", VIG_NENHUM = "Não identificado";
+/** @type {any} */
+var NOMES_PROTESE = {"": "Não avaliado", nao: "Não", sim: "Sim"};
+// Sigla do dente, como nos odontogramas dos prontuários eletrônicos.
+/** @param {any} d */
+function siglaDente(d) {
+  if (!d) return "";
+  /** @type {any} */ var S = {nao_erupc: "NE", ausente: "A", ausente_carie: "E", extr_ind: "Ei", raiz: "RR", a_confirmar: "?"};
+  if (S[d.status]) return S[d.status];
+  var fs = d.faces || {}, vs = Object.keys(fs).map(function (k) { return fs[k]; });
+  /** @param {any} v */
+  function tem(v) { return vs.indexOf(v) >= 0; }
+  if (tem("restc")) return "Rc";
+  if (tem("ca") || tem("cc")) return "C";
+  if (tem("rest")) return "R";
+  if (tem("mba")) return "M";
+  if (tem("mbi")) return "Mi";
+  if (tem("sel")) return "Hs";
+  return "H";
+}
 // Exame cancelado continua guardado, mas não entra em painel, índices nem acompanhamento.
 /** @param {any} e */
 function exameValido(e) { return !!e && e.situacao !== "cancelado"; }
@@ -1383,6 +1948,7 @@ function exameCombina(e, f, exceto) {
   if (usa("sexo") && sexoDe(e) !== f.sexo) return false;
   if (usa("classe") && res.classe !== f.classe) return false;
   if (usa("coletivo") && (e.gerais || []).indexOf(f.coletivo) < 0) return false;
+  if (usa("vig") && (e.vigilancia || []).indexOf(f.vig) < 0) return false;
   if (usa("proc")) {
     var tem = Object.keys(e.dentes || {}).some(function (n) { var p = (e.dentes[n] || {}).procs || {}; return p[f.proc] === "indicado" || p[f.proc] === "realizado"; });
     if (!tem) return false;
@@ -1395,7 +1961,7 @@ function montarPainel(regs, f, agrup) {
   var validos = regs.filter(exameValido);
   /** @param {any} exceto */
   function ag(exceto) { return agregarExames(validos.filter(function (e) { return exameCombina(e, f, exceto); }), agrup); }
-  return {resumo: ag([]), risco: ag(["classe"]), tabela: ag(["faixa", "sexo", "classe"]), faixa: ag(["faixa"]), proc: ag(["proc"]), coletivo: ag(["coletivo"])};
+  return {resumo: ag([]), risco: ag(["classe"]), tabela: ag(["faixa", "sexo", "classe"]), faixa: ag(["faixa"]), proc: ag(["proc"]), coletivo: ag(["coletivo"]), vig: ag(["vig"])};
 }
 /** @param {any} regs @param {any} agrup */
 function agregarExames(regs, agrup) {
@@ -1413,7 +1979,8 @@ function agregarExames(regs, agrup) {
   function somar(alvo, ind, perdido) { alvo.n++; alvo.soma += Number(ind.total) || 0; alvo.c += Number(ind.c) || 0; alvo[perdido] += Number(ind[perdido]) || 0; alvo.o += Number(ind.o) || 0; }
   /** @type {any} */
   var r = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
-    ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0};
+    ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
+    vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0}};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
   regs.forEach(function (/** @type {any} */ e) {
     var res = e.resultado || {};
@@ -1436,6 +2003,15 @@ function agregarExames(regs, agrup) {
     if (e.fluorose) r.fluorose++;
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
+    (e.vigilancia || []).forEach(function (/** @type {any} */ g) { r.vigilancia[g] = (r.vigilancia[g] || 0) + 1; });
+    if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
+    var pr = e.protese || {};
+    if (pr.sup || pr.inf) {
+      r.protese.avaliados++;
+      if (pr.sup === "sim") r.protese.sup++;
+      if (pr.inf === "sim") r.protese.inf++;
+      if (pr.sup === "sim" || pr.inf === "sim") r.protese.alguma++;
+    }
     Object.keys(e.dentes || {}).forEach(function (n) {
       var p = (e.dentes[n] || {}).procs || {};
       Object.keys(p).forEach(function (k) {
@@ -1463,11 +2039,11 @@ var NOMES_PROC = {selante: "Selante", art: "ART (restauração atraumática)", c
   amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado", cdf: "Cariostático (diamino fluoreto de prata)", selprov: "Selamento provisório / adequação do meio",
   pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço", exodontia: "Exodontia"};
 var CAB_EXAME = ["id_exame", "codigo_individuo", "numero_exame", "codigo_exame", "situacao_registro", "data_exame", "faixa_etaria", "idade_anos", "sexo", "nascimento",
-  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
+  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
   "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod", "dentes_cariados", "placa_visivel", "gengivite", "fluorose_moderada_severa",
-  "dentes_com_dor_abscesso", "procedimentos_gerais", "insumos_fornecidos", "observacoes", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
+  "vigilancia_saude_bucal", "protese_superior", "protese_inferior", "dentes_com_dor_abscesso", "procedimentos_gerais", "insumos_fornecidos", "observacoes", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
   "motivo_cancelamento", "observacao_cancelamento", "cancelado_em", "cancelado_por", "criado_em", "atualizado_em", "usuario_id", "dados_completos_json"];
-var CAB_DENTE = ["id_exame", "codigo_individuo", "numero_exame", "situacao_registro", "data_exame", "dsei", "dente", "tipo", "situacao",
+var CAB_DENTE = ["id_exame", "codigo_individuo", "numero_exame", "situacao_registro", "data_exame", "dsei", "dente", "tipo", "situacao", "sigla",
   "face_oclusal_incisal", "face_vestibular", "face_lingual_palatina", "face_mesial", "face_distal", "dor_abscesso", "procedimentos_indicados", "procedimentos_realizados", "observacao"];
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
@@ -1489,9 +2065,10 @@ function registroParaJson(e) {
 function linhaExame(e) {
   var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, sn = function (/** @type {any} */ b) { return b ? "sim" : "não"; };
   return [e.id, codigoIndividuoDe(e), e.numeroExame || 1, e.codigo || "", exameValido(e) ? "válido" : "cancelado", e.dataExame || "", faixaEtaria(e.idadeAnos),
-    e.idadeAnos, (e.crianca || {}).sexo || "", (e.crianca || {}).nascimento || "", e.uf || "", e.dsei || "", e.polo || "", e.aldeia || "", e.municipio || "",
+    e.idadeAnos, (e.crianca || {}).sexo || "", (e.crianca || {}).nascimento || "", e.uf || "", e.dsei || "", e.polo || "", e.aldeia || "", e.municipio || "", e.localAtendimento || "",
     (e.profissional || {}).nome || "", (e.profissional || {}).cro || "", e.denticao || "", r.classe || "", r.risco || "",
     ce.c, ce.e, ce.o, ce.total, cp.c, cp.p, cp.o, cp.total, cariadosDe(e), sn(e.placa), sn(e.gengivite), sn(e.fluorose),
+    (e.vigilancia || []).join("; "), e.protese ? NOMES_PROTESE[e.protese.sup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.inf || ""] : "",
     dentesComDor(e).join(" "), (e.gerais || []).join("; "), (e.insumos || []).join("; "), e.observacoes || "",
     v.anteriorId ? (v.conferidos && v.conferidos.length ? "compatível, com mudança conferida" : "compatível") : "1º exame",
     (v.conferidos || []).join(" · "), v.anteriorId || "",
@@ -1507,7 +2084,7 @@ function linhasDentes(e) {
     var semFaces = ["nao_erupc", "ausente", "ausente_carie", "raiz", "a_confirmar"].indexOf(d.status) >= 0;
     /** @param {any} k */
     function f(k) { return semFaces ? "" : (NOMES_FACE[fs[k] || ""] || ""); }
-    return [e.id, cod, num, sit, e.dataExame || "", e.dsei || "", n, decidDe(n) ? "decíduo" : "permanente", NOMES_STATUS[d.status] || d.status || "",
+    return [e.id, cod, num, sit, e.dataExame || "", e.dsei || "", n, decidDe(n) ? "decíduo" : "permanente", NOMES_STATUS[d.status] || d.status || "", siglaDente(d),
       f("O"), f("V"), f("L"), f("M"), f("D"), d.dor ? "sim" : "não", proc("indicado"), proc("realizado"), d.obs || ""];
   });
 }
@@ -1628,7 +2205,7 @@ function abrirPainelAba() {
 }
 const dseiPedido = () => estP.visao === "dsei" ? estP.dsei : "";
 function textoRecorte(de, ate) { return (estP.visao === "minha" ? "sua produção, de todos os aparelhos" : estP.visao === "geral" ? "todos os participantes" : estP.dsei) + (de ? `, de ${fmtData(de)} a ${fmtData(ate)}` : ", todo o período"); }
-const FILTRO_VAZIO = () => ({faixa: "", sexo: "", classe: "", proc: "", coletivo: ""});
+const FILTRO_VAZIO = () => ({faixa: "", sexo: "", classe: "", proc: "", coletivo: "", vig: ""});
 estP.filtro = FILTRO_VAZIO();
 const temFiltro = () => Object.values(estP.filtro).some(Boolean);
 async function carregarPainel() {
@@ -1746,6 +2323,7 @@ function ligarTipCPO() {
 /* ---------- painel ---------- */
 function desenharPainel(d, local) {
   const box = $("#pConteudo"), B = d.blocos || {resumo: d.resumo, risco: d.resumo, tabela: d.resumo, faixa: d.resumo, proc: d.resumo, coletivo: d.resumo};
+  if (!B.vig) B.vig = B.resumo;
   const r = B.resumo, interativo = !!d.blocos;
   const nota = local ? "" : `<p class="nota" style="margin:0 4px 16px">“&lt;5” indica de 1 a 4 pessoas: o número exato é ocultado para proteger a identidade delas. Médias só aparecem com 5 pessoas ou mais. Nenhum nome ou Cartão SUS sai da planilha.</p>`;
   const vazioBase = !B.tabela || B.tabela.n === 0;
@@ -1758,14 +2336,16 @@ function desenharPainel(d, local) {
 
   const kpis = semDados ? "" : `<div class="kpis">
     ${!local && d.participantes != null ? `<div class="kpi"><b>${fmtN(d.participantes)}</b><span>${d.participantes === 1 ? "profissional participante" : "profissionais participantes"}</span></div>` : ""}
-    <div class="kpi"><b>${fmtN(r.n)}</b><span>pessoas examinadas</span></div>
+    <div class="kpi kpi-destaque"><b>${fmtN(r.n)}</b><span>pessoas examinadas</span></div>
     <div class="kpi"><b>${pctDe(r.nivel.Alto, r.n)}</b><span>em alto risco (${fmtN(r.nivel.Alto)})</span></div>
     <div class="kpi"><b>${fmtN(r.ceodMedia)}</b><span>ceo-d médio</span></div>
     <div class="kpi"><b>${fmtN(r.cpodMedia)}</b><span>CPO-D médio</span></div>
     <div class="kpi"><b>${fmtN(r.procsRealizados)}</b><span>procedimentos realizados</span></div></div>`;
 
   const R = B.risco, rOk = R && !R.poucos && R.n > 0;
-  const classes = `<div class="bloco"><h3>Classificação de risco</h3>${!rOk ? `<p class="dica">Menos de 5 pessoas.</p>` : CL.map(c => `<div class="linha-barra sel ${clsSel(["classe"], [c])}" ${alvo(["classe"], [c])} role="button" tabindex="0" aria-pressed="${ehSel(["classe"], [c])}"><span class="classe micro" data-c="${c}">${c}</span>${barra(R.classe[c], R.n, COR_CLASSE[c])}<span class="val">${fmtN(R.classe[c])}</span></div>`).join("")}
+  const classes = `<div class="bloco"><h3>Classificação de risco</h3>${!rOk ? `<p class="dica">Menos de 5 pessoas.</p>` : `<div class="barra-risco" aria-hidden="true">${CL.map(c => { const v = R.classe[c], w = ehNum(v) ? v : v === "<5" ? 2 : 0;
+      return w ? `<i style="flex:${w};background:${COR_CLASSE[c]}" title="Classe ${c}: ${fmtN(v)}"></i>` : ""; }).join("")}</div>
+    <div class="risco-leg">${CL.map(c => `<button class="sel ${clsSel(["classe"], [c])}" ${alvo(["classe"], [c])} aria-pressed="${ehSel(["classe"], [c])}" aria-label="Classe ${c}: ${fmtN(R.classe[c])}"><span class="classe" data-c="${c}">${c}</span><b>${fmtN(R.classe[c])}</b><small>${pctDe(R.classe[c], R.n)}</small></button>`).join("")}</div>`}
     ${rOk ? `<p class="nota">${niveis.map(n => `${n} risco: ${fmtN(R.nivel[n])} (${pctDe(R.nivel[n], R.n)})`).join("; ")}. Toque numa classe para ver só ela.</p>` : ""}</div>`;
 
   const c12 = r && r.cpod12 && r.cpod12.n;
@@ -1804,10 +2384,22 @@ function desenharPainel(d, local) {
       return `<div class="mes"><b>${fmtN(v)}</b><i style="height:${h}px"></i><span>${nomeMes(m)}</span></div>`; }).join("")}</div></div>`;
   }
   box.innerHTML = (interativo ? barraFiltros() : `<p class="nota" style="margin:0 4px 12px">Atualize o Codigo.gs da planilha para filtrar o painel com um toque.</p>`)
-    + kpis + avisoSel + `<div class="p-grade">${classes}${cpod12}</div>` + cpo + faixas + `<div class="p-grade">${procs}${gerais}</div>` + meses + tabelaComparacao(d.comparacao) + nota;
+    + kpis + avisoSel + `<div class="p-grade">${classes}${cpod12}</div>` + cpo + faixas + `<div class="p-grade">${procs}${gerais}</div>` + blocosV20(B, r, semDados) + meses + tabelaComparacao(d.comparacao) + nota;
   if (!interativo) $$("#pConteudo [data-f]").forEach(el => { el.removeAttribute("data-f"); el.removeAttribute("role"); el.removeAttribute("tabindex"); });
   ligarTipCPO();
   if (estP.flash) { estP.flash = false; $$("#pConteudo .bloco, #pConteudo .kpis").forEach(el => el.classList.add("piscar")); }
+}
+// Versão 20: vigilância em saúde bucal, necessidade de prótese e local de atendimento.
+function blocosV20(B, r, semDados) {
+  if (semDados || !r || !r.vigilancia) return "";
+  const V = B.vig, vOk = V && !V.poucos && V.n > 0 && V.vigilancia;
+  const vig = `<div class="bloco"><h3>Vigilância em saúde bucal</h3>${!vOk ? `<p class="dica">Menos de 5 pessoas.</p>` : VIGILANCIA.map(g => `<div class="linha-barra sel ${clsSel(["vig"], [g])}" style="grid-template-columns:1fr 52px" ${alvo(["vig"], [g])} role="button" tabindex="0"><span>${esc(g)}</span><span class="val">${fmtN(V.vigilancia[g] || 0)}</span></div>`).join("")
+    + `<p class="nota">Pessoas com cada item marcado. Exames feitos antes da versão 20 só têm a fluorose. Toque num item para ver só essas pessoas.</p>`}</div>`;
+  const pr = r.protese || {}, temP = pr.avaliados === "<5" || (ehNum(pr.avaliados) && pr.avaliados > 0);
+  const lin = (t, v) => `<div class="linha-barra" style="grid-template-columns:1fr 52px"><span>${t}</span><span class="val">${fmtN(v)}</span></div>`;
+  const protese = `<div class="bloco"><h3>Necessidade de prótese</h3>${!temP ? `<p class="dica">Ninguém avaliado nesta seleção.</p>` : lin("Pessoas avaliadas", pr.avaliados) + lin("Precisam de prótese superior", pr.sup) + lin("Precisam de prótese inferior", pr.inf) + lin("Precisam de alguma prótese", pr.alguma) + `<p class="nota">${pctDe(pr.alguma, pr.avaliados)} das pessoas avaliadas precisam de alguma prótese.</p>`}
+    <h3 style="margin-top:18px">Local de atendimento</h3>${LOCAIS_ATENDIMENTO.filter(l => (r.local || {})[l]).map(l => lin(esc(l), r.local[l])).join("") || `<p class="dica">Exames sem local registrado.</p>`}</div>`;
+  return `<div class="p-grade">${vig}${protese}</div>`;
 }
 /* ---------- acompanhamento: pessoas com 2 ou mais exames ---------- */
 const estA = {vis: "pessoa", dados: null, fFaixa: "", fEvol: "", fCod: "", pessoa: null, carregando: false};
@@ -1930,7 +2522,7 @@ async function api(acao, dados, opc) {
   if (!c.url) throw new Error("O endereço do servidor não está configurado. Abra o app pelo link enviado pela coordenação.");
   if (!navigator.onLine) throw new Error("Sem internet agora.");
   const cred = opc.cred || (opc.publica ? null : s);
-  const corpo = Object.assign({acao, versaoApp: 18, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
+  const corpo = Object.assign({acao, versaoApp: 21, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), opc.tempo || 30000);
   try {
     const r = await fetch(c.url, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(corpo), signal: ctrl.signal});
@@ -1976,39 +2568,61 @@ function abasDoPerfil() {
   l.push(["config", "Minha conta"]);
   return l;
 }
+const IC_ABA = {
+  exame: '<path d="M7 3c-2 0-3.5 1.6-3.5 4 0 3 1.5 4.5 2 7.5.4 2.6 1 6.5 2.7 6.5 1.4 0 1.6-3.5 2.3-5.5.3-.8.9-1.2 1.5-1.2s1.2.4 1.5 1.2c.7 2 .9 5.5 2.3 5.5 1.7 0 2.3-3.9 2.7-6.5.5-3 2-4.5 2-7.5 0-2.4-1.5-4-3.5-4-1.8 0-2.7 1-5 1S8.8 3 7 3z"/>',
+  lista: '<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>',
+  painel: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  equipe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c1.8.6 3 2.4 3.5 5.5"/>',
+  config: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  admin: '<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+  acesso: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>'
+};
+const CURTO_ABA = {admin: "Gestão", config: "Conta", lista: "Meus exames"};
 function renderAbas() {
   const atual = estado.aba;
-  $("#abas").innerHTML = abasDoPerfil().map(([k, t]) => `<button role="tab" data-aba="${k}" aria-selected="${k === atual}">${t}${k === "lista" ? `<span id="contPend" class="contador" hidden></span>` : ""}${k === "equipe" || k === "admin" ? `<span class="contador" data-pedidos="${k}" hidden></span>` : ""}</button>`).join("");
+  const abas = abasDoPerfil(), curto = k => k === "lista" && abas.length > 5 ? "Exames" : CURTO_ABA[k];
+  $("#abas").innerHTML = abas.map(([k, t]) => `<button role="tab" data-aba="${k}" aria-selected="${k === atual}" aria-label="${t}"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${IC_ABA[k] || ""}</svg><span class="longo">${t}</span><span class="curto" aria-hidden="true">${curto(k) || t}</span>${k === "lista" ? `<span id="contPend" class="contador" hidden></span>` : ""}${k === "equipe" || k === "admin" ? `<span class="contador" data-pedidos="${k}" hidden></span>` : ""}</button>`).join("");
+  $("#abas").hidden = !perfil();
   $("#rede").hidden = !perfil() || !fazExames();
   atualizarRede();
 }
 function abaInicial() { const p = perfil(); return !p ? "acesso" : p === "coord" ? "admin" : "exame"; }
 
 /* ---------- tela de acesso ---------- */
-const estAc = {vista: "pedir", msg: "", para: "", perfil: "dentista"};
+const estAc = {vista: "entrar", msg: "", para: "", perfil: "dentista"};
+const IC_AC_PESSOA = `<span class="ac-icon"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="9" r="6"/><path d="M6 28v-3c0-6 4.5-9 10-9s10 3 10 9v3H6z"/></svg></span>`;
+const IC_AC_NOVO = `<span class="sem-icon"><svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="15" cy="10" r="6"/><path d="M4 29v-3c0-7 5-10 11-10 3.7 0 6.7 1 8.7 3L22 29z"/><circle cx="27.5" cy="25.5" r="6.5"/><path d="M27.5 22v7M24 25.5h7" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/></svg></span>`;
+const IC_OLHO = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c5.5 0 9.4 5.2 9.4 7S17.5 19 12 19 2.6 13.8 2.6 12 6.5 5 12 5Zm0 3.6A3.4 3.4 0 1 0 12 15.4 3.4 3.4 0 0 0 12 8.6Z"/></svg>`;
 function renderAcesso() {
   const c = cfg(), box = $("#acessoConteudo");
   const servidor = c.url ? "" : `<div class="aviso">Este aparelho ainda não sabe o endereço do servidor. Abra o app pelo <b>link enviado pela coordenação</b> ou cole o endereço abaixo.
       <label class="campo" style="margin-top:10px">Endereço do servidor<input id="acUrl" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"></label></div>`;
   const msg = estAc.msg ? `<div class="aviso">${esc(estAc.msg)}</div>` : "";
   if (estAc.vista === "enviado") {
-    box.innerHTML = `<div class="bloco"><h2>Pedido enviado</h2><p class="cad-status ok" style="margin-top:12px">Seu pedido foi para <b>${esc(estAc.para)}</b>. Quando for aprovado, você recebe um e-mail com o seu código de acesso.</p>
+    box.innerHTML = `<div class="bloco acesso-enviado"><h2>Pedido enviado</h2><p class="cad-status ok" style="margin-top:12px">Seu pedido foi encaminhado para <b>${esc(estAc.para)}</b>. Quando o acesso for aprovado, você receberá um código por e-mail.</p>
       <div class="acoes-l"><button class="sec" data-ac="entrar">Já recebi meu código</button></div></div>`;
     return;
   }
   if (estAc.vista === "entrar") {
-    box.innerHTML = msg + servidor + `<div class="bloco"><h2>Entrar com seu código</h2>
-      <p class="dica" style="margin-top:4px">Use o e-mail do pedido e o código que chegou por e-mail. Você pode entrar assim no celular e no computador.</p>
-      <div class="grade"><label class="campo">E-mail<input id="acEmail" type="email" autocomplete="email"></label><label class="campo">Código de acesso<input id="acCodigo" autocomplete="off" autocapitalize="off" placeholder="XXXX-XXXX-XXXX"></label></div>
-      <div class="acoes-l"><button class="prim" id="acEntrar">Entrar</button><button class="link" data-ac="pedir">Ainda não tenho acesso</button></div>
-      <p class="dica" style="margin-top:14px">Esqueceu o código? <button class="link" id="acReenviar">Enviar um novo para o meu e-mail</button></p></div>`;
+    box.innerHTML = msg + servidor + `<div class="bloco acesso-login">
+      <div class="acesso-login-head">${IC_AC_PESSOA}<div><h2>Já tenho acesso</h2><p>Entre com seu e-mail e código de acesso para continuar.</p></div></div>
+      <label class="campo">E-mail<input id="acEmail" type="email" autocomplete="email" placeholder="seuemail@exemplo.com.br"></label>
+      <label class="campo">Código de acesso<span class="acesso-code-wrap"><input id="acCodigo" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="XXXX - XXXX - XXXX"><button id="acVerCodigo" type="button" aria-label="Mostrar o código" aria-pressed="false">${IC_OLHO}</button></span></label>
+      <button class="prim" id="acEntrar">Entrar no Odontograma</button>
+      <p class="acesso-esqueceu"><button class="link" id="acReenviar">Esqueci meu código</button></p>
+      <div class="acesso-divisor"><span>ou</span></div>
+      <div class="acesso-sem"><div class="acesso-sem-topo">${IC_AC_NOVO}<div><h3>Ainda não tenho acesso</h3><p>Se você é cirurgião-dentista ou referência técnica e precisa solicitar seu acesso ao aplicativo.</p></div></div>
+        <button class="acesso-solicitar" data-ac="pedir">Solicitar primeiro acesso <span aria-hidden="true">→</span></button></div>
+    </div>`;
     return;
   }
-  box.innerHTML = msg + servidor + `<div class="bloco"><h2>Pedido de acesso</h2>
-      <p class="dica" style="margin-top:4px">Preencha uma vez. Depois da aprovação, você recebe um código por e-mail e entra com ele em qualquer aparelho.</p>
+  box.innerHTML = msg + servidor + `<div class="bloco acesso-cadastro">
+      <button class="link acesso-voltar" data-ac="entrar">← Voltar para entrar</button>
+      <h2>Solicitar primeiro acesso</h2>
+      <p class="dica" style="margin:4px 0 0">Preencha seus dados. Depois da aprovação, você receberá um código por e-mail e poderá entrar no aplicativo em qualquer aparelho.</p>
       <div class="radios">
-        <label class="radio"><input type="radio" name="acPerfil" value="dentista" ${estAc.perfil === "dentista" ? "checked" : ""}><span><b>Cirurgião-dentista</b><small>Aprovado pela referência técnica do seu DSEI</small></span></label>
-        <label class="radio"><input type="radio" name="acPerfil" value="rt" ${estAc.perfil === "rt" ? "checked" : ""}><span><b>Referência técnica do DSEI</b><small>Aprovado pela coordenação</small></span></label>
+        <label class="radio ${estAc.perfil === "dentista" ? "on" : ""}"><input type="radio" name="acPerfil" value="dentista" ${estAc.perfil === "dentista" ? "checked" : ""}><span><b>Cirurgião-dentista</b><small>Aprovado pela referência técnica do seu DSEI</small></span></label>
+        <label class="radio ${estAc.perfil === "rt" ? "on" : ""}"><input type="radio" name="acPerfil" value="rt" ${estAc.perfil === "rt" ? "checked" : ""}><span><b>Referência técnica</b><small>Aprovado pela coordenação</small></span></label>
       </div>
       <div class="grade">
         <label class="campo">Nome completo<input id="acNome" autocomplete="name"></label>
@@ -2016,10 +2630,10 @@ function renderAcesso() {
         <label class="campo">E-mail<input id="acEmail" type="email" autocomplete="email"></label>
         <label class="campo">UF<select id="acUf" class="lista-uf"></select></label>
         <label class="campo">DSEI<select id="acDsei"></select></label>
-        <label class="campo">Polo base principal<input id="acPolo"></label>
+        <label class="campo"><span>Polo base principal <small style="font-weight:400;color:var(--muted);font-size:inherit">(opcional)</small></span><input id="acPolo"></label>
       </div>
-      <label class="check" style="margin-top:14px"><input type="checkbox" id="acTermo"><span>Declaro que não vou registrar nome, Cartão SUS ou outro dado que identifique as pessoas examinadas, e que meus dados de profissional (nome, CRO e e-mail) ficam visíveis para a referência técnica do meu DSEI e para a coordenação.</span></label>
-      <div class="acoes-l"><button class="prim" id="acPedir">Enviar pedido</button><button class="link" data-ac="entrar">Já tenho um código</button></div></div>`;
+      <label class="check"><input type="checkbox" id="acTermo"><span>Declaro que não vou registrar nome, Cartão SUS ou outro dado que identifique as pessoas examinadas, e que meus dados de profissional (nome, CRO e e-mail) ficam visíveis para a referência técnica do meu DSEI e para a coordenação.</span></label>
+      <div class="acoes-l"><button class="prim" id="acPedir">Enviar pedido de acesso</button></div></div>`;
   $("#acUf").innerHTML = `<option value="">Escolha a UF</option>` + UFS.map(u => `<option>${u}</option>`).join("");
   preencherDsei($("#acDsei"), "", "");
 }
@@ -2038,12 +2652,13 @@ async function mostrarDiagnostico() {
 const lerUrlAcesso = () => { const i = $("#acUrl"); if (i && i.value.trim()) salvarCfg({url: i.value.trim()}); };
 $("#acessoConteudo").addEventListener("change", e => {
   if (e.target.id === "acUf") preencherDsei($("#acDsei"), e.target.value, "");
-  if (e.target.name === "acPerfil") estAc.perfil = e.target.value;
+  if (e.target.name === "acPerfil") { estAc.perfil = e.target.value; $$("#acessoConteudo .radio").forEach(l => l.classList.toggle("on", l.querySelector("input").checked)); }
 });
 $("#acessoConteudo").addEventListener("click", async e => {
   const v = e.target.closest("[data-ac]");
   if (v) { estAc.vista = v.dataset.ac; estAc.msg = ""; renderAcesso(); return window.scrollTo({top: 0}); }
   const b = e.target.closest("button"); if (!b || !b.id) return;
+  if (b.id === "acVerCodigo") { const i = $("#acCodigo"), ver = i.type === "password"; i.type = ver ? "text" : "password"; b.setAttribute("aria-pressed", String(ver)); b.setAttribute("aria-label", ver ? "Esconder o código" : "Mostrar o código"); return; }
   lerUrlAcesso();
   if (b.id === "acPedir") {
     const d = {perfil: estAc.perfil, nome: $("#acNome").value.trim(), cro: $("#acCro").value.trim(), email: $("#acEmail").value.trim(), uf: $("#acUf").value, dsei: $("#acDsei").value, polo: $("#acPolo").value.trim()};
@@ -2115,7 +2730,7 @@ function abrirDaNuvem(id) {
 /* ---------- visualização só leitura ---------- */
 function htmlLeitura(r) {
   const cel = n => { const d = r.dentes[n] || {status: "presente", faces: facesVazias(), procs: {}}; const sup = ehSup(n);
-    return `<div class="dente ${ehDecid(n) ? "dec" : "perm"}" title="${n}: ${esc(nomeDente(n))}">${sup ? `<span class="num">${n}</span>` : ""}${svgDente(n, d)}${sup ? "" : `<span class="num">${n}</span>`}</div>`; };
+    return `<div class="dente ${ehDecid(n) ? "dec" : "perm"}" title="${n}: ${esc(nomeDente(n))} · ${esc(siglaDente(d))}">${sup ? `<span class="num">${n}</span>` : siglaHtml(d)}${svgDente(n, d)}${sup ? siglaHtml(d) : `<span class="num">${n}</span>`}</div>`; };
   const ls = linhas(r.denticao);
   const odo = ls.map((l, i) => { const corte = l.arco === "inf" && i > 0 && ls[i-1].arco === "sup";
     return `<div class="arcada ${l.tipo} ${l.arco}${corte ? " corte" : ""}"><div class="quad dir">${l.l.map(cel).join("")}</div><div class="quad esq">${l.r.map(cel).join("")}</div></div>`; }).join("");
@@ -2126,11 +2741,13 @@ function htmlLeitura(r) {
     <div class="tabela"><table class="conta"><tbody>
       <tr><th>Pessoa</th><td>${esc(codigoIndividuoDe(r))}${(r.numeroExame || 1) > 1 ? ` · ${r.numeroExame}º exame` : " · 1º exame"}${r.vinculo && r.vinculo.conferidos && r.vinculo.conferidos.length ? `<br><span class="dica">Conferido na boca: ${esc(r.vinculo.conferidos.join("; "))}</span>` : ""}</td></tr>
       ${!exameValido(r) ? `<tr><th>Situação</th><td style="white-space:normal"><b>Cancelado</b> em ${fmtData((r.cancelamento || {}).em)} por ${esc((r.cancelamento || {}).por || "")}: ${esc((r.cancelamento || {}).motivo || "")}${(r.cancelamento || {}).observacao ? " · " + esc(r.cancelamento.observacao) : ""}</td></tr>` : ""}
-      <tr><th>Local</th><td>${esc([r.uf, r.dsei, r.polo, r.aldeia].filter(Boolean).join(" · "))}</td></tr>
+      <tr><th>Local</th><td>${esc([r.uf, r.dsei, r.polo, r.aldeia, r.localAtendimento].filter(Boolean).join(" · "))}</td></tr>
       <tr><th>Idade e sexo</th><td>${r.idadeAnos !== "" && r.idadeAnos != null ? Math.floor(r.idadeAnos) + " anos" : "idade não informada"} · ${{F: "feminino", M: "masculino"}[(r.crianca || {}).sexo] || "sexo não informado"}</td></tr>
       <tr><th>Risco</th><td>${esc(res.risco || "")}</td></tr>
       <tr><th>Índices</th><td>ceo-d ${res.ceod ? res.ceod.total : "–"} · CPO-D ${res.cpod ? res.cpod.total : "–"}</td></tr>
-      <tr><th>Condições gerais</th><td>${[r.placa && "placa visível", r.gengivite && "gengivite", r.fluorose && "fluorose moderada ou severa"].filter(Boolean).join(", ") || "nenhuma"}</td></tr>
+      <tr><th>Vigilância em saúde bucal</th><td style="white-space:normal">${esc((r.vigilancia || (r.fluorose ? [VIG_FLUOROSE] : [])).join(", ") || "não registrada")}</td></tr>
+      ${r.protese ? `<tr><th>Necessidade de prótese</th><td>superior: ${esc(NOMES_PROTESE[r.protese.sup || ""].toLowerCase())} · inferior: ${esc(NOMES_PROTESE[r.protese.inf || ""].toLowerCase())}</td></tr>` : ""}
+      <tr><th>Condições gerais</th><td>${[r.placa && "placa visível", r.gengivite && "gengivite"].filter(Boolean).join(", ") || "nenhuma"}</td></tr>
       <tr><th>Procedimentos coletivos</th><td>${esc((r.gerais || []).join(", ") || "nenhum")}</td></tr>
       <tr><th>Procedimentos por dente</th><td style="white-space:normal">${esc(procs.join("; ") || "nenhum")}</td></tr>
       ${r.observacoes ? `<tr><th>Observações</th><td style="white-space:normal">${esc(r.observacoes)}</td></tr>` : ""}
@@ -2352,6 +2969,7 @@ $("#admConteudo").addEventListener("click", async e => {
 /* ---------- início ---------- */
 $$(".lista-uf").forEach(sel => sel.innerHTML = `<option value="">Escolha a UF</option>` + UFS.map(u => `<option>${u}</option>`).join(""));
 $("#avisoArmaz").hidden = armazenamentoOk;
+completarCampos(estado.ex);
 renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao();
 sincronizar();
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
