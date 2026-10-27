@@ -1378,7 +1378,7 @@ function renderPainel(focoSel) {
     <div class="p-topo">${svgDente(n, d)}<div><h3 id="pTit">Dente ${n} ${siglaHtml(d)}</h3><p>${esc(nomeDente(n))}</p></div><button class="fechar" data-acao="fechar" aria-label="Fechar">×</button></div>
     ${d.status === "a_confirmar" ? (() => { const ops = opsConfirmar(n, estado.ex);
       const ant = d.ops && estado.ex._anterior && (estado.ex._anterior.dentes || {})[n];
-      const porque = ant ? `No exame de ${fmtData(estado.ex._anterior.dataExame)}, este dente estava <b>${esc((STATUS_NOME[ant.status] || ant.status).toLowerCase())}</b>, diferente do que a idade sugere.` : ops.includes("ausente") ? "Pela idade, este decíduo pode já ter caído." : "Pela idade, este dente pode ainda não ter nascido.";
+      const porque = ant ? `No exame de ${fmtData(estado.ex._anterior.dataExame)}, este dente estava <b>${esc((STATUS_NOME[ant.status] || ant.status).toLowerCase())}</b>, diferente do que a idade sugere.` : ops.includes("ausente") ? "Pela idade, este decíduo pode já ter caído." : "Pela idade, este dente pode ainda não ter erupcionado.";
       return `<div class="conf-box"><p><b>Confira na boca.</b> ${porque} Como ele está?</p><div class="chips">${ops.map(o => `<button class="chip" data-conf="${o}">${esc(STATUS_NOME[o])}</button>`).join("")}</div></div>`; })() : ""}
     <h4>Situação do dente</h4>
     <div class="chips">${STATUS.map(s => `<button class="chip" data-status="${s.k}" aria-pressed="${d.status === s.k}">${esc(s.nome)}</button>`).join("")}</div>
