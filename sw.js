@@ -1,10 +1,14 @@
 // Guarda o aplicativo no aparelho para funcionar sem internet.
 // Ao publicar uma nova versão do index.html, troque o número abaixo.
-const CACHE = "odontograma-v28";
-const ARQUIVOS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./mapa-ti.json", "./paisagem.webp"];
+const CACHE = "odontograma-v30";
+// O essencial precisa existir; os demais são guardados se estiverem no site (um arquivo faltando não impede o resto).
+const ESSENCIAIS = ["./", "./index.html"];
+const EXTRAS = ["./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./mapa-ti.json", "./paisagem.webp"];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ARQUIVOS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ESSENCIAIS)
+    .then(() => Promise.allSettled(EXTRAS.map(u => c.add(u)))))
+    .then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));

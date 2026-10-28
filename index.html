@@ -6,7 +6,7 @@
 <title>Odontograma · Saúde Bucal</title>
 <meta name="theme-color" content="#FFFFFF">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -913,6 +913,12 @@ body.na-entrada{background:#DCEEFC}
   .acesso-beneficios{margin-top:0;margin-bottom:24px;padding:10px 12px 18px;border-radius:0 0 16px 16px}
   .acesso-beneficio>span:last-child{background:none;padding:0}
 }
+.gestao-aviso{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-left:5px solid var(--sesai-azul)}
+.gestao-aviso p{margin:0;flex:1 1 320px}
+.aviso-servidor{margin:12px 0;border-left:5px solid var(--sesai-vermelho);background:#FDECEA;color:#7A1A14}
+#dicaDsei{display:block;margin-top:4px;font-weight:400}
+#dicaDsei.erro{color:var(--sesai-vermelho);font-weight:600}
+#exDsei:disabled{appearance:none;-webkit-appearance:none;background:#F1F4F8 none;color:var(--texto,#1b2430);opacity:1;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -937,6 +943,7 @@ body.na-entrada{background:#DCEEFC}
 <nav class="abas" role="tablist" id="abas"></nav>
 
 <main>
+  <div id="avisoServidor" class="aviso aviso-servidor" role="alert" hidden></div>
   <!-- INÍCIO -->
   <section id="aba-inicio" hidden>
     <div class="ini-hero"><div class="ini-hero-img paisagem-img" aria-hidden="true"></div>
@@ -971,8 +978,8 @@ body.na-entrada{background:#DCEEFC}
     <div class="bloco" id="blocoLocal">
       <h2 style="margin-bottom:12px">Local do atendimento</h2>
       <div class="grade">
-        <label class="campo">UF<select data-campo="uf" class="lista-uf"></select></label>
-        <label class="campo">DSEI<select data-campo="dsei" id="exDsei"></select></label>
+        <label class="campo">DSEI<select data-campo="dsei" id="exDsei"></select><span class="dica" id="dicaDsei" hidden></span></label>
+        <label class="campo">UF<select data-campo="uf" id="exUf"></select></label>
         <p class="dica largo" id="listaFonte" hidden></p>
         <label class="campo" id="cPoloLista" hidden>Polo base<select id="selPolo"></select></label>
         <label class="campo" id="cPolo"><span class="rot">Polo base</span><input data-campo="polo" autocomplete="off" placeholder="Só o nome do polo"></label>
@@ -1085,7 +1092,7 @@ body.na-entrada{background:#DCEEFC}
       <div class="bloco-topo"><h2>Minha conta</h2><span id="contaPerfil"></span></div>
       <div class="tabela"><table class="conta"><tbody id="contaDados"></tbody></table></div>
       <div id="contaNomeTit"></div>
-      <p class="dica" style="margin-top:10px">Nome, CRO e DSEI vêm do seu acesso aprovado. Para mudar de DSEI, faça um novo pedido de acesso com o DSEI novo.</p>
+      <p class="dica" style="margin-top:10px">Nome, CRO e DSEI vêm do seu acesso aprovado. Você registra exames e busca pessoas só neste DSEI. Para mudar de DSEI, fale com a coordenação: ela desativa o acesso atual e você faz um novo pedido com o DSEI novo.</p>
     </div>
     <div class="bloco" id="contaAtende">
       <h2 style="margin-bottom:6px">Onde você atende</h2>
@@ -1175,6 +1182,8 @@ const store = {
 };
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_SEQ = "odonto.seq.v1";
+const K_SESSAO = "odonto.sessao.v1";
+const sessao = () => store.get(K_SESSAO, null);
 const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
 const DSEI_UF = {"AC": ["Alto Rio Juruá", "Alto Rio Purus"], "AL": ["Alagoas e Sergipe"], "AM": ["Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Manaus", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Porto Velho", "Vale do Javari", "Yanomami"], "AP": ["Amapá e Norte do Pará"], "BA": ["Bahia"], "CE": ["Ceará"], "ES": ["Minas Gerais e Espírito Santo"], "GO": ["Araguaia"], "MA": ["Guamá-Tocantins", "Maranhão"], "MG": ["Minas Gerais e Espírito Santo"], "MS": ["Mato Grosso do Sul"], "MT": ["Araguaia", "Cuiabá", "Kaiapó do Mato Grosso", "Porto Velho", "Vilhena", "Xavante", "Xingu"], "PA": ["Altamira", "Amapá e Norte do Pará", "Guamá-Tocantins", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Parintins", "Rio Tapajós", "Tocantins"], "PB": ["Potiguara"], "PE": ["Pernambuco"], "PR": ["Interior Sul", "Litoral Sul"], "RJ": ["Litoral Sul"], "RN": ["Potiguara"], "RO": ["Alto Rio Purus", "Porto Velho", "Vilhena"], "RR": ["Leste de Roraima", "Yanomami"], "RS": ["Interior Sul"], "SC": ["Interior Sul", "Litoral Sul"], "SE": ["Alagoas e Sergipe"], "SP": ["Litoral Sul"], "TO": ["Araguaia", "Tocantins"]};
 const DSEIS = ["Alagoas e Sergipe", "Altamira", "Alto Rio Juruá", "Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Amapá e Norte do Pará", "Araguaia", "Bahia", "Ceará", "Cuiabá", "Guamá-Tocantins", "Interior Sul", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Leste de Roraima", "Litoral Sul", "Manaus", "Maranhão", "Mato Grosso do Sul", "Minas Gerais e Espírito Santo", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Pernambuco", "Porto Velho", "Potiguara", "Rio Tapajós", "Tocantins", "Vale do Javari", "Vilhena", "Xavante", "Xingu", "Yanomami"];
@@ -1378,31 +1387,68 @@ function cadastroFaltando() {
 }
 const listaE = a => a.length > 1 ? a.slice(0, -1).join(", ") + " e " + a.at(-1) : a.join("");
 const croCod = cro => { const t = String(cro || ""); const d = t.replace(/\D/g, ""); return d || t.replace(/[^0-9A-Za-z]/g, "").toUpperCase(); };
+// Cirurgião-dentista e RT atuam só no DSEI do cadastro: o DSEI do exame vem do cadastro e não é editável.
+// (O servidor confere de novo e recusa exame de outro DSEI.) Só a coordenação escolhe o DSEI. null = pode escolher.
+const dseiFixo = () => { const u = (sessao() || {}).usuario || {}; return u.perfil === "dentista" || u.perfil === "rt" ? (u.dsei || "") : null; };
+// No exame a ordem é DSEI → polo base → aldeia: o DSEI vem primeiro e a UF é escolhida entre as do DSEI.
+function preencherLocalDsei(ex) {
+  const sd = $("#exDsei"), su = $("#exUf"), fx = dseiFixo();
+  if (fx != null && !estado.editando) ex.dsei = fx;
+  if (fx != null) {
+    sd.innerHTML = `<option value="${esc(ex.dsei)}">${esc(ex.dsei || "Cadastro sem DSEI: fale com a coordenação")}</option>`;
+    sd.disabled = true; sd.title = "O DSEI vem do seu cadastro. Para mudar de DSEI, fale com a coordenação.";
+  } else {
+    sd.disabled = false; sd.title = "";
+    sd.innerHTML = `<option value="">Escolha o DSEI</option>` + DSEIS.map(d => `<option>${esc(d)}</option>`).join("");
+  }
+  sd.value = fx != null ? ex.dsei : DSEIS.includes(ex.dsei) ? ex.dsei : "";
+  $("#dicaDsei").hidden = fx == null;
+  $("#dicaDsei").textContent = fx != null && ex.dsei !== fx ? `Este exame é do DSEI ${ex.dsei}, fora do DSEI do seu cadastro (${fx || "sem DSEI"}). Ele não pode ser enviado por você.` : "Do seu cadastro. Para mudar de DSEI, fale com a coordenação.";
+  $("#dicaDsei").classList.toggle("erro", fx != null && ex.dsei !== fx);
+  const ufs = ex.dsei ? UFS.filter(u => (DSEI_UF[u] || []).includes(ex.dsei)) : UFS;
+  if (ex.dsei && ufs.length === 1) ex.uf = ufs[0];
+  else if (ex.dsei && ex.uf && !ufs.includes(ex.uf)) ex.uf = "";
+  su.innerHTML = (ufs.length === 1 ? "" : `<option value="">${ex.dsei ? "Escolha a UF" : "Escolha o DSEI primeiro"}</option>`) + ufs.map(u => `<option>${u}</option>`).join("");
+  su.value = ex.uf || "";
+}
 function preencherDsei(sel, uf, valor) {
   const lista = uf ? (DSEI_UF[uf] || []) : [];
   sel.innerHTML = `<option value="">${uf ? "Escolha o DSEI" : "Escolha a UF primeiro"}</option>` + lista.map(d => `<option>${esc(d)}</option>`).join("");
   sel.value = lista.includes(valor) ? valor : "";
 }
-const tres = t => String(t || "").replace(/\s/g, "").slice(0, 3).toUpperCase();
-function codigoDe(ex, seq) {
-  const n = seq || ex.seq;
-  return `${(ex.uf || "").toUpperCase()}-${tres(ex.polo)}-${tres(ex.aldeia)}-${ex.croCod || croCod(cfg().cro) || "CRO"}-${n ? String(n).padStart(4, "0") : "????"}`;
+const tres = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^0-9A-Za-z]/g, "").slice(0, 3).toUpperCase();
+// Código de acompanhamento da pessoa: UF-POLO-ALDEIA + 8 caracteres sorteados (sem 0, O, 1, I e L).
+// É sorteado no aparelho, funciona sem internet e nunca muda depois de mostrado.
+const ALFA_COD = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+function sufixoAleatorio(n) {
+  const out = [], b = new Uint8Array(1);
+  while (out.length < (n || 8)) { crypto.getRandomValues(b); if (b[0] < 248) out.push(ALFA_COD[b[0] % 31]); }
+  return out.join("");
+}
+function codigoDe(ex) {
+  const base = `${(ex.uf || "").toUpperCase()}-${tres(ex.polo)}-${tres(ex.aldeia)}`;
+  if (ex.sufixo) return `${base}-${ex.sufixo}`;
+  // Exames de antes da versão 30: CRO + número do aparelho.
+  if (ex.seq) return `${base}-${ex.croCod || croCod(cfg().cro) || "CRO"}-${String(ex.seq).padStart(4, "0")}`;
+  return `${base}-????????`;
 }
 function renderCodigo() {
   const ex = estado.ex, el = $("#codigo"); if (!el) return;
   if (ex.vinculo) { el.textContent = `${ex.vinculo.codigoIndividuo} (${ex.vinculo.numero || ex.numeroExame || 2}º exame)`; return; }
   if (ex.codigoIndividuo && estado.editando) { el.textContent = ex.codigoIndividuo + (ex.numeroExame > 1 ? ` (${ex.numeroExame}º exame)` : ""); return; }
+  // Depois de gerado, o código é imutável: mostra sempre o código fixo, mesmo que UF, polo ou aldeia mudem.
+  if (ex.codigoFixo) { el.textContent = ex.codigoFixo; return; }
   if (!ex.uf || !(ex.polo || "").trim() || !(ex.aldeia || "").trim()) { el.textContent = "Preencha UF, polo base e aldeia"; return; }
-  el.textContent = ex.seq ? codigoDe(ex) : codigoDe(ex, store.get(K_SEQ, 0) + 1);
+  el.textContent = codigoDe(ex);
 }
 
 /* ---------- estado ---------- */
 function novoExame() {
   const c = cfg();
-  return {id: uid(), criadoEm: new Date().toISOString(), dataExame: hoje(), uf: c.uf || "", dsei: c.dsei || "", polo: c.polo || "", aldeia: "", seq: null, croCod: "",
+  return {id: uid(), criadoEm: new Date().toISOString(), dataExame: hoje(), uf: c.uf || "", dsei: dseiFixo() ?? (c.dsei || ""), polo: c.polo || "", aldeia: "", seq: null, croCod: "",
     crianca: {nascimento:"", sexo:""},
     localAtendimento: c.local || "", vigilancia: [], protese: {sup: "", inf: ""},
-    denticao: "mista", placa:false, gengivite:false, fluorose:false, gerais:[], insumos:[], observacoes:"", dentes:{}, _tocado:false,
+    denticao: "mista", placa:null, gengivite:null, fluorose:false, gerais:[], insumos:[], observacoes:"", dentes:{}, _tocado:false,
     vinculo: null, codigoFixo: null, _cand: null, _recusados: [], _anterior: null, _id: {modo: ""}, _travado: false};
 }
 function garantirDentes(ex) { const idade = idadeDecimal(ex); for (const n of dentesDe(ex.denticao)) if (!ex.dentes[n]) ex.dentes[n] = denteNovo(n, ex.denticao, idade); }
@@ -1535,11 +1581,11 @@ function renderResultado() {
 }
 function renderFormulario() {
   const ex = estado.ex;
-  preencherDsei($("#exDsei"), ex.uf, ex.dsei);
+  preencherLocalDsei(ex);
   $$("[data-campo]").forEach(i => { const v = i.dataset.campo.split(".").reduce((o, k) => o && o[k], ex); i.value = v == null ? "" : v; });
   renderLocalLista();
   renderCodigo();
-  $$("[data-bool]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", (b.dataset.v === "1") === !!ex[g.dataset.bool])));
+  $$("[data-bool]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", ex[g.dataset.bool] != null && (b.dataset.v === "1") === !!ex[g.dataset.bool])));
   $("#locais").innerHTML = LOCAIS_ATENDIMENTO.map(l => `<button class="chip" type="button" data-local="${esc(l)}" aria-pressed="${ex.localAtendimento === l}">${esc(l)}</button>`).join("");
   $$("[data-protese]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === ((ex.protese || {})[g.dataset.protese] || ""))));
   renderVig();
@@ -1567,7 +1613,7 @@ function etapasDe(ex) {
   const ind = !!((ex.vinculo || ex.codigoFixo || estado.editando) && ex.crianca.nascimento);
   const al = ex.vinculo && ex._anterior ? conferirVinculo(ex._anterior, {dataExame: ex.dataExame, dentes: ex.dentes}) : [];
   const odonto = !!ex.crianca.nascimento && !pendentes(ex).length && !al.some(a => a.nivel === "impossivel" || !((ex.vinculo || {}).chaves || []).includes(a.chave));
-  const cond = (ex.vigilancia || []).length > 0;
+  const cond = (ex.vigilancia || []).length > 0 && ex.placa != null && ex.gengivite != null;
   return [["local", "Local", local, "#blocoLocal"], ["ind", "Indivíduo", ind, "#blocoInd"], ["odonto", "Odonto­grama", odonto, "#blocoOdonto"], ["cond", "Condições", cond, "#blocoCond"]];
 }
 function renderEtapas() {
@@ -1575,7 +1621,7 @@ function renderEtapas() {
   const ex = estado.ex, et = etapasDe(ex), atual = et.findIndex(e => !e[2]);
   el.innerHTML = et.map(([k, t, feita, alvo], i) => `<button class="etapa ${feita ? "feita" : ""} ${i === atual ? "atual" : ""}" type="button" data-etapa="${alvo}" aria-label="${t.replace("­", "")}: ${feita ? "feito" : "falta"}"><i>${feita ? "✓" : i + 1}</i>${t}</button>`).join("");
   $("#exTitulo").textContent = estado.editando ? "Editando exame" : "Novo exame";
-  $("#exSub").innerHTML = [ex.localAtendimento, ex.aldeia && ex.aldeia.trim(), fmtData(ex.dataExame)].filter(Boolean).map(esc).join(" · ") || "Comece pelo local do atendimento";
+  $("#exSub").innerHTML = [ex.polo && ex.polo.trim() && "Polo " + ex.polo.trim(), ex.aldeia && ex.aldeia.trim(), ex.localAtendimento, fmtData(ex.dataExame)].filter(Boolean).map(esc).join(" · ") || "Comece pelo local do atendimento";
 }
 function renderExame() { renderFormulario(); renderPaleta(); renderOdonto(); renderResultado(); renderPessoa(); renderEtapas(); }
 
@@ -1746,7 +1792,7 @@ function montarRegistro(ex) {
   return {id: ex.id, versao: 1, dono: ((sessao() || {}).usuario || {}).id || "", criadoEm: ex.criadoEm, atualizadoEm: new Date().toISOString(), dataExame: ex.dataExame,
     profissional: {nome: c.nome, cro: c.cro}, municipio: ex.codAldeia ? ex.municipio || "" : c.municipio, uf: ex.uf,
     codPolo: ex.poloManual ? "" : ex.codPolo || "", codAldeia: ex.aldeiaManual ? "" : ex.codAldeia || "", codTI: ex.codAldeia ? ex.codTI || "" : "", ti: ex.codAldeia ? ex.ti || "" : "",
-    codMunicipio: ex.codAldeia ? ex.codMunicipio || "" : "", dsei: ex.dsei, polo: ex.polo.trim(), aldeia: ex.aldeia.trim(), seq: ex.seq, croCod: ex.croCod, codigo: ex.codigoFixo || codigoDe(ex),
+    codMunicipio: ex.codAldeia ? ex.codMunicipio || "" : "", dsei: ex.dsei, polo: ex.polo.trim(), aldeia: ex.aldeia.trim(), seq: ex.seq, croCod: ex.croCod, sufixo: ex.sufixo || "", codigo: ex.codigoFixo || codigoDe(ex),
     crianca: {nascimento: ex.crianca.nascimento || "", sexo: ex.crianca.sexo || ""}, idadeAnos: idade ? idade.decimal : "", denticao: ex.denticao,
     localAtendimento: ex.localAtendimento || "", vigilancia: (ex.vigilancia || []).slice(), protese: {sup: (ex.protese || {}).sup || "", inf: (ex.protese || {}).inf || ""},
     placa: ex.placa, gengivite: ex.gengivite, fluorose: (ex.vigilancia || []).includes(VIG_FLUOROSE), gerais: ex.gerais.slice(), insumos: (ex.insumos || []).slice(), observacoes: ex.observacoes, dentes,
@@ -1755,9 +1801,20 @@ function montarRegistro(ex) {
     vinculo: ex.vinculo ? {codigoIndividuo: ex.vinculo.codigoIndividuo, chaves: (ex.vinculo.chaves || []).slice(), numero: ex.vinculo.numero || ex.numeroExame} : null,
     situacao: "valido", envio: {estado: "pendente", tentativas: 0}};
 }
+// Perguntas que precisam de resposta para o dado não ficar ambíguo na planilha.
+function camposFaltando(ex) {
+  const f = [];
+  if (!ex.localAtendimento) f.push(["o local de atendimento (UBSI, CASAI…)", "#locais"]);
+  if (!(ex.vigilancia || []).length) f.push([`a vigilância em saúde bucal (ou “${VIG_NENHUM}”)`, "#blocoCond"]);
+  if (ex.placa == null) f.push(["placa visível (Sim ou Não)", '[data-bool="placa"]']);
+  if (ex.gengivite == null) f.push(["gengivite (Sim ou Não)", '[data-bool="gengivite"]']);
+  return f;
+}
 function salvarExame() {
   const c = cfg(), ex = estado.ex;
   if (cadastroFaltando().length) { toast("Entre com o seu acesso de profissional para salvar exames."); return irAba("acesso"); }
+  const fx = dseiFixo();
+  if (fx != null && ex.dsei !== fx) { toast(fx ? `Você só pode registrar exames no DSEI ${fx}, o do seu cadastro. Este exame está no DSEI ${ex.dsei || "(vazio)"}.` : "Seu cadastro está sem DSEI. Peça à coordenação para corrigir o seu cadastro."); return $("#blocoLocal").scrollIntoView({block: "center"}); }
   if (!ex.uf || !ex.dsei) { toast("Escolha a UF e o DSEI do atendimento."); return $(ex.uf ? '[data-campo="dsei"]' : '[data-campo="uf"]').focus(); }
   if (!(ex.polo || "").trim() || !(ex.aldeia || "").trim()) {
     toast("Informe o polo base e a aldeia ou comunidade.");
@@ -1777,9 +1834,14 @@ function salvarExame() {
     toast(imp.length ? `Este exame não combina com o anterior da pessoa (dente ${imp.map(a => a.dente).join(", ")}). Corrija os dentes ou marque que não é a mesma pessoa.` : `Confira na boca e marque ${falta.length === 1 ? "o dente" : "os dentes"} ${falta.map(a => a.dente).join(", ")}.`);
     $("#confBox").scrollIntoView({block: "center", behavior: "smooth"}); return;
   }
+  const faltam = camposFaltando(ex);
+  if (faltam.length) {
+    toast(`Falta responder: ${listaE(faltam.map(f => f[0]))}.`);
+    const el = $(faltam[0][1]); if (el) el.scrollIntoView({block: "center", behavior: "smooth"});
+    return;
+  }
   if (ex.vinculo) ex.vinculo.chaves = al.filter(a => a.nivel === "confira").map(a => a.chave);
-  if (!ex.seq) { const n = store.get(K_SEQ, 0) + 1; store.set(K_SEQ, n); ex.seq = n; }
-  if (!ex.croCod) ex.croCod = croCod(c.cro);
+  if (!ex.sufixo && !ex.seq && !ex.codigoFixo) ex.sufixo = sufixoAleatorio();
   if (ex.localAtendimento) salvarCfg({local: ex.localAtendimento});
   const reg = montarRegistro(ex);
   const lista = exames(), i = lista.findIndex(e => e.id === reg.id);
@@ -1793,13 +1855,14 @@ function salvarExame() {
 function abrirExame(id) {
   const reg = meus().find(e => e.id === id); if (!reg) return;
   if (estado.ex._tocado && !estado.editando && !confirm("Há um exame em andamento que ainda não foi salvo. Deseja descartá-lo para abrir este?")) return;
-  estado.ex = {id: reg.id, criadoEm: reg.criadoEm, dataExame: reg.dataExame, uf: reg.uf || "", dsei: reg.dsei || "", polo: reg.polo || "", aldeia: reg.aldeia || "", seq: reg.seq || null,
+  estado.ex = {id: reg.id, criadoEm: reg.criadoEm, dataExame: reg.dataExame, uf: reg.uf || "", dsei: reg.dsei || "", polo: reg.polo || "", aldeia: reg.aldeia || "", seq: reg.seq || null, sufixo: reg.sufixo || "",
     codPolo: reg.codPolo || "", codAldeia: reg.codAldeia || "", codTI: reg.codTI || "", ti: reg.ti || "", codMunicipio: reg.codMunicipio || "", municipio: reg.municipio || "", croCod: reg.croCod || "", crianca: {nascimento: reg.crianca.nascimento || "", sexo: reg.crianca.sexo || ""}, denticao: reg.denticao,
     placa: reg.placa, gengivite: reg.gengivite, fluorose: !!reg.fluorose, gerais: reg.gerais.slice(), insumos: (reg.insumos || []).slice(), observacoes: reg.observacoes || "", dentes: clone(reg.dentes), _tocado: true,
     localAtendimento: reg.localAtendimento || "", vigilancia: Array.isArray(reg.vigilancia) ? reg.vigilancia.slice() : null, protese: Object.assign({sup: "", inf: ""}, reg.protese || {}),
     codigoIndividuo: reg.codigoIndividuo || reg.codigo, numeroExame: reg.numeroExame || 1,
     vinculo: reg.vinculo && reg.vinculo.codigoIndividuo ? {codigoIndividuo: reg.vinculo.codigoIndividuo, chaves: (reg.vinculo.chaves || []).slice(), numero: reg.numeroExame || reg.vinculo.numero} : null,
-    _cand: null, _recusados: [], _anterior: null, _id: {modo: ""}, _travado: !!(reg.vinculo && reg.vinculo.codigoIndividuo), codigoFixo: reg.codigo || null};
+    _cand: null, _recusados: [], _anterior: null, _id: {modo: ""}, _travado: !!(reg.vinculo && reg.vinculo.codigoIndividuo), codigoFixo: reg.codigo || null,
+    codigoGerado: !(reg.vinculo && reg.vinculo.codigoIndividuo) && reg.codigo || null, codigoMostrado: !(reg.vinculo && reg.vinculo.codigoIndividuo) && !!reg.codigo, codigoReservado: false};
   completarCampos(estado.ex); garantirDentes(estado.ex); estado.editando = id; store.set(K_RASC, Object.assign(clone(estado.ex), {_editando: id}));
   irAba("exame"); renderExame(); window.scrollTo({top: 0});
   if (estado.ex.vinculo) carregarAnterior();
@@ -1845,12 +1908,12 @@ function renderLista() {
   const q = normTexto(estL.busca);
   const naNuvem = e => e.envio.estado === "enviado" || e.envio.estado === "nuvem";
   const l = todos.filter(e => (estL.filtro === "todos" || (estL.filtro === "enviar" ? !naNuvem(e) : estL.filtro === "nuvem" ? naNuvem(e) && exameValido(e) : !exameValido(e)))
-    && (!q || normTexto(codigoIndividuoDe(e)).includes(q) || normTexto(e.codigo).includes(q) || normTexto(e.aldeia).includes(q)));
+    && (!q || normTexto(codigoIndividuoDe(e)).includes(q) || normTexto(e.codigo).includes(q) || normTexto(e.aldeia).includes(q) || normTexto(e.polo).includes(q)));
   const rot = {enviado: "Na nuvem", nuvem: "Na nuvem", pendente: "A enviar", erro: "Erro no envio"};
   const item = e => { const canc = !exameValido(e), nn = naNuvem(e), n = e.numeroExame || 1, cl = (e.resultado || {}).classe || "?", c = e.cancelamento || {};
     const idade = e.idadeAnos !== "" && e.idadeAnos != null ? Math.floor(e.idadeAnos) + " anos" : "", sx = {F: "feminino", M: "masculino"}[(e.crianca || {}).sexo] || "";
     const sub = canc ? `Cancelado em ${fmtData(c.em)}: ${esc(c.motivo || "")}${c.observacao ? " · " + esc(c.observacao) : ""}. Fora do painel e dos índices.`
-      : [n > 1 || e.vinculo ? `${n}º exame da pessoa` : "1º exame", idade, sx, esc(e.aldeia || "sem aldeia")].filter(Boolean).join(" · ") + (e.envio.estado === "nuvem" ? " · enviado de outro aparelho" : "");
+      : [n > 1 || e.vinculo ? `${n}º exame da pessoa` : "1º exame", idade, sx, esc([e.polo, e.aldeia || "sem aldeia"].filter(Boolean).join(" › "))].filter(Boolean).join(" · ") + (e.envio.estado === "nuvem" ? " · enviado de outro aparelho" : "");
     const cod = codigoIndividuoDe(e);
     return `<details class="item ${canc ? "cancelado" : ""}"><summary><span class="classe" data-c="${esc(cl)}">${esc(cl)}</span><span style="min-width:0"><b class="cod">${esc(cod || "Exame sem código")}</b><span class="it-sub">${sub}</span>${e.envio.estado === "erro" ? `<span class="it-erro">${esc(e.envio.erro || "")}</span>` : ""}</span>
       ${canc ? `<span class="estado erro">Cancelado</span>` : `<span class="estado ${nn ? "enviado" : e.envio.estado}">${rot[e.envio.estado]}</span>`}</summary>
@@ -1930,6 +1993,8 @@ function candidatosLocais(filtro) {
   meus().filter(e => exameValido(e) && e.id !== estado.ex.id && filtro(e)).forEach(e => (g[codigoIndividuoDe(e)] = g[codigoIndividuoDe(e)] || []).push(e));
   return Object.entries(g).map(([k, l]) => { l.sort(ordemExame); return {codigoIndividuo: k, exames: l.length, ultimo: l.at(-1)}; });
 }
+// O servidor só deixa dentista e RT buscarem pessoas no DSEI do próprio cadastro.
+const avisoForaDoDsei = d => `Você só pode buscar pessoas já examinadas no DSEI ${d}, o do seu cadastro. Para atender em outro DSEI, fale com a coordenação.`;
 async function buscarPorDados() {
   const ex = estado.ex, sx = ex.crianca.sexo, st = idEst();
   if (!ex.dsei || !(ex.aldeia || "").trim()) return toast("Preencha o DSEI e a aldeia ou comunidade, no Local do atendimento.");
@@ -1937,8 +2002,9 @@ async function buscarPorDados() {
   st.buscando = true; renderPessoa();
   let cands = null, offline = false;
   if (navigator.onLine && sessao()) {
-    try { cands = (await api("buscarPessoa", {dsei: ex.dsei, aldeia: ex.aldeia, nascimento: ex.crianca.nascimento, sexo: sx, excetoId: ex.id})).candidatos; } catch (err) { cands = null; }
+    try { const r = await api("buscarPessoa", {dsei: ex.dsei, aldeia: ex.aldeia, nascimento: ex.crianca.nascimento, sexo: sx, excetoId: ex.id}); cands = r.foraDoDsei ? {foraDoDsei: avisoForaDoDsei(r.foraDoDsei)} : r.candidatos; } catch (err) { cands = null; }
   }
+  if (cands && cands.foraDoDsei) { toast(cands.foraDoDsei); cands = []; }
   if (!cands) { offline = true; cands = candidatosLocais(e => e.dsei === ex.dsei && normTexto(e.aldeia) === normTexto(ex.aldeia) && e.crianca.nascimento === ex.crianca.nascimento && e.crianca.sexo === sx); }
   if (estado.ex !== ex) return;
   st.buscando = false; st.buscou = true; ex._cand = cands.filter(c => !(ex._recusados || []).includes(c.codigoIndividuo)); ex._candOffline = offline;
@@ -1955,6 +2021,7 @@ async function buscarPorCodigo() {
   if (!r) { offline = true; const c = candidatosLocais(e => (codigoIndividuoDe(e) === cod || e.codigo === cod) && e.dsei === ex.dsei)[0]; r = {pessoa: c || null}; }
   if (estado.ex !== ex) return;
   st.buscando = false; st.offline = offline;
+  if (r.foraDoDsei) toast(avisoForaDoDsei(r.foraDoDsei));
   if (r.pessoa) st.achado = r.pessoa; else if (r.outroDsei) st.outroDsei = r.outroDsei; else st.naoAchado = true;
   renderPessoa();
 }
@@ -1970,17 +2037,40 @@ function vincular(c, travar) {
 function reservarCodigo() {
   const ex = estado.ex, c = cfg();
   if (!ex.uf || !(ex.polo || "").trim() || !(ex.aldeia || "").trim()) { toast("Preencha UF, polo base e aldeia no Local do atendimento: eles fazem parte do código."); return null; }
-  if (!ex.seq) { const n = store.get(K_SEQ, 0) + 1; store.set(K_SEQ, n); ex.seq = n; }
-  if (!ex.croCod) ex.croCod = croCod(c.cro);
-  ex.codigoFixo = codigoDe(ex); ex.vinculo = null; ex._anterior = null; ex._travado = false;
+  // O código gerado fica guardado em codigoGerado: se a pessoa voltar a ser "nova" (depois de vincular por engano,
+  // ou de corrigir a aldeia), volta o MESMO código, nunca um recalculado.
+  if (!ex.codigoGerado) { if (!ex.sufixo && !ex.seq) ex.sufixo = sufixoAleatorio(); ex.codigoGerado = codigoDe(ex); }
+  ex.codigoFixo = ex.codigoGerado; ex.vinculo = null; ex._anterior = null; ex._travado = false;
   alterado(); return ex.codigoFixo;
+}
+// Com internet, confere na nuvem se o código sorteado já existe e sorteia outro antes de mostrar.
+async function conferirCodigoNovo() {
+  const ex = estado.ex;
+  // O servidor reserva o código com trava: dois aparelhos nunca recebem o mesmo. Sem internet (ou servidor antigo),
+  // o código sorteado no aparelho vale como definitivo.
+  // Um código já mostrado (por exemplo, gerado sem internet) nunca é trocado: só é reservado, se ainda der.
+  for (let i = 0; i < 5 && navigator.onLine && sessao() && cfg().url && ex.sufixo && !ex.codigoReservado; i++) {
+    let r; try { r = await api("reservarCodigo", {codigoReserva: ex.codigoFixo, exameId: ex.id, dsei: ex.dsei}, {tempo: 10000}); } catch (e) { break; }
+    if (r.reservado) { ex.codigoReservado = true; break; }
+    if (!r.ocupado || ex.codigoMostrado) break;
+    ex.sufixo = sufixoAleatorio(); ex.codigoGerado = ex.codigoFixo = codigoDe(ex); alterado();
+  }
+  ex.codigoMostrado = true; alterado();
+  renderPessoa(); renderCodigo();
+  return ex.codigoFixo;
 }
 function trocarIdentificacao() {
   const ex = estado.ex;
   if (ex.vinculo) ex._recusados = [...(ex._recusados || []), ex.vinculo.codigoIndividuo];
   ex.vinculo = null; ex._anterior = null; ex.codigoFixo = null; ex._travado = false; ex.codigoIndividuo = null; ex.numeroExame = 1; ex._cand = null; ex._id = {modo: ""}; estado.alertas = {};
   // Editando um exame já salvo: ele vira o 1º exame de uma pessoa nova, com o próprio código.
-  if (estado.editando) ex.codigoFixo = codigoDe(ex);
+  if (estado.editando) {
+    const novo = !ex.codigoGerado;
+    if (novo) { if (!ex.sufixo && !ex.seq) ex.sufixo = sufixoAleatorio(); ex.codigoGerado = codigoDe(ex); }
+    ex.codigoFixo = ex.codigoGerado;
+    // o código novo só aparece depois de reservado no servidor (ou, sem internet, como foi sorteado)
+    if (novo) { alterado(); return conferirCodigoNovo().then(() => renderExame()); }
+  }
   alterado(); renderExame();
 }
 async function copiarTexto(t) {
@@ -2061,7 +2151,7 @@ function renderPessoa() {
     else if (st.outroDsei) res = `<div class="aviso-id">Este código é de uma pessoa examinada no DSEI <b>${esc(st.outroDsei)}</b>. Só dá para juntar exames do mesmo DSEI: confira o DSEI do atendimento ou use "Não tenho o código".</div>`;
     else if (st.naoAchado) res = `<div class="aviso-id">${st.offline ? `Sem internet: não encontrei este código nos exames deste aparelho. Se tiver certeza do código, use mesmo assim: ele é conferido quando o exame for enviado.
         <div class="acoes-l"><button class="sec mini" data-id-acao="usar-mesmo-assim">Usar este código mesmo assim</button></div>` : `Não encontramos o código <b>${esc(st.codigo)}</b> no DSEI ${esc(ex.dsei || "")}. Confira o código ou use "Não tenho o código".`}</div>`;
-    box.innerHTML = `<label class="campo">Código de acompanhamento<input id="idCodigo" value="${esc(st.codigo || "")}" placeholder="Ex.: PR-TES-TES-1486626-0003" autocomplete="off" autocapitalize="characters"></label>
+    box.innerHTML = `<label class="campo">Código de acompanhamento<input id="idCodigo" value="${esc(st.codigo || "")}" placeholder="Ex.: RR-SUR-HAK-42E64K9P" autocomplete="off" autocapitalize="characters"></label>
       <div class="acoes-l"><button class="prim" data-id-acao="buscar-codigo">Buscar</button></div>
       <p class="info-id">Use o código quando a pessoa já tiver sido atendida antes. Ele fica anotado na ficha da equipe.</p>${res}`;
     return;
@@ -2103,13 +2193,13 @@ document.addEventListener("click", e => {
   if (a === "trocar") return trocarIdentificacao();
   if (a === "nova-pessoa") {
     if (ex._cand && ex._cand.length) ex._recusados = [...(ex._recusados || []), ...ex._cand.map(c => c.codigoIndividuo)];
-    const cod = reservarCodigo(); if (!cod) return;
-    abrirModal(`<div class="painel modal-cod" role="dialog" aria-modal="true" aria-labelledby="ncTit" style="max-width:520px"><button class="fechar" data-fecha-leitura data-id-acao="fecha-novo" aria-label="Fechar">×</button>
+    if (!reservarCodigo()) return;
+    conferirCodigoNovo().then(cod => abrirModal(`<div class="painel modal-cod" role="dialog" aria-modal="true" aria-labelledby="ncTit" style="max-width:520px"><button class="fechar" data-fecha-leitura data-id-acao="fecha-novo" aria-label="Fechar">×</button>
       <div class="nc-ok" aria-hidden="true">✓</div><h3 id="ncTit">Novo código de acompanhamento gerado</h3>
       <p class="dica">Esta pessoa não possui exames anteriores. Um novo código foi gerado.</p>
       <div class="nc-cod cod">${esc(cod)}</div>
       <p class="dica">Use este código para anotar na ficha e localizar esta pessoa em atendimentos futuros.</p>
-      <div class="p-acoes"><button class="sec" data-id-acao="copiar" data-cod="${esc(cod)}">Copiar código</button><button class="prim" data-fecha-leitura data-id-acao="fecha-novo">Continuar preenchimento →</button></div></div>`);
+      <div class="p-acoes"><button class="sec" data-id-acao="copiar" data-cod="${esc(cod)}">Copiar código</button><button class="prim" data-fecha-leitura data-id-acao="fecha-novo">Continuar preenchimento →</button></div></div>`));
     return;
   }
   if (a === "fecha-novo") { renderExame(); }
@@ -2209,7 +2299,7 @@ function irAba(a) {
   if (a === "config") renderConfig();
   if (a === "painel") abrirPainelAba();
   if (a === "exame") {
-    if (!estado.ex._tocado && !estado.editando) { const c = cfg(); Object.assign(estado.ex, {uf: c.uf || "", dsei: c.dsei || "", polo: c.polo || ""}); }
+    if (!estado.ex._tocado && !estado.editando) { const c = cfg(); Object.assign(estado.ex, {uf: c.uf || "", dsei: dseiFixo() ?? (c.dsei || ""), polo: c.polo || ""}); }
     renderFormulario();
   }
 }
@@ -2226,7 +2316,7 @@ $("#aba-exame").addEventListener("input", e => {
   const i = e.target;
   if (i.dataset.campo) {
     const ks = i.dataset.campo.split("."); let o = estado.ex; ks.slice(0, -1).forEach(k => o = o[k]); o[ks.at(-1)] = i.value;
-    if (i.dataset.campo === "uf") { preencherDsei($("#exDsei"), estado.ex.uf, estado.ex.dsei); estado.ex.dsei = $("#exDsei").value; }
+    if (i.dataset.campo === "dsei") preencherLocalDsei(estado.ex);
     if (i.dataset.campo === "uf" || i.dataset.campo === "dsei") renderLocalLista();
     if (i.dataset.campo === "aldeia" && estado.ex.aldeiaManual) limparAldeia(estado.ex);
     if (["uf","polo","aldeia"].includes(i.dataset.campo)) renderCodigo();
@@ -2566,7 +2656,7 @@ function registroParaJson(e) {
 }
 /** @param {any} e */
 function linhaExame(e) {
-  var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, sn = function (/** @type {any} */ b) { return b ? "sim" : "não"; };
+  var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, sn = function (/** @type {any} */ b) { return b == null ? "" : b ? "sim" : "não"; };
   return [e.id, codigoIndividuoDe(e), e.numeroExame || 1, e.codigo || "", exameValido(e) ? "válido" : "cancelado", e.dataExame || "", faixaEtaria(e.idadeAnos),
     e.idadeAnos, (e.crianca || {}).sexo || "", (e.crianca || {}).nascimento || "", e.uf || "", e.dsei || "", e.polo || "", e.aldeia || "", e.municipio || "", e.codMunicipio || "", e.ti || "", e.codTI || "", e.codPolo || "", e.codAldeia || "",
     e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), e.localAtendimento || "",
@@ -2693,6 +2783,7 @@ function barra(v, total, cor) {
   return `<span class="barra"><span style="width:${w}%;background:${cor}"></span></span>`;
 }
 function abrirPainelAba() {
+  // O Painel mostra dados agregados: todos os perfis veem a visão geral, qualquer DSEI e a comparação entre DSEIs.
   const nomes = [...new Set([...DSEIS, ...estP.extras])];
   if (estP.dsei === null || !nomes.includes(estP.dsei)) estP.dsei = cfg().dsei || nomes[0];
   $("#pDsei").innerHTML = nomes.map(d => `<option ${d === estP.dsei ? "selected" : ""}>${esc(d)}</option>`).join("");
@@ -2906,7 +2997,7 @@ function desenharCobertura(cb) {
   }
   const pcTotal = fmtPct(cb.examinados, cb.populacao);
   const sem = cb.semExame ? `<details class="cob-sem"><summary><b>${fmtN(cb.totalSemExame)} ${cb.totalSemExame === 1 ? "aldeia" : "aldeias"} sem nenhum exame no período</b> <span class="dica">para busca ativa</span></summary>
-      <div class="tabela"><table class="esq"><thead><tr><th>Aldeia</th><th>Polo base</th><th class="num">População</th></tr></thead><tbody>${cb.semExame.map(a => `<tr><td>${esc(a.aldeia)}</td><td>${esc(a.polo)}</td><td class="num">${fmtN(a.pop)}</td></tr>`).join("")}</tbody></table></div>
+      <div class="tabela"><table class="esq"><thead><tr><th>Polo base</th><th>Aldeia</th><th class="num">População</th></tr></thead><tbody>${cb.semExame.map(a => `<tr><td>${esc(a.polo)}</td><td>${esc(a.aldeia)}</td><td class="num">${fmtN(a.pop)}</td></tr>`).join("")}</tbody></table></div>
       ${cb.totalSemExame > cb.semExame.length ? `<p class="nota">Mostrando as ${cb.semExame.length} mais populosas. A lista completa sai da aba População da planilha.</p>` : ""}</details>` : "";
   box.innerHTML = `<div class="bloco cob">
     <div class="bloco-topo"><h3>Cobertura da população indígena</h3><span class="dica">População da SESAI de ${esc(String(cb.ano))}</span></div>
@@ -3062,7 +3153,7 @@ function htmlPessoa(p) {
   const ind = (x, k) => x ? `${x.total} <small class="dica">(${k.map(c => x[c]).join(" · ")})</small>` : "–";
   const muds = mudancasDentes(a, b);
   const ca = CL.indexOf((a.resultado || {}).classe), cb = CL.indexOf((b.resultado || {}).classe);
-  return `<div class="pessoa"><div class="bloco-topo"><h3>Linha do tempo · <span class="cod">${esc(p.codigoIndividuo)}</span></h3><span class="dica">${{F: "Feminino", M: "Masculino"}[(a.crianca || {}).sexo] || "Sexo não informado"} · ${esc(a.aldeia || "")} · DSEI ${esc(a.dsei)}</span></div>
+  return `<div class="pessoa"><div class="bloco-topo"><h3>Linha do tempo · <span class="cod">${esc(p.codigoIndividuo)}</span></h3><span class="dica">${{F: "Feminino", M: "Masculino"}[(a.crianca || {}).sexo] || "Sexo não informado"} · DSEI ${esc(a.dsei)}${a.polo ? " › " + esc(a.polo) : ""}${a.aldeia ? " › " + esc(a.aldeia) : ""}</span></div>
     <div class="tabela"><table class="linha-tempo"><thead><tr><th></th>${l.map((e, i) => `<th>${i + 1}º exame</th>`).join("")}</tr></thead><tbody>
       ${linha("Data", e => fmtData(e.dataExame))}
       ${linha("Idade · faixa", e => `${idadeTxt((e.crianca || {}).nascimento, e.dataExame, e.idadeAnos)} · ${esc(faixaEtaria(e.idadeAnos).replace(" anos", "").replace("Adulto (19 a 59)", "19–59").replace("Pessoa idosa (60 ou mais)", "60+"))}`)}
@@ -3128,7 +3219,7 @@ function resumoLocal() {
   const l = examesTodos().filter(exameValido), ult = {};
   l.slice().sort(ordemExame).forEach(e => ult[codigoIndividuoDe(e)] = e);
   const cods = Object.keys(ult), hj = hoje();
-  const reavaliar = cods.filter(c => mesesDesde(ult[c].dataExame, hj) >= MESES_REAVALIAR).map(c => ({codigo: c, data: ult[c].dataExame, aldeia: ult[c].aldeia || "", classe: (ult[c].resultado || {}).classe || ""}));
+  const reavaliar = cods.filter(c => mesesDesde(ult[c].dataExame, hj) >= MESES_REAVALIAR).map(c => ({codigo: c, data: ult[c].dataExame, aldeia: ult[c].aldeia || "", polo: ult[c].polo || "", classe: (ult[c].resultado || {}).classe || ""}));
   return {pessoas: cods.length, exames: l.length, alto: cods.filter(c => nivelDe(ult[c]) === "alto").length, acoesAno: null, reavaliar, totalReavaliar: reavaliar.length, acoes: null, local: true};
 }
 function mesesDesde(a, b) { const x = new Date(String(a) + "T12:00:00"), y = new Date(String(b) + "T12:00:00"); return isNaN(x) || isNaN(y) ? 0 : (y - x) / (30.4375 * 864e5); }
@@ -3219,7 +3310,7 @@ function abrirReavaliar() {
   const c = lerCache(K_INICIO), d = estI.dados || (c && c.dados) || resumoLocal(), l = d.reavaliar || [];
   abrirModal(`<div class="painel" role="dialog" aria-modal="true" aria-labelledby="rvTit" style="max-width:620px">
     <div class="p-topo"><div><h3 id="rvTit">Pessoas para reavaliação</h3><p>Pessoas que você examinou e cujo último exame foi há ${MESES_REAVALIAR} meses ou mais.</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>
-    ${l.length ? l.map(x => `<div class="reav"><span class="classe" data-c="${esc(x.classe)}">${esc(x.classe || "?")}</span><span class="tx"><b class="cod">${esc(x.codigo)}</b><small>Último exame em ${fmtData(x.data)}${x.aldeia ? " · " + esc(x.aldeia) : ""}</small></span><button class="sec mini" data-fecha-leitura data-ini-cod="${esc(x.codigo)}">Novo exame</button></div>`).join("")
+    ${l.length ? l.map(x => `<div class="reav"><span class="classe" data-c="${esc(x.classe)}">${esc(x.classe || "?")}</span><span class="tx"><b class="cod">${esc(x.codigo)}</b><small>Último exame em ${fmtData(x.data)}${x.polo || x.aldeia ? " · " + esc([x.polo, x.aldeia].filter(Boolean).join(" › ")) : ""}</small></span><button class="sec mini" data-fecha-leitura data-ini-cod="${esc(x.codigo)}">Novo exame</button></div>`).join("")
       + ((d.totalReavaliar || 0) > l.length ? `<p class="dica">Mostrando ${l.length} de ${d.totalReavaliar}.</p>` : "") : `<p class="dica">Ninguém para reavaliar agora.</p>`}</div>`);
 }
 function irParaCodigo(cod) {
@@ -3301,10 +3392,8 @@ $("#aba-acoes").addEventListener("click", async e => {
 // ENDEREÇO DO SERVIDOR: todos os aparelhos usam este endereço, sem depender do link que a pessoa abriu.
 // Se um dia criar uma implantação nova no Apps Script, troque só o endereço abaixo (entre as aspas) e suba o index.html.
 const ENDERECO_PADRAO = "https://script.google.com/macros/s/AKfycbxK5e2VDsdo4TEgrwp9DFS-iv-SSo5xY1qY0vBosK91WkRaCmXsW8PhOxH4djW_f4r3Ig/exec";
-const K_SESSAO = "odonto.sessao.v1";
 const LINK_APP = location.origin + location.pathname;
 const tipoAparelho = () => (/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Celular ou tablet" : "Computador") + (/Edg\//.test(navigator.userAgent) ? " · Edge" : /Chrome\//.test(navigator.userAgent) ? " · Chrome" : /Firefox\//.test(navigator.userAgent) ? " · Firefox" : /Safari\//.test(navigator.userAgent) ? " · Safari" : "");
-const sessao = () => store.get(K_SESSAO, null);
 const perfil = () => (sessao() && sessao().usuario.perfil) || "";
 const NOME_PERFIL = {dentista: "Cirurgião-dentista", rt: "Referência técnica", coord: "Coordenação"};
 // Quem registra exames: dentista, RT e a pessoa da coordenação que também é RT de um DSEI.
@@ -3334,7 +3423,7 @@ async function api(acao, dados, opc) {
   if (!c.url) throw new Error("O endereço do servidor não está configurado. Abra o app pelo link enviado pela coordenação.");
   if (!navigator.onLine) throw new Error("Sem internet agora.");
   const cred = opc.cred || (opc.publica ? null : s);
-  const corpo = Object.assign({acao, versaoApp: 28, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
+  const corpo = Object.assign({acao, versaoApp: 30, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), opc.tempo || 30000);
   try {
     const r = await fetch(c.url, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(corpo), signal: ctrl.signal});
@@ -3342,6 +3431,7 @@ async function api(acao, dados, opc) {
     if (!j.ok) {
       if (j.semAcesso && !opc.publica && !opc.cred && s) acessoPerdido(j.erro);
       if (/perfil não tem permissão/.test(j.erro || "") && acao !== "entrar") setTimeout(() => verificarSessao(true), 0);
+      if (/^Ação desconhecida/.test(j.erro || "")) avisarServidor(0);
       const err = new Error(j.erro || "O servidor recusou o pedido."); err.semAcesso = !!j.semAcesso; err.dados = j; throw err;
     }
     return j;
@@ -3356,6 +3446,18 @@ function acessoPerdido(msg) {
   estAc.vista = "entrar"; estAc.msg = (msg || "Seu acesso não é mais válido.") + " Os exames que ainda não foram enviados continuam neste aparelho.";
   renderAbas(); irAba("acesso");
 }
+// Esta versão do app precisa do Codigo.gs a partir desta versão (mostrada no /exec como "versao").
+const SERVIDOR_MIN = 26;
+// App e servidor têm numerações próprias: o aviso só aparece se o servidor for MAIS ANTIGO que o mínimo
+// de que este app precisa (servidor igual ou mais novo é compatível). Servidor que não informa a versão é antigo.
+function avisarServidor(v) {
+  const box = $("#avisoServidor"); if (!box) return;
+  const velho = typeof v === "number" && v < SERVIDOR_MIN;
+  box.hidden = !velho;
+  if (velho) box.innerHTML = perfil() === "coord"
+    ? `<b>${v ? `O servidor está na versão ${v}` : "O servidor está numa versão antiga"}, e este app precisa da ${SERVIDOR_MIN} ou mais nova.</b> Algumas funções podem falhar. No Apps Script, cole o Codigo.gs desta versão e publique pelo lápis (Gerenciar implantações > lápis > Nova versão > Implantar).`
+    : `<b>O servidor do app está desatualizado.</b> Algumas funções podem falhar até a coordenação atualizar. Seus exames continuam guardados neste aparelho.`;
+}
 function aplicarUsuario(u) {
   salvarCfg({nome: u.nome || "Coordenação", cro: u.cro || "", uf: u.uf || cfg().uf, dsei: u.dsei || cfg().dsei, polo: cfg().polo || u.polo || ""});
 }
@@ -3365,7 +3467,8 @@ async function verificarSessao(forcar) {
   try {
     const j = await api("entrar", {aparelho: tipoAparelho()});
     const mudou = (s.usuario || {}).perfil !== j.usuario.perfil;
-    store.set(K_SESSAO, Object.assign(s, {usuario: j.usuario, verificadoEm: new Date().toISOString()}));
+    store.set(K_SESSAO, Object.assign(s, {usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0}));
+    avisarServidor(j.versao || 0);
     carregarTerritorios(j.territoriosVersao || "");
     aplicarUsuario(j.usuario); renderAbas();
     if (mudou) { toast(`Seu perfil agora é: ${NOME_PERFIL[j.usuario.perfil]}.`); if (!abasDoPerfil().some(([k]) => k === estado.aba)) irAba(abaInicial()); else irAba(estado.aba); }
@@ -3446,7 +3549,7 @@ function mudouLocal() {
   const ex = estado.ex;
   if (ex._id && ex._id.buscou && !ex.vinculo && !ex.codigoFixo) { ex._id.buscou = false; ex._cand = null; renderPessoa(); }
   $$("#blocoLocal [data-campo]").forEach(i => { const v = i.dataset.campo.split(".").reduce((o, k) => o && o[k], ex); if (document.activeElement !== i) i.value = v == null ? "" : v; });
-  preencherDsei($("#exDsei"), ex.uf, ex.dsei);
+  preencherLocalDsei(ex);
   renderLocalLista(); renderCodigo(); renderEtapas(); alterado();
 }
 $("#selPolo").addEventListener("change", e => {
@@ -3477,7 +3580,7 @@ $("#resBuscaAldeia").addEventListener("click", e => {
   const b = e.target.closest("[data-aldeia-busca]"); if (!b) return;
   const ex = estado.ex, L = listaDoDsei(ex.dsei), a = L && L.aldeias.find(x => x.c === b.dataset.aldeiaBusca); if (!a) return;
   aplicarAldeia(ex, L, a); $("#inBuscaAldeia").value = ""; $("#resBuscaAldeia").innerHTML = ""; mudouLocal();
-  $('[data-campo="uf"]').value = ex.uf; preencherDsei($("#exDsei"), ex.uf, ex.dsei);
+  preencherLocalDsei(ex);
 });
 
 /* ---------- abas por perfil ---------- */
@@ -3753,7 +3856,8 @@ $("#acessoConteudo").addEventListener("click", async e => {
     b.disabled = true;
     try {
       const j = await api("entrar", {aparelho: tipoAparelho()}, {cred: {email, codigo}});
-      store.set(K_SESSAO, {email, codigo, usuario: j.usuario, verificadoEm: new Date().toISOString()});
+      store.set(K_SESSAO, {email, codigo, usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0});
+      avisarServidor(j.versao || 0);
       carregarTerritorios(j.territoriosVersao || "", true);
       aplicarUsuario(j.usuario); estAc.msg = "";
       renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem();
@@ -3782,7 +3886,7 @@ function renderConfig() {
   $("#contaAtende").hidden = !fazExames();
   $$("[data-cfg]").forEach(i => i.value = c[i.dataset.cfg] || "");
   const pend = meus().filter(e => e.envio.estado !== "enviado").length;
-  $("#contaAparelho").textContent = `Conectado a ${c.url ? "o servidor da coordenação" : "nenhum servidor"}.` + (pend ? ` Há ${pend} ${pend === 1 ? "exame" : "exames"} deste aparelho aguardando envio.` : " Todos os exames deste aparelho já foram enviados.");
+  $("#contaAparelho").textContent = `${c.url ? "Conectado ao servidor da coordenação" : "Sem servidor configurado"} · app versão 30${(s || {}).versaoServidor ? ` · servidor versão ${s.versaoServidor}` : ""}.` + (pend ? ` Há ${pend} ${pend === 1 ? "exame" : "exames"} deste aparelho aguardando envio.` : " Todos os exames deste aparelho já foram enviados.");
 }
 $("#contaNomeTit").addEventListener("click", async e => {
   if (e.target.id !== "titSalvar") return;
@@ -3831,7 +3935,7 @@ function htmlLeitura(r) {
     <div class="tabela"><table class="conta"><tbody>
       <tr><th>Pessoa</th><td>${esc(codigoIndividuoDe(r))}${(r.numeroExame || 1) > 1 ? ` · ${r.numeroExame}º exame` : " · 1º exame"}${r.vinculo && r.vinculo.conferidos && r.vinculo.conferidos.length ? `<br><span class="dica">Conferido na boca: ${esc(r.vinculo.conferidos.join("; "))}</span>` : ""}</td></tr>
       ${!exameValido(r) ? `<tr><th>Situação</th><td style="white-space:normal"><b>Cancelado</b> em ${fmtData((r.cancelamento || {}).em)} por ${esc((r.cancelamento || {}).por || "")}: ${esc((r.cancelamento || {}).motivo || "")}${(r.cancelamento || {}).observacao ? " · " + esc(r.cancelamento.observacao) : ""}</td></tr>` : ""}
-      <tr><th>Local</th><td>${esc([r.uf, r.dsei, r.polo, r.aldeia, r.localAtendimento].filter(Boolean).join(" · "))}</td></tr>
+      <tr><th>Local</th><td>${esc([r.dsei && "DSEI " + r.dsei, r.polo && "Polo " + r.polo, r.aldeia, r.uf, r.localAtendimento].filter(Boolean).join(" › "))}</td></tr>
       <tr><th>Idade e sexo</th><td>${r.idadeAnos !== "" && r.idadeAnos != null ? Math.floor(r.idadeAnos) + " anos" : "idade não informada"} · ${{F: "feminino", M: "masculino"}[(r.crianca || {}).sexo] || "sexo não informado"}</td></tr>
       <tr><th>Risco</th><td>${esc(res.risco || "")}</td></tr>
       <tr><th>Índices</th><td>ceo-d ${res.ceod ? res.ceod.total : "–"} · CPO-D ${res.cpod ? res.cpod.total : "–"}</td></tr>
@@ -3870,6 +3974,7 @@ async function carregarEquipe() {
 function renderEquipe() {
   const d = estEq.dados; if (!d) return;
   const p = perfil(), meuId = sessao().usuario.id;
+  const ehCoord = p === "coord";
   const ativos = d.membros.filter(m => m.status === "ativo");
   const mes = ativos.reduce((s, m) => s + m.mes, 0);
   const marcaPend = document.querySelector('[data-pedidos="equipe"]'); if (marcaPend) { marcaPend.hidden = !d.pedidos.length; marcaPend.textContent = d.pedidos.length; }
@@ -3878,8 +3983,8 @@ function renderEquipe() {
   const pedidos = `<div class="bloco"><div class="bloco-topo"><h2>Pedidos de acesso</h2><span class="dica">${p === "rt" ? "Dentistas que escolheram o seu DSEI" : "Pedidos deste DSEI"}</span></div>
     ${d.pedidos.length ? d.pedidos.map(x => `<div class="pedido"><div><b>${esc(x.nome)}</b> <span class="pill-p ${x.perfil}">${nomePerfil(x)}</span><p>CRO ${esc(x.cro)} · ${esc(x.polo || "sem polo")} · ${esc(x.email)} · pediu ${quando(x.pedido_em)}</p></div>
       <div class="bts"><button class="prim mini" data-eq="aprovar" data-id="${x.id}" data-nome="${esc(x.nome)}">Aprovar</button><button class="sec mini perigo-t" data-eq="recusar" data-id="${x.id}" data-nome="${esc(x.nome)}">Recusar</button></div></div>`).join("") : `<p class="dica">Nenhum pedido pendente.</p>`}</div>`;
-  const podeMexer = m => m.id !== meuId && (p === "coord" || m.perfil === "dentista");
-  const membros = `<div class="bloco"><div class="bloco-topo"><h2>Profissionais</h2><span class="dica">Desativar tira o acesso, mas os exames da pessoa continuam no banco</span></div>
+  const podeMexer = m => p !== "coord" && m.id !== meuId && m.perfil === "dentista";
+  const membros = `<div class="bloco"><div class="bloco-topo"><h2>Profissionais</h2><span class="dica">${ehCoord ? "Para desativar alguém ou gerar um código novo, use a Administração" : "Desativar tira o acesso, mas os exames da pessoa continuam no banco"}</span></div>
     <div class="tabela"><table class="esq"><thead><tr><th>Profissional</th><th>Perfil</th><th>CRO</th><th>Polo base</th><th class="num">Exames no mês</th><th class="num">Total</th><th>Último envio</th><th>Situação</th><th></th></tr></thead><tbody>
     ${d.membros.map(m => { const parado = m.status === "ativo" && m.ultimoEnvio && (Date.now() - new Date(m.ultimoEnvio)) > 30 * 864e5;
       return `<tr><td><b>${esc(m.nome)}</b><br><span class="dica">${esc(m.email)}</span></td><td>${nomePerfil(m)}</td><td>${esc(m.cro)}</td><td>${esc(m.polo)}</td><td class="num">${m.mes}</td><td class="num">${m.total}</td>
@@ -3895,13 +4000,15 @@ function renderEquipe() {
     ${lista.slice(0, 200).map(e => `<tr class="${e.situacao === "cancelado" ? "cancelado" : ""}"><td>${esc(e.codigoIndividuo || e.codigo || "sem código")}${(e.numeroExame || 1) > 1 ? `<br><span class="dica">${e.numeroExame}º exame</span>` : ""}${e.situacao === "cancelado" ? `<br><span class="estado erro">Cancelado pelo profissional</span> <span class="dica">${esc(e.motivo)}</span>` : ""}</td><td>${fmtData(e.dataExame)}</td><td>${esc(e.profissional)}</td><td class="num">${e.idade !== "" && e.idade != null ? Math.floor(e.idade) : "–"}</td>
       <td><span class="classe micro" data-c="${e.classe}">${e.classe}</span></td><td class="num">${e.ceod ?? "–"}</td><td class="num">${e.cpod ?? "–"}</td><td><button class="sec mini" data-ver="${e.id}">Ver</button></td></tr>`).join("") || `<tr><td colspan="8" class="dica">Nenhum exame neste DSEI ainda.</td></tr>`}
     </tbody></table></div>${lista.length > 200 ? `<p class="nota">Mostrando os 200 mais recentes. O CSV traz todos.</p>` : ""}</div>`;
-  const conv = blocoConvidar("eq", estEq.dsei) + (d.convites ? blocoConvites("eq", d.convites) : "");
-  $("#eqConteudo").innerHTML = kpis + conv + pedidos + membros + exs + `<div class="bloco"><h2>Painel do DSEI</h2><p class="dica" style="margin-top:6px">Os números de cárie, risco e procedimentos da equipe estão no <button class="link" data-painel-dsei>Painel, filtrado no DSEI ${esc(estEq.dsei)}</button>.</p></div>`;
+  const irGestao = `<div class="bloco gestao-aviso"><p><b>Convites, pedidos de acesso e códigos ficam na Administração.</b> Aqui você acompanha a equipe e os exames do DSEI ${esc(estEq.dsei)}${d.pedidos.length ? `, que tem <b>${d.pedidos.length} ${d.pedidos.length === 1 ? "pedido" : "pedidos"} de acesso</b> esperando` : ""}.</p><button class="sec" data-ir-adm>Ir para a Administração</button></div>`;
+  const conv = ehCoord ? irGestao : blocoConvidar("eq", estEq.dsei) + (d.convites ? blocoConvites("eq", d.convites) : "");
+  $("#eqConteudo").innerHTML = kpis + conv + (ehCoord ? "" : pedidos) + membros + exs + `<div class="bloco"><h2>Painel do DSEI</h2><p class="dica" style="margin-top:6px">Os números de cárie, risco e procedimentos da equipe estão no <button class="link" data-painel-dsei>Painel, filtrado no DSEI ${esc(estEq.dsei)}</button>.</p></div>`;
 }
 $("#eqAtualizar").addEventListener("click", carregarEquipe);
 $("#eqDsei").addEventListener("change", e => { estEq.dsei = e.target.value; estEq.filtroProf = ""; estConv.eq.res = null; carregarEquipe(); });
 $("#eqConteudo").addEventListener("change", e => { if (e.target.id === "eqFiltroProf") { estEq.filtroProf = e.target.value; renderEquipe(); } });
 $("#eqConteudo").addEventListener("click", async e => {
+  if (e.target.closest("[data-ir-adm]")) return irAba("admin");
   if (await cliqueConvite(e, "eq", {render: renderEquipe, carregar: carregarEquipe})) return;
   const v = e.target.closest("[data-ver]"); if (v) return verExameLeitura(v.dataset.ver);
   if (e.target.closest("[data-painel-dsei]")) { estP.visao = "dsei"; estP.dsei = estEq.dsei; estP.filtro = FILTRO_VAZIO(); return irAba("painel"); }
@@ -4112,7 +4219,7 @@ if (CONVITE_URL) {
   if (sessao()) setTimeout(() => toast(`Este aparelho já está conectado com a conta de ${sessao().usuario.nome}. Para aceitar o convite, saia em "Minha conta" e abra o link do convite de novo.`), 900);
   else { estAc.vista = "convite"; estAc.convite = {token: CONVITE_URL}; }
 }
-renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao();
+renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao(); avisarServidor(((sessao() || {}).versaoServidor));
 sincronizar();
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
