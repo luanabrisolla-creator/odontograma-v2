@@ -790,6 +790,129 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .conv-codigo{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--accent-soft);border-radius:12px;padding:14px 16px;margin:12px 0}
 .conv-codigo b{font-size:1.35rem;letter-spacing:.06em;color:var(--marinho);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .cad-status.erro{background:var(--erro);color:var(--erro-ink)}
+/* ===== versão 27: listas da SESAI, população e cobertura ===== */
+.grade>.largo{grid-column:1/-1}
+.busca-aldeia{gap:6px}
+.busca-aldeia>.dica{margin:0;font-size:.82rem}
+.res-busca{display:grid;gap:6px}
+.res-busca:empty{display:none}
+.res-aldeia{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;font:inherit;color:var(--ink);cursor:pointer;min-height:44px}
+.res-aldeia:hover{border-color:var(--accent);background:var(--accent-soft)}
+.res-aldeia span{font-size:.82rem;color:var(--muted)}
+#infoAldeia{margin:-4px 0 0;font-size:.86rem}
+.pop-atual{display:flex;flex-wrap:wrap;gap:12px;margin:12px 0 6px}
+.pop-atual>div{flex:1 1 200px;background:var(--surface-2);border-radius:12px;padding:12px 14px}
+.pop-atual b{display:block;font-size:1.4rem;color:var(--ink)}
+.pop-atual span{font-size:.86rem;color:var(--muted)}
+.botao-arq{position:relative;display:inline-flex;align-items:center;cursor:pointer;overflow:hidden}
+.botao-arq input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.cob h4{margin:20px 0 8px;font-size:.98rem}
+.cob-kpis{margin-top:12px}
+.mapa-cob{position:relative;background:#F7F9FC;border:1px solid var(--line);border-radius:14px;padding:8px}
+.mapa-cob svg{display:block;width:100%;height:auto;max-height:560px}
+.m-uf{fill:#fff;stroke:#C9D3E0;stroke-width:.8}
+.m-ti{stroke:#fff;stroke-width:.6;cursor:pointer;outline:none}
+.m-ti:hover,.m-ti:focus{stroke:var(--ink);stroke-width:1.2}
+.m-ti.sel{stroke:var(--ink);stroke-width:1.6}
+.mapa-info{margin:6px 4px 2px;font-size:.88rem;color:var(--ink);min-height:1.3em}
+.leg-cob{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 2px 0;font-size:.82rem;color:var(--muted)}
+.leg-cob span{display:inline-flex;align-items:center;gap:6px}
+.leg-cob i{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid rgba(0,0,0,.06)}
+.pir{display:grid;gap:3px;max-width:640px}
+.pir-cab,.pir-linha{display:grid;grid-template-columns:1fr 74px 1fr;align-items:center;gap:8px}
+.pir-cab{font-size:.8rem;color:var(--muted);font-weight:600}
+.pir-cab span:first-child{text-align:right}.pir-cab span:nth-child(2){text-align:center}
+.pir-faixa{text-align:center;font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.pir-lado{position:relative;height:16px}
+.pir-lado span{position:absolute;top:0;bottom:0;border-radius:4px}
+.pir-linha .pir-lado:first-child span{right:0}
+.pir-linha .pir-lado:last-child span{left:0}
+.pir-pop{background:#D6E2F0}
+.pir-ex{background:var(--accent)}
+.cob-tab td,.cob-tab th{white-space:nowrap}
+.cob-barra{display:inline-block;vertical-align:middle;width:90px;height:8px;border-radius:4px;background:#E4E8EE;overflow:hidden;margin-right:6px}
+.cob-barra i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.cob-sem{margin-top:14px;border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.cob-sem summary{cursor:pointer}
+.cob-sem .tabela{margin-top:10px}
+/* ===== versão 28: cores da Saúde Indígena e sinalizações mais fortes ===== */
+:root{
+  --sesai-verde:#1A7F3C; --sesai-azul:#1F4EA3; --sesai-vermelho:#C8261E; --sesai-amarelo:#F5C400;
+  --accent:#1D56B8; --accent-soft:#E6EEFB; --marinho:#173F8C;
+  --c-vermelho:#D7261E; --c-amarelo:#F5C400; --c-verde:#2B9A48; --c-azul:#1F4EA3;
+  --faixa-sesai:repeating-linear-gradient(90deg,var(--c-vermelho) 0 28px,var(--c-amarelo) 28px 56px,var(--c-verde) 56px 84px,var(--c-azul) 84px 112px);
+}
+.topo{background:var(--faixa-sesai) top/100% 8px no-repeat,#fff}
+@media (min-width:900px){
+  .abas{border-top:0;background:var(--faixa-sesai) top/100% 8px no-repeat,#fff;padding-top:26px}
+  .abas button[aria-selected="true"]{background:var(--accent);color:#fff;font-weight:600}
+  .abas button[aria-selected="true"] .ico{color:#fff}
+  .topo{background:#fff}
+}
+.prim{background:var(--accent)}
+.prim:hover:not(:disabled){background:#17469A}
+/* botões de escolha: o escolhido fica azul cheio */
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff;font-weight:600;box-shadow:none}
+.seg.pequeno button[data-val=""][aria-pressed="true"]{background:#fff;color:var(--muted)}
+.seg.pequeno button[data-val="indicado"][aria-pressed="true"]{background:var(--sesai-amarelo);color:#13233A}
+.seg.pequeno button[data-val="realizado"][aria-pressed="true"]{background:var(--sesai-verde);color:#fff}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+/* etapas do exame: cada uma com uma cor da Saúde Indígena */
+.etapa:nth-child(1){--cor:var(--sesai-verde)}.etapa:nth-child(2){--cor:var(--sesai-azul)}.etapa:nth-child(3){--cor:var(--sesai-vermelho)}.etapa:nth-child(4){--cor:#B88A00}
+.etapa.feita i{background:var(--cor);color:#fff}
+.etapa.atual i{background:#fff;color:var(--cor);box-shadow:inset 0 0 0 2.5px var(--cor)}
+.etapa.atual{color:var(--cor)}
+#blocoLocal{border-top:5px solid var(--sesai-verde)}
+#blocoInd{border-top:5px solid var(--sesai-azul)}
+#blocoOdonto{border-top:5px solid var(--sesai-vermelho)}
+#blocoCond,#blocoCond~.bloco{border-top:5px solid var(--sesai-amarelo)}
+/* nível de risco na barra de baixo */
+#resRisco[data-nivel="baixo"]{color:var(--sesai-verde)}
+#resRisco[data-nivel="moderado"]{color:#946A00}
+#resRisco[data-nivel="alto"]{color:var(--sesai-vermelho)}
+[data-c="A"]{background:#1A7F3C}[data-c="B"]{background:#4E9A2F}[data-c="C"]{background:#F5C400;color:#13233A}
+[data-c="D"]{background:#E07A1F}[data-c="E"]{background:#C8261E}[data-c="F"]{background:#7E1026}
+.pill-risco.baixo{background:#D6F0DE;color:#135E2D}.pill-risco.moderado{background:#FFE9A6;color:#5E4300}.pill-risco.alto{background:#FAD4D1;color:#8E1A14}
+/* situação do envio */
+.estado.enviado{background:#D6F0DE;color:#135E2D;font-weight:600}
+.estado.pendente{background:#FFE9A6;color:#5E4300;font-weight:600}
+.estado.erro{background:#FAD4D1;color:#8E1A14;font-weight:600}
+.estado.azul{background:#DCE6F7;color:#173F8C;font-weight:600}
+.ini-ex .env{color:#135E2D}.ini-ex .env.pend{color:#7A5600}
+/* página inicial: blocos nas quatro cores */
+.t-verde{background:var(--sesai-verde)}.t-azul{background:var(--sesai-azul)}.t-laranja{background:var(--sesai-vermelho)}
+.t-roxo{background:var(--sesai-amarelo);color:#13233A}
+.t-roxo .ico{color:#13233A}
+.ini-tile{box-shadow:0 6px 16px rgba(19,35,58,.16)}
+/* avisos com a borda colorida */
+.aviso{border-left:5px solid var(--sesai-amarelo)}
+.prev.conf{border-left:5px solid #E8890C}
+.prev.ok{background:#E2F3E7;color:#135E2D;border-left:5px solid var(--sesai-verde)}
+.kpi{border-top:4px solid var(--line)}
+.kpis .kpi:nth-child(4n+1){border-top-color:var(--sesai-azul)}.kpis .kpi:nth-child(4n+2){border-top-color:var(--sesai-verde)}
+.kpis .kpi:nth-child(4n+3){border-top-color:var(--sesai-amarelo)}.kpis .kpi:nth-child(4n+4){border-top-color:var(--sesai-vermelho)}
+.bloco h2,.bloco h3{color:var(--marinho)}
+.topo::after{display:none}
+.topo{border-bottom:1px solid var(--line)}
+/* entrada: a ilustração ocupa a tela inteira */
+body.na-entrada{background:#DCEEFC}
+.acesso-shell{background:linear-gradient(180deg,rgba(236,245,254,.92) 0%,rgba(236,245,254,.55) 34%,rgba(236,245,254,0) 58%),url(paisagem.webp) 32% 100%/cover no-repeat,linear-gradient(180deg,#DCEEFC 0%,#ECF6FE 70%,#E3F1FC 100%)}
+.acesso-paisagem{display:none}
+.acesso-hero{min-height:0}
+.acesso-beneficio .ico{background:rgba(255,255,255,.85);box-shadow:0 2px 8px rgba(11,42,99,.08)}
+.acesso-form-wrap{align-items:center}
+.acesso-form-wrap .bloco{background:rgba(255,255,255,.97);backdrop-filter:blur(2px)}
+.acesso-beneficio>span:last-child{background:rgba(255,255,255,.82);border-radius:10px;padding:4px 8px}
+@media (max-width:899px){
+  /* no celular a ilustração fica fixa atrás de tudo, e o conteúdo rola por cima */
+  .acesso-shell{position:relative;isolation:isolate;background:transparent}
+  .acesso-shell::before{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(236,245,254,.96) 0%,rgba(236,245,254,.75) 20%,rgba(236,245,254,0) 42%),url(paisagem.webp) 24% 100%/cover no-repeat,#9CCBEE}
+  .acesso-form-wrap{margin-top:clamp(90px,20vh,190px);align-items:flex-start}
+  .acesso-intro,.acesso-beneficios{background:rgba(255,255,255,.9);margin-left:16px;margin-right:16px;border-radius:16px}
+  .acesso-intro{margin-top:14px;padding:16px 18px 6px;border-radius:16px 16px 0 0}
+  .acesso-beneficios{margin-top:0;margin-bottom:24px;padding:10px 12px 18px;border-radius:0 0 16px 16px}
+  .acesso-beneficio>span:last-child{background:none;padding:0}
+}
 </style>
 </head>
 <body>
@@ -850,8 +973,16 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
       <div class="grade">
         <label class="campo">UF<select data-campo="uf" class="lista-uf"></select></label>
         <label class="campo">DSEI<select data-campo="dsei" id="exDsei"></select></label>
-        <label class="campo">Polo base<input data-campo="polo" autocomplete="off" placeholder="Só o nome do polo"></label>
-        <label class="campo">Aldeia ou comunidade<input data-campo="aldeia" autocomplete="off" placeholder="Só o nome, ex.: Kamaiurá"></label>
+        <p class="dica largo" id="listaFonte" hidden></p>
+        <label class="campo" id="cPoloLista" hidden>Polo base<select id="selPolo"></select></label>
+        <label class="campo" id="cPolo"><span class="rot">Polo base</span><input data-campo="polo" autocomplete="off" placeholder="Só o nome do polo"></label>
+        <div class="campo largo busca-aldeia" id="buscaAldeia" hidden>
+          <label class="campo"><span id="rotBusca">Procurar aldeia no polo</span><input id="inBuscaAldeia" type="search" autocomplete="off" placeholder="Digite parte do nome da aldeia"></label>
+          <div class="res-busca" id="resBuscaAldeia"></div>
+        </div>
+        <label class="campo" id="cAldeiaLista" hidden>Aldeia ou comunidade<select id="selAldeia"></select></label>
+        <label class="campo" id="cAldeia"><span class="rot">Aldeia ou comunidade</span><input data-campo="aldeia" autocomplete="off" placeholder="Só o nome, ex.: Kamaiurá"></label>
+        <p class="dica largo" id="infoAldeia" hidden></p>
         <label class="campo">Data do exame<input type="date" data-campo="dataExame"></label>
       </div>
       <div class="campo" style="margin-top:14px">Local de atendimento<div class="locais" id="locais" role="group" aria-label="Local de atendimento"></div></div>
@@ -944,6 +1075,7 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
       <p class="dica" id="pStatus" style="margin-top:6px"></p>
     </div>
     <div id="pConteudo"></div>
+    <div id="pCobertura"></div>
     <div id="pAcomp"></div>
   </section>
 
@@ -961,13 +1093,6 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
       <div class="grade">
         <label class="campo">Polo base mais usado<input data-cfg="polo"></label>
         <label class="campo">Município<input data-cfg="municipio"></label>
-      </div>
-    </div>
-    <div class="bloco">
-      <h2 style="margin-bottom:6px">Classificação de risco</h2>
-      <p class="dica" style="margin-bottom:12px">A letra (A a F) segue os critérios de atividade de doença usados na atenção básica do SUS. Escolha como as letras são agrupadas em nível de risco, conforme o protocolo da coordenação.</p>
-      <div class="seg" role="group" aria-label="Agrupamento de risco" id="segAgrup">
-        <button data-ag="dois">Baixo (A–C) e alto (D–F)</button><button data-ag="tres">Baixo (A–B), moderado (C–D), alto (E–F)</button>
       </div>
     </div>
     <div class="bloco">
@@ -1050,8 +1175,8 @@ const store = {
 };
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_SEQ = "odonto.seq.v1";
-const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PR", "RO", "RR", "SC", "SE", "TO"];
-const DSEI_UF = {"AC": ["Alto Rio Juruá", "Alto Rio Purus"], "AL": ["Alagoas e Sergipe"], "AM": ["Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Manaus", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Vale do Javari", "Yanomami"], "AP": ["Amapá e Norte do Pará"], "BA": ["Bahia"], "CE": ["Ceará"], "MA": ["Maranhão"], "MG": ["Minas Gerais e Espírito Santo"], "MS": ["Mato Grosso do Sul"], "MT": ["Araguaia", "Cuiabá", "Kaiapó do Mato Grosso", "Xavante", "Xingu"], "PA": ["Altamira", "Amapá e Norte do Pará", "Guamá-Tocantins", "Kaiapó do Pará", "Rio Tapajós"], "PB": ["Potiguara"], "PE": ["Pernambuco"], "PR": ["Interior Sul", "Litoral Sul"], "RO": ["Porto Velho", "Vilhena"], "RR": ["Leste de Roraima", "Yanomami"], "SC": ["Interior Sul", "Litoral Sul"], "SE": ["Alagoas e Sergipe"], "TO": ["Araguaia", "Tocantins"]};
+const UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
+const DSEI_UF = {"AC": ["Alto Rio Juruá", "Alto Rio Purus"], "AL": ["Alagoas e Sergipe"], "AM": ["Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Manaus", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Porto Velho", "Vale do Javari", "Yanomami"], "AP": ["Amapá e Norte do Pará"], "BA": ["Bahia"], "CE": ["Ceará"], "ES": ["Minas Gerais e Espírito Santo"], "GO": ["Araguaia"], "MA": ["Guamá-Tocantins", "Maranhão"], "MG": ["Minas Gerais e Espírito Santo"], "MS": ["Mato Grosso do Sul"], "MT": ["Araguaia", "Cuiabá", "Kaiapó do Mato Grosso", "Porto Velho", "Vilhena", "Xavante", "Xingu"], "PA": ["Altamira", "Amapá e Norte do Pará", "Guamá-Tocantins", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Parintins", "Rio Tapajós", "Tocantins"], "PB": ["Potiguara"], "PE": ["Pernambuco"], "PR": ["Interior Sul", "Litoral Sul"], "RJ": ["Litoral Sul"], "RN": ["Potiguara"], "RO": ["Alto Rio Purus", "Porto Velho", "Vilhena"], "RR": ["Leste de Roraima", "Yanomami"], "RS": ["Interior Sul"], "SC": ["Interior Sul", "Litoral Sul"], "SE": ["Alagoas e Sergipe"], "SP": ["Litoral Sul"], "TO": ["Araguaia", "Tocantins"]};
 const DSEIS = ["Alagoas e Sergipe", "Altamira", "Alto Rio Juruá", "Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Amapá e Norte do Pará", "Araguaia", "Bahia", "Ceará", "Cuiabá", "Guamá-Tocantins", "Interior Sul", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Leste de Roraima", "Litoral Sul", "Manaus", "Maranhão", "Mato Grosso do Sul", "Minas Gerais e Espírito Santo", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Pernambuco", "Porto Velho", "Potiguara", "Rio Tapajós", "Tocantins", "Vale do Javari", "Vilhena", "Xavante", "Xingu", "Yanomami"];
 
 /* ---------- remove identificação de exames antigos deste aparelho ---------- */
@@ -1338,10 +1463,8 @@ function avaliar(ex) {
   if (!motivos.length) motivos.push("Nenhuma alteração registrada");
   return {classe, descricao: CLASSES[classe], risco: nivelRisco(classe), motivos, ceod, cpod};
 }
-function nivelRisco(c) {
-  if (cfg().agrupamento === "tres") return "ABCDEF".indexOf(c) < 2 ? "Baixo risco" : "ABCDEF".indexOf(c) < 4 ? "Risco moderado" : "Alto risco";
-  return "ABC".includes(c) ? "Baixo risco" : "Alto risco";
-}
+// A–B baixo, C–D moderado, E–F alto: o mesmo para todos (compartilhado com o servidor).
+function nivelRisco(c) { return nivelDaClasse(c); }
 
 /* ---------- desenho do dente ---------- */
 const POL = {top:"2,2 38,2 27,13 13,13", bottom:"13,27 27,27 38,38 2,38", left:"2,2 13,13 13,27 2,38", right:"38,2 38,38 27,27 27,13"};
@@ -1398,7 +1521,7 @@ function renderOdonto() {
 function renderResultado() {
   const r = avaliar(estado.ex);
   const el = $("#resClasse"); el.textContent = r.classe; el.dataset.c = r.classe;
-  $("#resRisco").textContent = r.risco;
+  $("#resRisco").textContent = r.risco; $("#resRisco").dataset.nivel = /alto/i.test(r.risco) ? "alto" : /moderado/i.test(r.risco) ? "moderado" : "baixo";
   $("#resDesc").innerHTML = `<b>Classe ${r.classe}:</b> ${esc(r.descricao)}`;
   const temDec = estado.ex.denticao !== "permanente", temPerm = estado.ex.denticao !== "decidua";
   $("#resCeod").textContent = temDec ? r.ceod.total : "–";
@@ -1414,6 +1537,7 @@ function renderFormulario() {
   const ex = estado.ex;
   preencherDsei($("#exDsei"), ex.uf, ex.dsei);
   $$("[data-campo]").forEach(i => { const v = i.dataset.campo.split(".").reduce((o, k) => o && o[k], ex); i.value = v == null ? "" : v; });
+  renderLocalLista();
   renderCodigo();
   $$("[data-bool]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", (b.dataset.v === "1") === !!ex[g.dataset.bool])));
   $("#locais").innerHTML = LOCAIS_ATENDIMENTO.map(l => `<button class="chip" type="button" data-local="${esc(l)}" aria-pressed="${ex.localAtendimento === l}">${esc(l)}</button>`).join("");
@@ -1620,11 +1744,13 @@ function montarRegistro(ex) {
   const c = cfg(), r = avaliar(ex), idade = idadeEm(ex.crianca.nascimento, ex.dataExame);
   const dentes = {}; for (const n of dentesDe(ex.denticao)) dentes[n] = clone(ex.dentes[n]);
   return {id: ex.id, versao: 1, dono: ((sessao() || {}).usuario || {}).id || "", criadoEm: ex.criadoEm, atualizadoEm: new Date().toISOString(), dataExame: ex.dataExame,
-    profissional: {nome: c.nome, cro: c.cro}, municipio: c.municipio, uf: ex.uf, dsei: ex.dsei, polo: ex.polo.trim(), aldeia: ex.aldeia.trim(), seq: ex.seq, croCod: ex.croCod, codigo: ex.codigoFixo || codigoDe(ex),
+    profissional: {nome: c.nome, cro: c.cro}, municipio: ex.codAldeia ? ex.municipio || "" : c.municipio, uf: ex.uf,
+    codPolo: ex.poloManual ? "" : ex.codPolo || "", codAldeia: ex.aldeiaManual ? "" : ex.codAldeia || "", codTI: ex.codAldeia ? ex.codTI || "" : "", ti: ex.codAldeia ? ex.ti || "" : "",
+    codMunicipio: ex.codAldeia ? ex.codMunicipio || "" : "", dsei: ex.dsei, polo: ex.polo.trim(), aldeia: ex.aldeia.trim(), seq: ex.seq, croCod: ex.croCod, codigo: ex.codigoFixo || codigoDe(ex),
     crianca: {nascimento: ex.crianca.nascimento || "", sexo: ex.crianca.sexo || ""}, idadeAnos: idade ? idade.decimal : "", denticao: ex.denticao,
     localAtendimento: ex.localAtendimento || "", vigilancia: (ex.vigilancia || []).slice(), protese: {sup: (ex.protese || {}).sup || "", inf: (ex.protese || {}).inf || ""},
     placa: ex.placa, gengivite: ex.gengivite, fluorose: (ex.vigilancia || []).includes(VIG_FLUOROSE), gerais: ex.gerais.slice(), insumos: (ex.insumos || []).slice(), observacoes: ex.observacoes, dentes,
-    resultado: {classe: r.classe, risco: r.risco, descricao: r.descricao, motivos: r.motivos, ceod: r.ceod, cpod: r.cpod, agrupamento: c.agrupamento},
+    resultado: {classe: r.classe, risco: r.risco, descricao: r.descricao, motivos: r.motivos, ceod: r.ceod, cpod: r.cpod, agrupamento: "tres"},
     codigoIndividuo: ex.vinculo ? ex.vinculo.codigoIndividuo : (ex.codigoIndividuo || ex.codigoFixo || codigoDe(ex)), numeroExame: ex.vinculo ? (ex.vinculo.numero || ex.numeroExame || 2) : (ex.numeroExame || 1),
     vinculo: ex.vinculo ? {codigoIndividuo: ex.vinculo.codigoIndividuo, chaves: (ex.vinculo.chaves || []).slice(), numero: ex.vinculo.numero || ex.numeroExame} : null,
     situacao: "valido", envio: {estado: "pendente", tentativas: 0}};
@@ -1633,7 +1759,11 @@ function salvarExame() {
   const c = cfg(), ex = estado.ex;
   if (cadastroFaltando().length) { toast("Entre com o seu acesso de profissional para salvar exames."); return irAba("acesso"); }
   if (!ex.uf || !ex.dsei) { toast("Escolha a UF e o DSEI do atendimento."); return $(ex.uf ? '[data-campo="dsei"]' : '[data-campo="uf"]').focus(); }
-  if (!(ex.polo || "").trim() || !(ex.aldeia || "").trim()) { toast("Informe o polo base e a aldeia ou comunidade."); return $((ex.polo || "").trim() ? '[data-campo="aldeia"]' : '[data-campo="polo"]').focus(); }
+  if (!(ex.polo || "").trim() || !(ex.aldeia || "").trim()) {
+    toast("Informe o polo base e a aldeia ou comunidade.");
+    const alvo = [(ex.polo || "").trim() ? null : "#selPolo", (ex.polo || "").trim() ? null : '[data-campo="polo"]', "#selAldeia", '[data-campo="aldeia"]'].filter(Boolean).map(q => $(q)).find(el => el && el.offsetParent !== null && !el.disabled);
+    return alvo && alvo.focus();
+  }
   if (!estado.editando && !ex.vinculo && !ex.codigoFixo) {
     toast("Identifique o indivíduo antes de salvar: use o código de acompanhamento ou busque possíveis exames anteriores.");
     return $("#blocoInd").scrollIntoView({block: "center", behavior: "smooth"});
@@ -1663,7 +1793,8 @@ function salvarExame() {
 function abrirExame(id) {
   const reg = meus().find(e => e.id === id); if (!reg) return;
   if (estado.ex._tocado && !estado.editando && !confirm("Há um exame em andamento que ainda não foi salvo. Deseja descartá-lo para abrir este?")) return;
-  estado.ex = {id: reg.id, criadoEm: reg.criadoEm, dataExame: reg.dataExame, uf: reg.uf || "", dsei: reg.dsei || "", polo: reg.polo || "", aldeia: reg.aldeia || "", seq: reg.seq || null, croCod: reg.croCod || "", crianca: {nascimento: reg.crianca.nascimento || "", sexo: reg.crianca.sexo || ""}, denticao: reg.denticao,
+  estado.ex = {id: reg.id, criadoEm: reg.criadoEm, dataExame: reg.dataExame, uf: reg.uf || "", dsei: reg.dsei || "", polo: reg.polo || "", aldeia: reg.aldeia || "", seq: reg.seq || null,
+    codPolo: reg.codPolo || "", codAldeia: reg.codAldeia || "", codTI: reg.codTI || "", ti: reg.ti || "", codMunicipio: reg.codMunicipio || "", municipio: reg.municipio || "", croCod: reg.croCod || "", crianca: {nascimento: reg.crianca.nascimento || "", sexo: reg.crianca.sexo || ""}, denticao: reg.denticao,
     placa: reg.placa, gengivite: reg.gengivite, fluorose: !!reg.fluorose, gerais: reg.gerais.slice(), insumos: (reg.insumos || []).slice(), observacoes: reg.observacoes || "", dentes: clone(reg.dentes), _tocado: true,
     localAtendimento: reg.localAtendimento || "", vigilancia: Array.isArray(reg.vigilancia) ? reg.vigilancia.slice() : null, protese: Object.assign({sup: "", inf: ""}, reg.protese || {}),
     codigoIndividuo: reg.codigoIndividuo || reg.codigo, numeroExame: reg.numeroExame || 1,
@@ -2096,6 +2227,8 @@ $("#aba-exame").addEventListener("input", e => {
   if (i.dataset.campo) {
     const ks = i.dataset.campo.split("."); let o = estado.ex; ks.slice(0, -1).forEach(k => o = o[k]); o[ks.at(-1)] = i.value;
     if (i.dataset.campo === "uf") { preencherDsei($("#exDsei"), estado.ex.uf, estado.ex.dsei); estado.ex.dsei = $("#exDsei").value; }
+    if (i.dataset.campo === "uf" || i.dataset.campo === "dsei") renderLocalLista();
+    if (i.dataset.campo === "aldeia" && estado.ex.aldeiaManual) limparAldeia(estado.ex);
     if (["uf","polo","aldeia"].includes(i.dataset.campo)) renderCodigo();
     if (["dsei","aldeia","crianca.nascimento","crianca.sexo"].includes(i.dataset.campo) && estado.ex._id && estado.ex._id.buscou && !estado.ex.vinculo && !estado.ex.codigoFixo) { estado.ex._id.buscou = false; estado.ex._cand = null; renderPessoa(); }
     if (i.dataset.campo === "crianca.nascimento" || i.dataset.campo === "dataExame") {
@@ -2210,7 +2343,6 @@ $("#nuvemAtualizar").addEventListener("click", () => carregarNuvem(true));
 
 // configurações
 $("#aba-config").addEventListener("input", e => { const k = e.target.dataset.cfg; if (k) salvarCfg({[k]: e.target.value.trim()}); });
-$("#segAgrup").addEventListener("click", e => { const b = e.target.closest("[data-ag]"); if (!b) return; salvarCfg({agrupamento: b.dataset.ag}); renderConfig(); renderResultado(); });
 
 window.addEventListener("online", () => { atualizarRede(); sincronizar(); });
 window.addEventListener("offline", atualizarRede);
@@ -2281,14 +2413,67 @@ function montarPainel(regs, f, agrup) {
   function ag(exceto) { return agregarExames(validos.filter(function (e) { return exameCombina(e, f, exceto); }), agrup); }
   return {resumo: ag([]), risco: ag(["classe"]), tabela: ag(["faixa", "sexo", "classe"]), faixa: ag(["faixa"]), proc: ag(["proc"]), coletivo: ag(["coletivo"]), vig: ag(["vig"])};
 }
+// Nível de risco pela classe, igual para todos: A–B baixo, C–D moderado, E–F alto.
+/** @param {any} c */
+function nivelDaClasse(c) { var i = "ABCDEF".indexOf(String(c || "")); return i < 0 || !c ? "" : i < 2 ? "Baixo risco" : i < 4 ? "Risco moderado" : "Alto risco"; }
+// Faixas etárias da população indígena da SESAI (de 5 em 5 anos), usadas na cobertura.
+var FAIXAS_POP = ["0 a 4", "5 a 9", "10 a 14", "15 a 19", "20 a 24", "25 a 29", "30 a 34", "35 a 39", "40 a 44", "45 a 49", "50 a 54", "55 a 59", "60 a 64", "65 a 69", "70 a 74", "75 ou mais"];
+/** @param {any} i */
+function faixaPop(i) { if (i === "" || i == null || isNaN(Number(i))) return -1; return Math.min(15, Math.floor(Math.floor(Number(i)) / 5)); }
+/** @param {any} t */
+function normNome(t) { return String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+// Nomes da planilha da SESAI vêm em maiúsculas: "ALTO CATRIMANI" vira "Alto Catrimani".
+/** @param {any} s */
+function nomeTitulo(s) {
+  var peq = ["de", "da", "do", "das", "dos", "e", "d"], rom = /^(i|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii)$/;
+  return String(s || "").trim().replace(/\s+/g, " ").toLowerCase().split(" ").map(function (w, i) {
+    if (rom.test(w)) return w.toUpperCase();
+    if (i > 0 && peq.indexOf(w) >= 0) return w;
+    return w.replace(/(^|[-\/(])([a-zà-ÿ])/g, function (_, a, b) { return a + b.toUpperCase(); });
+  }).join(" ");
+}
+// Monta a base de territórios e população a partir das linhas da planilha baixada do painel da SESAI
+// (uma linha por aldeia, sexo e faixa etária). `linhas` = cabeçalho + dados, como no Excel.
+/** @param {any[][]} linhas @param {string[]} dseisConhecidos */
+function montarPopulacao(linhas, dseisConhecidos) {
+  if (!linhas || linhas.length < 2) throw new Error("A planilha está vazia.");
+  var cab = linhas[0].map(normNome), col = {};
+  var PEDE = {cdsei: ["codigo dsei"], dsei: ["dsei"], cpolo: ["codigo polo base"], polo: ["polo base"], cti: ["codigo terra indigena"], ti: ["terra indigena"],
+    cmun: ["codigo municipio ibge", "codigo municipio"], mun: ["municipio"], uf: ["uf"], cald: ["codigo aldeia"], ald: ["aldeia"], sexo: ["sexo"], faixa: ["faixa etaria"], ano: ["ano"], pop: ["populacao indigena", "populacao"]};
+  var falta = [];
+  Object.keys(PEDE).forEach(function (k) { var i = -1; PEDE[k].some(function (n) { i = cab.indexOf(n); return i >= 0; }); if (i < 0) falta.push(PEDE[k][0]); col[k] = i; });
+  if (falta.length) throw new Error("Colunas que faltam na planilha: " + falta.join(", ") + ". Use a planilha baixada do painel da população indígena da SESAI.");
+  var mapaDsei = {};
+  (dseisConhecidos || []).forEach(function (d) { mapaDsei[normNome(d)] = d; });
+  var out = {ano: 0, dseis: {}, polos: {}, tis: {}, muns: {}, aldeias: {}, pop: {}, linhas: 0, pessoas: 0};
+  var anos = {};
+  for (var i = 1; i < linhas.length; i++) {
+    var l = linhas[i]; if (!l || l[col.cald] === "" || l[col.cald] == null) continue;
+    var ca = String(l[col.cald]).trim(), cp = String(l[col.cpolo]).trim(), cd = String(l[col.cdsei]).trim(), ct = String(l[col.cti] == null ? "" : l[col.cti]).trim(), cm = String(l[col.cmun] == null ? "" : l[col.cmun]).trim();
+    var nd = String(l[col.dsei] || "");
+    out.dseis[cd] = mapaDsei[normNome(nd)] || nomeTitulo(nd);
+    if (!out.polos[cp]) out.polos[cp] = [nomeTitulo(l[col.polo]), cd];
+    if (ct && !out.tis[ct]) out.tis[ct] = nomeTitulo(l[col.ti]);
+    if (cm && !out.muns[cm]) out.muns[cm] = nomeTitulo(l[col.mun]);
+    if (!out.aldeias[ca]) out.aldeias[ca] = [nomeTitulo(l[col.ald]), cp, ct, cm, String(l[col.uf] || "").trim().toUpperCase()];
+    var f = faixaPop(String(l[col.faixa] || "").replace(/[^0-9].*$/, "")), s = String(l[col.sexo] || "").trim().toUpperCase().charAt(0), n = Number(l[col.pop]) || 0;
+    if (f < 0 || (s !== "F" && s !== "M")) continue;
+    var v = out.pop[ca] || (out.pop[ca] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    v[f * 2 + (s === "F" ? 0 : 1)] += n; out.pessoas += n; out.linhas++;
+    anos[String(l[col.ano] || "")] = 1;
+  }
+  var la = Object.keys(anos).filter(function (a) { return /^\d{4}$/.test(a); }).sort();
+  out.ano = la.length ? Number(la[la.length - 1]) : 0;
+  if (!out.linhas) throw new Error("Nenhuma linha de população foi lida.");
+  return out;
+}
 /** @param {any} regs @param {any} agrup */
 function agregarExames(regs, agrup) {
   var CL = ["A", "B", "C", "D", "E", "F"], FX = FAIXAS_ETARIAS;
   /** @param {any} c */
   function nivel(c) {
     var i = CL.indexOf(c);
-    if (agrup === "tres") return i < 2 ? "Baixo" : i < 4 ? "Moderado" : "Alto";
-    return i < 3 ? "Baixo" : "Alto";
+    return i < 2 ? "Baixo" : i < 4 ? "Moderado" : "Alto";
   }
   /** @param {any} ks */
   function zeros(ks) { /** @type {any} */ var o = {}; ks.forEach(function (/** @type {any} */ k) { o[k] = 0; }); return o; }
@@ -2357,7 +2542,7 @@ var NOMES_PROC = {selante: "Selante", art: "ART (restauração atraumática)", c
   amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado", cdf: "Cariostático (diamino fluoreto de prata)", selprov: "Selamento provisório / adequação do meio",
   pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço", exodontia: "Exodontia"};
 var CAB_EXAME = ["id_exame", "codigo_individuo", "numero_exame", "codigo_exame", "situacao_registro", "data_exame", "faixa_etaria", "idade_anos", "sexo", "nascimento",
-  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
+  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "codigo_municipio_ibge", "terra_indigena", "codigo_terra_indigena", "codigo_polo_base", "codigo_aldeia", "aldeia_fora_da_lista", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
   "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod", "dentes_cariados", "placa_visivel", "gengivite", "fluorose_moderada_severa",
   "vigilancia_saude_bucal", "protese_superior", "protese_inferior", "dentes_com_dor_abscesso", "procedimentos_gerais", "insumos_fornecidos", "observacoes", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
   "motivo_cancelamento", "observacao_cancelamento", "cancelado_em", "cancelado_por", "criado_em", "atualizado_em", "usuario_id", "dados_completos_json"];
@@ -2383,8 +2568,9 @@ function registroParaJson(e) {
 function linhaExame(e) {
   var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, sn = function (/** @type {any} */ b) { return b ? "sim" : "não"; };
   return [e.id, codigoIndividuoDe(e), e.numeroExame || 1, e.codigo || "", exameValido(e) ? "válido" : "cancelado", e.dataExame || "", faixaEtaria(e.idadeAnos),
-    e.idadeAnos, (e.crianca || {}).sexo || "", (e.crianca || {}).nascimento || "", e.uf || "", e.dsei || "", e.polo || "", e.aldeia || "", e.municipio || "", e.localAtendimento || "",
-    (e.profissional || {}).nome || "", (e.profissional || {}).cro || "", e.denticao || "", r.classe || "", r.risco || "",
+    e.idadeAnos, (e.crianca || {}).sexo || "", (e.crianca || {}).nascimento || "", e.uf || "", e.dsei || "", e.polo || "", e.aldeia || "", e.municipio || "", e.codMunicipio || "", e.ti || "", e.codTI || "", e.codPolo || "", e.codAldeia || "",
+    e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), e.localAtendimento || "",
+    (e.profissional || {}).nome || "", (e.profissional || {}).cro || "", e.denticao || "", r.classe || "", nivelDaClasse(r.classe) || r.risco || "",
     ce.c, ce.e, ce.o, ce.total, cp.c, cp.p, cp.o, cp.total, cariadosDe(e), sn(e.placa), sn(e.gengivite), sn(e.fluorose),
     (e.vigilancia || []).join("; "), e.protese ? NOMES_PROTESE[e.protese.sup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.inf || ""] : "",
     dentesComDor(e).join(" "), (e.gerais || []).join("; "), (e.insumos || []).join("; "), e.observacoes || "",
@@ -2528,7 +2714,7 @@ estP.filtro = FILTRO_VAZIO();
 const temFiltro = () => Object.values(estP.filtro).some(Boolean);
 async function carregarPainel() {
   carregarAcomp();
-  const {de, ate} = intervalo(estP.periodo), ag = cfg().agrupamento, st = $("#pStatus"), box = $("#pConteudo");
+  const {de, ate} = intervalo(estP.periodo), ag = "tres", st = $("#pStatus"), box = $("#pConteudo");
   if (estP.visao === "minha" && !navigator.onLine) {
     const regs = meus().filter(e => (!de || e.dataExame >= de) && (!ate || e.dataExame <= ate));
     st.textContent = `Sem internet: mostrando só os exames deste aparelho, ${textoRecorte(de, ate).replace("sua produção neste aparelho, ", "")}.`;
@@ -2639,7 +2825,112 @@ function ligarTipCPO() {
 }
 
 /* ---------- painel ---------- */
+/* ---------- cobertura da população indígena (Painel) ---------- */
+// Pessoas examinadas no período sobre a população da SESAI. Faixas de 5 anos, como na planilha da SESAI.
+const COR_COB = [["Sem exame", "#E4E8EE"], ["1 a 4 pessoas", "#D5E5F7"], ["Menos de 10%", "#A9CBF0"], ["10% a 24%", "#62A0E2"], ["25% a 49%", "#1F74D0"], ["50% ou mais", "#0B4A98"]];
+function classeCob(ex, pop) {
+  if (ex === "<5") return 1;
+  if (!ex) return 0;
+  const pc = pop ? ex / pop * 100 : 0;
+  return pc < 10 ? 2 : pc < 25 ? 3 : pc < 50 ? 4 : 5;
+}
+const fmtPct = (ex, pop) => typeof ex === "number" && pop ? (ex / pop * 100 < 1 && ex > 0 ? "menos de 1%" : `${fmtN(Math.round(ex / pop * 1000) / 10)}%`) : "–";
+const nEx = ex => ex === "<5" ? "<5" : fmtN(ex || 0);
+const estCob = {todosGrupos: false, mapa: null, mapaErro: ""};
+async function carregarMapaTI() {
+  if (estCob.mapa) return estCob.mapa;
+  const r = await fetch("mapa-ti.json"); if (!r.ok) throw new Error("mapa");
+  const j = await r.json();
+  const porCod = {}, porNome = {};
+  j.ti.forEach(t => { porCod[String(t.c)] = t; porNome[normNome(t.n)] = t; });
+  estCob.mapa = Object.assign(j, {porCod, porNome});
+  return estCob.mapa;
+}
+// Projeção simples (longitude × cosseno da latitude média): suficiente para a escala de um DSEI ou do país.
+function caminhoSVG(g, px) {
+  const anel = a => a.map((p, i) => (i ? "L" : "M") + px(p)).join("") + "Z";
+  const polis = g.type === "Polygon" ? [g.coordinates] : g.type === "MultiPolygon" ? g.coordinates : [];
+  return polis.map(p => p.map(anel).join("")).join("");
+}
+function limites(geoms) {
+  let x0 = 180, x1 = -180, y0 = 90, y1 = -90;
+  const ver = c => { if (typeof c[0] === "number") { x0 = Math.min(x0, c[0]); x1 = Math.max(x1, c[0]); y0 = Math.min(y0, c[1]); y1 = Math.max(y1, c[1]); } else c.forEach(ver); };
+  geoms.forEach(g => ver(g.coordinates));
+  return [x0, y0, x1, y1];
+}
+function desenharMapa(cb, M) {
+  const dados = (cb.tis || []).map(t => ({t, m: M.porCod[String(t.c)] || M.porNome[normNome(t.nome)]})).filter(x => x.m);
+  if (!dados.length) return `<p class="dica">Nenhuma Terra Indígena deste recorte tem contorno no mapa.</p>`;
+  let [x0, y0, x1, y1] = cb.escopo === "todos" ? limites(M.uf.map(u => u.g)) : limites(dados.map(x => x.m.g));
+  const padX = Math.max(0.3, (x1 - x0) * 0.08), padY = Math.max(0.3, (y1 - y0) * 0.08);
+  x0 -= padX; x1 += padX; y0 -= padY; y1 += padY;
+  const k = Math.cos((y0 + y1) / 2 * Math.PI / 180), W = 800, esc1 = W / ((x1 - x0) * k), H = Math.round((y1 - y0) * esc1);
+  const px = p => `${((p[0] - x0) * k * esc1).toFixed(1)},${((y1 - p[1]) * esc1).toFixed(1)}`;
+  const ufs = M.uf.map(u => `<path d="${caminhoSVG(u.g, px)}" class="m-uf"/>`).join("");
+  const tis = dados.sort((a, b) => b.t.pop - a.t.pop).map(({t, m}) => {
+    const cl = classeCob(t.ex, t.pop);
+    const txt = `${t.nome || m.n}: ${fmtN(t.pop)} pessoas, ${nEx(t.ex)} examinadas${typeof t.ex === "number" && t.ex ? " (" + fmtPct(t.ex, t.pop) + ")" : ""}`;
+    return `<path d="${caminhoSVG(m.g, px)}" fill="${COR_COB[cl][1]}" class="m-ti" data-ti="${esc(txt)}" tabindex="0"><title>${esc(txt)}</title></path>`;
+  }).join("");
+  const semMapa = (cb.tis || []).length - dados.length;
+  return `<div class="mapa-cob"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa das Terras Indígenas pintadas pela cobertura de exames">${ufs}${tis}</svg>
+    <p class="mapa-info" id="mapaInfo">Toque numa Terra Indígena para ver os números.</p></div>
+    <div class="leg-cob">${COR_COB.map(([n, c]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}</div>
+    <p class="nota">Contornos das Terras Indígenas: FUNAI (2025). ${semMapa > 0 ? `${semMapa} ${semMapa === 1 ? "Terra Indígena da planilha não tem contorno" : "Terras Indígenas da planilha não têm contorno"} no mapa. ` : ""}Pessoas que vivem fora de Terra Indígena entram nos números e nas tabelas, mas não no mapa.</p>`;
+}
+function piramide(cb) {
+  const f = cb.faixas || [], max = Math.max(1, ...f.map(x => Math.max(x.popF, x.popM)));
+  const lado = (pop, ex, sexo, faixa) => {
+    const w = pop / max * 100, we = typeof ex === "number" ? Math.min(pop, ex) / max * 100 : 0;
+    const t = `${sexo}, ${faixa} anos: ${fmtN(pop)} pessoas, ${nEx(ex)} examinadas${typeof ex === "number" && ex ? " (" + fmtPct(ex, pop) + ")" : ""}`;
+    return `<div class="pir-lado" title="${esc(t)}"><span class="pir-pop" style="width:${w}%"></span><span class="pir-ex${ex === "<5" ? " poucos" : ""}" style="width:${ex === "<5" ? 0 : we}%"></span></div>`;
+  };
+  return `<div class="pir" role="table" aria-label="População e pessoas examinadas por faixa etária e sexo">
+    <div class="pir-cab" role="row"><span>Feminino</span><span>Faixa</span><span>Masculino</span></div>
+    ${f.slice().reverse().map(x => `<div class="pir-linha" role="row">${lado(x.popF, x.exF, "Feminino", x.faixa)}<span class="pir-faixa">${esc(x.faixa)}</span>${lado(x.popM, x.exM, "Masculino", x.faixa)}</div>`).join("")}
+    <div class="leg-cob"><span><i style="background:#D6E2F0"></i>População</span><span><i style="background:var(--accent)"></i>Examinadas no período</span></div></div>`;
+}
+function tabelaGrupos(cb) {
+  const g = cb.grupos || [], ver = estCob.todosGrupos ? g : g.slice(0, 12), nome = cb.nivel === "polo" ? "Polo base" : "DSEI";
+  return `<div class="tabela"><table class="esq cob-tab"><thead><tr><th>${nome}</th><th class="num">População</th><th class="num">Examinadas</th><th>Cobertura</th><th class="num">Aldeias com exame</th></tr></thead><tbody>
+    ${ver.map(x => { const pc = typeof x.ex === "number" && x.pop ? Math.min(100, x.ex / x.pop * 100) : 0;
+      return `<tr><td>${esc(x.nome)}</td><td class="num">${fmtN(x.pop)}</td><td class="num">${nEx(x.ex)}</td><td><span class="cob-barra"><i style="width:${pc}%"></i></span> ${fmtPct(x.ex, x.pop)}</td><td class="num">${fmtN(x.comExame)} de ${fmtN(x.aldeias)}</td></tr>`; }).join("")}
+    </tbody></table></div>${g.length > 12 ? `<button class="link" data-cob-todos>${estCob.todosGrupos ? "Mostrar só os 12 maiores" : `Mostrar todos os ${g.length}`}</button>` : ""}`;
+}
+function desenharCobertura(cb) {
+  const box = $("#pCobertura");
+  if (!cb || estP.visao === "minha") { box.innerHTML = ""; return; }
+  if (cb.vazio) {
+    box.innerHTML = perfil() === "coord" ? `<div class="bloco"><h3>Cobertura da população indígena</h3><p class="dica" style="margin-top:6px">Envie a planilha da população indígena da SESAI em <button class="link" data-ir-admin>Administração</button> para ver quantas pessoas de cada DSEI, polo e aldeia já foram examinadas.</p></div>` : "";
+    return;
+  }
+  const pcTotal = fmtPct(cb.examinados, cb.populacao);
+  const sem = cb.semExame ? `<details class="cob-sem"><summary><b>${fmtN(cb.totalSemExame)} ${cb.totalSemExame === 1 ? "aldeia" : "aldeias"} sem nenhum exame no período</b> <span class="dica">para busca ativa</span></summary>
+      <div class="tabela"><table class="esq"><thead><tr><th>Aldeia</th><th>Polo base</th><th class="num">População</th></tr></thead><tbody>${cb.semExame.map(a => `<tr><td>${esc(a.aldeia)}</td><td>${esc(a.polo)}</td><td class="num">${fmtN(a.pop)}</td></tr>`).join("")}</tbody></table></div>
+      ${cb.totalSemExame > cb.semExame.length ? `<p class="nota">Mostrando as ${cb.semExame.length} mais populosas. A lista completa sai da aba População da planilha.</p>` : ""}</details>` : "";
+  box.innerHTML = `<div class="bloco cob">
+    <div class="bloco-topo"><h3>Cobertura da população indígena</h3><span class="dica">População da SESAI de ${esc(String(cb.ano))}</span></div>
+    <div class="kpis cob-kpis"><div class="kpi"><b>${pcTotal}</b><span>da população ${cb.escopo === "todos" ? "atendida pelos DSEIs" : "do DSEI " + esc(cb.escopo)} examinada no período</span></div>
+      <div class="kpi"><b>${nEx(cb.examinados)}</b><span>pessoas examinadas, de ${fmtN(cb.populacao)}</span></div>
+      <div class="kpi"><b>${fmtN(cb.aldeiasComExame)}</b><span>de ${fmtN(cb.aldeias)} aldeias com pelo menos um exame</span></div></div>
+    <h4>Mapa por Terra Indígena</h4><div id="mapaCob"><p class="dica">Carregando o mapa…</p></div>
+    <h4>Pirâmide: população e pessoas examinadas</h4>${piramide(cb)}
+    <h4>${cb.nivel === "polo" ? "Por polo base" : "Por DSEI"}</h4>${tabelaGrupos(cb)}
+    ${sem}
+    <p class="nota">Cada pessoa conta uma vez no período. Exames de aldeias digitadas fora da lista da SESAI${cb.foraDaLista ? ` (${nEx(cb.foraDaLista)} ${cb.foraDaLista === 1 ? "pessoa" : "pessoas"})` : ""} entram no total, mas não por aldeia, polo ou Terra Indígena. Números de 1 a 4 pessoas aparecem como “&lt;5”.</p></div>`;
+  estCob.ultimo = cb;
+  carregarMapaTI().then(M => { if (estCob.ultimo === cb && $("#mapaCob")) $("#mapaCob").innerHTML = desenharMapa(cb, M); })
+    .catch(() => { if ($("#mapaCob")) $("#mapaCob").innerHTML = `<p class="dica">O mapa precisa de internet na primeira vez. Depois ele fica guardado no aparelho.</p>`; });
+}
+$("#pCobertura").addEventListener("click", e => {
+  if (e.target.closest("[data-cob-todos]")) { estCob.todosGrupos = !estCob.todosGrupos; return desenharCobertura(estCob.ultimo); }
+  if (e.target.closest("[data-ir-admin]")) return irAba("admin");
+  const t = e.target.closest("[data-ti]"); if (t) { $$("#mapaCob .m-ti.sel").forEach(x => x.classList.remove("sel")); t.classList.add("sel"); $("#mapaInfo").textContent = t.dataset.ti; }
+});
+$("#pCobertura").addEventListener("mouseover", e => { const t = e.target.closest("[data-ti]"); if (t && $("#mapaInfo")) $("#mapaInfo").textContent = t.dataset.ti; });
+
 function desenharPainel(d, local) {
+  desenharCobertura(local ? null : d.cobertura);
   const box = $("#pConteudo"), B = d.blocos || {resumo: d.resumo, risco: d.resumo, tabela: d.resumo, faixa: d.resumo, proc: d.resumo, coletivo: d.resumo};
   if (!B.vig) B.vig = B.resumo;
   const r = B.resumo, interativo = !!d.blocos;
@@ -2648,7 +2939,7 @@ function desenharPainel(d, local) {
   if (vazioBase && !temFiltro()) { box.innerHTML = `<div class="bloco vazio">Nenhum exame neste recorte${estP.periodo !== "tudo" ? ". Experimente o período “Todo o período”." : "."}</div>` + tabelaComparacao(d.comparacao); return; }
   if (B.tabela.poucos && !temFiltro()) { box.innerHTML = `<div class="bloco vazio">Menos de 5 pessoas neste recorte. Para proteger a identidade delas, os detalhes não são mostrados. Amplie o período ou escolha outro DSEI.</div>` + tabelaComparacao(d.comparacao) + nota; return; }
   const CL = ["A","B","C","D","E","F"];
-  const niveis = cfg().agrupamento === "tres" ? ["Baixo","Moderado","Alto"] : ["Baixo","Alto"];
+  const niveis = ["Baixo","Moderado","Alto"];
   const semDados = !r || r.n === 0 || r.poucos;
   const avisoSel = semDados ? `<div class="bloco vazio">${!r || r.n === 0 ? "Nenhuma pessoa nesta seleção." : "Menos de 5 pessoas nesta seleção. Para proteger a identidade delas, os números não são mostrados."} Tire um filtro para ampliar o grupo.</div>` : "";
 
@@ -2830,7 +3121,7 @@ async function carregarInicio() {
   if (!navigator.onLine || !sessao() || !cfg().url) return;
   try { const j = await api("inicio"); estI.dados = j; gravarCache(K_INICIO, j); if (estado.aba === "inicio") renderInicio(); } catch (e) {}
 }
-const nivelDe = r => { const t = ((r && r.resultado) || {}).risco || ""; return /alto/i.test(t) ? "alto" : /moderado/i.test(t) ? "moderado" : "baixo"; };
+const nivelDe = r => { const t = nivelDaClasse(((r && r.resultado) || {}).classe) || ((r && r.resultado) || {}).risco || ""; return /alto/i.test(t) ? "alto" : /moderado/i.test(t) ? "moderado" : "baixo"; };
 const NOME_NIVEL = {baixo: "Baixo", moderado: "Moderado", alto: "Alto"};
 // Sem internet: os números saem dos exames que o aparelho conhece.
 function resumoLocal() {
@@ -2870,10 +3161,10 @@ function renderInicio() {
     : tileHtml("t-verde", "mais", "Nova ação do Dia B", "Criar uma ação num DSEI", "novaAcao") + tileHtml("t-azul", "escudo", "Gestão de acessos", "Pedidos, usuários e coordenação", "admin")
       + tileHtml("t-laranja", "pessoas", "Equipes", "Profissionais e exames por DSEI", "equipe") + tileHtml("t-roxo", "painel", "Painel", "Ver indicadores e resultados", "painel");
   const geral = d && d.escopo === "geral";
-  $("#iniStats").innerHTML = statHtml("pessoas", "#E3F6EC", "#23935A", r.pessoas, geral ? "Pessoas examinadas, todos os DSEIs" : "Pessoas examinadas")
-    + statHtml("ficha", "#E4EEFC", "#1F6FD6", r.exames, "Exames registrados")
-    + statHtml("acoes", "#FDEEDC", "#C66A0C", r.acoesAno, "Ações do Dia B neste ano")
-    + statHtml("exame", "#FCE7EA", "#D7263D", r.alto, "Pessoas em alto risco");
+  $("#iniStats").innerHTML = statHtml("pessoas", "#E2F3E7", "#1A7F3C", r.pessoas, geral ? "Pessoas examinadas, todos os DSEIs" : "Pessoas examinadas")
+    + statHtml("ficha", "#E3EBF8", "#1F4EA3", r.exames, "Exames registrados")
+    + statHtml("acoes", "#FFF3C4", "#8A6400", r.acoesAno, "Ações do Dia B neste ano")
+    + statHtml("exame", "#FBE3E1", "#C0261E", r.alto, "Pessoas em alto risco");
   $("#iniStatus").textContent = d ? (estI.dados ? "" : `Números de ${fmtDataHora(c.em)}.`) : faz ? "Sem internet: números dos exames que este aparelho conhece." : "Os números aparecem quando houver internet.";
   // Últimos exames
   const ult = examesTodos().slice(0, 5), box = $("#iniUltimos");
@@ -3043,7 +3334,7 @@ async function api(acao, dados, opc) {
   if (!c.url) throw new Error("O endereço do servidor não está configurado. Abra o app pelo link enviado pela coordenação.");
   if (!navigator.onLine) throw new Error("Sem internet agora.");
   const cred = opc.cred || (opc.publica ? null : s);
-  const corpo = Object.assign({acao, versaoApp: 26, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
+  const corpo = Object.assign({acao, versaoApp: 28, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), opc.tempo || 30000);
   try {
     const r = await fetch(c.url, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(corpo), signal: ctrl.signal});
@@ -3075,10 +3366,119 @@ async function verificarSessao(forcar) {
     const j = await api("entrar", {aparelho: tipoAparelho()});
     const mudou = (s.usuario || {}).perfil !== j.usuario.perfil;
     store.set(K_SESSAO, Object.assign(s, {usuario: j.usuario, verificadoEm: new Date().toISOString()}));
+    carregarTerritorios(j.territoriosVersao || "");
     aplicarUsuario(j.usuario); renderAbas();
     if (mudou) { toast(`Seu perfil agora é: ${NOME_PERFIL[j.usuario.perfil]}.`); if (!abasDoPerfil().some(([k]) => k === estado.aba)) irAba(abaInicial()); else irAba(estado.aba); }
   } catch (e) {}
 }
+
+/* ---------- DSEIs, polos e aldeias da SESAI (lista enviada pela coordenação) ---------- */
+// O servidor manda a lista do DSEI da pessoa (a coordenação recebe todos). Fica guardada no aparelho
+// para funcionar sem internet; é trocada quando a coordenação envia uma planilha nova.
+const K_TERR = "odonto.territorios.v1";
+const terr = () => store.get(K_TERR, null);
+async function carregarTerritorios(versao, forcar) {
+  if (!sessao() || !navigator.onLine || !cfg().url) return;
+  const t = terr();
+  if (!forcar && t && versao != null && t.versao === versao && t.email === sessao().email) return;
+  if (!forcar && !t && versao === "") return;
+  try {
+    const j = await api("territorios");
+    if (j.vazio) store.set(K_TERR, null);
+    else store.set(K_TERR, {versao: j.versao, ano: j.ano, email: sessao().email, dseis: j.dseis, polos: j.polos, aldeias: j.aldeias, tis: j.tis, muns: j.muns});
+    if (estado.aba === "exame") renderFormulario();
+  } catch (e) {}
+}
+const porNome = (a, b) => a.n.localeCompare(b.n, "pt-BR");
+/** A lista do DSEI do exame, ou null quando não há lista para ele (aí o local é digitado como antes). */
+function listaDoDsei(dsei) {
+  const t = terr(); if (!t || !dsei) return null;
+  const cd = Object.keys(t.dseis || {}).find(c => t.dseis[c] === dsei); if (!cd) return null;
+  const polos = Object.entries(t.polos).filter(([, p]) => String(p[1]) === String(cd)).map(([c, p]) => ({c, n: p[0]})).sort(porNome);
+  if (!polos.length) return null;
+  const doPolo = new Set(polos.map(p => p.c));
+  const aldeias = Object.entries(t.aldeias).filter(([, a]) => doPolo.has(String(a[1]))).map(([c, a]) => ({c, n: a[0], polo: String(a[1]), ti: a[2] ? String(a[2]) : "", mun: a[3] ? String(a[3]) : "", uf: a[4] || ""})).sort(porNome);
+  return {t, cd, polos, aldeias};
+}
+function aplicarAldeia(ex, L, a) {
+  ex.codAldeia = a.c; ex.aldeia = a.n; ex.aldeiaManual = false;
+  ex.codPolo = a.polo; ex.polo = (L.polos.find(p => p.c === a.polo) || {}).n || ex.polo; ex.poloManual = false;
+  ex.codTI = a.ti; ex.ti = a.ti ? (L.t.tis[a.ti] || "") : ""; ex.codMunicipio = a.mun; ex.municipio = a.mun ? (L.t.muns[a.mun] || "") : "";
+  if (a.uf && UFS.includes(a.uf) && (DSEI_UF[a.uf] || []).includes(ex.dsei)) ex.uf = a.uf;
+}
+function limparAldeia(ex) { ex.codAldeia = ""; ex.codTI = ""; ex.ti = ""; ex.codMunicipio = ""; ex.municipio = ""; }
+// Exames abertos de novo, ou o "polo mais usado" de Minha conta: acha na lista pelo nome.
+function casarLocal(ex, L) {
+  if (!ex.codPolo && !ex.poloManual && ex.polo) { const p = L.polos.find(x => normNome(x.n) === normNome(ex.polo)); if (p) { ex.codPolo = p.c; ex.polo = p.n; } }
+  if (!ex.codAldeia && !ex.aldeiaManual && ex.aldeia) {
+    const a = L.aldeias.find(x => normNome(x.n) === normNome(ex.aldeia) && (!ex.codPolo || x.polo === ex.codPolo));
+    if (a) aplicarAldeia(ex, L, a); else if (ex.codPolo || ex.poloManual) ex.aldeiaManual = true;
+  }
+  if (ex.codPolo && !L.polos.some(p => p.c === ex.codPolo)) { ex.codPolo = ""; }
+  if (ex.codAldeia && !L.aldeias.some(a => a.c === ex.codAldeia)) limparAldeia(ex);
+}
+function renderLocalLista() {
+  const ex = estado.ex, L = listaDoDsei(ex.dsei), lista = !!L;
+  $("#buscaAldeia").hidden = true; $("#listaFonte").hidden = !lista; $("#cPoloLista").hidden = !lista; $("#cAldeiaLista").hidden = !lista;
+  $("#cPolo").hidden = lista && !ex.poloManual; $("#cAldeia").hidden = lista && !ex.aldeiaManual;
+  $("#cPolo .rot").textContent = lista ? "Nome do polo base (fora da lista)" : "Polo base";
+  $("#cAldeia .rot").textContent = lista ? "Nome da aldeia ou comunidade (fora da lista)" : "Aldeia ou comunidade";
+  $("#infoAldeia").hidden = true;
+  if (!lista) return;
+  casarLocal(ex, L);
+  $("#selPolo").innerHTML = `<option value="">Escolha o polo base</option>` + L.polos.map(p => `<option value="${esc(p.c)}">${esc(p.n)}</option>`).join("") + `<option value="__outro">Outro polo (não está na lista)</option>`;
+  $("#selPolo").value = ex.poloManual ? "__outro" : ex.codPolo || "";
+  const doPolo = ex.codPolo ? L.aldeias.filter(a => a.polo === ex.codPolo) : [];
+  $("#selAldeia").innerHTML = (ex.poloManual ? "" : `<option value="">${ex.codPolo ? "Escolha a aldeia" : "Escolha o polo primeiro"}</option>`) +
+    doPolo.map(a => `<option value="${esc(a.c)}">${esc(a.n)}</option>`).join("") + `<option value="__outra">Outra aldeia (não está na lista)</option>`;
+  $("#selAldeia").value = ex.aldeiaManual || ex.poloManual ? "__outra" : ex.codAldeia || "";
+  $("#selAldeia").disabled = !ex.codPolo && !ex.poloManual;
+  if (ex.codAldeia) {
+    const info = [ex.ti && `Terra Indígena ${ex.ti}`, ex.municipio && `${ex.municipio}${ex.uf ? " (" + ex.uf + ")" : ""}`].filter(Boolean).join(" · ");
+    if (info) { $("#infoAldeia").textContent = info; $("#infoAldeia").hidden = false; }
+  } else if (ex.aldeiaManual) { $("#infoAldeia").textContent = "Esta aldeia vai para a planilha como digitada, fora da lista da SESAI. Confira a grafia."; $("#infoAldeia").hidden = false; }
+  $("#listaFonte").textContent = `Lista da SESAI (${L.t.ano || "população"}): ${L.polos.length} polos e ${L.aldeias.length} aldeias no DSEI ${ex.dsei}. Escolha o polo base e depois a aldeia.`;
+  const nomePoloAtual = ex.codPolo ? (L.polos.find(p => p.c === ex.codPolo) || {}).n : "";
+  $("#buscaAldeia").hidden = !ex.codPolo || doPolo.length <= 8 || ex.aldeiaManual;
+  $("#rotBusca").textContent = `Procurar aldeia no polo ${nomePoloAtual || ""} (${doPolo.length} aldeias)`;
+}
+function mudouLocal() {
+  const ex = estado.ex;
+  if (ex._id && ex._id.buscou && !ex.vinculo && !ex.codigoFixo) { ex._id.buscou = false; ex._cand = null; renderPessoa(); }
+  $$("#blocoLocal [data-campo]").forEach(i => { const v = i.dataset.campo.split(".").reduce((o, k) => o && o[k], ex); if (document.activeElement !== i) i.value = v == null ? "" : v; });
+  preencherDsei($("#exDsei"), ex.uf, ex.dsei);
+  renderLocalLista(); renderCodigo(); renderEtapas(); alterado();
+}
+$("#selPolo").addEventListener("change", e => {
+  const ex = estado.ex, L = listaDoDsei(ex.dsei), v = e.target.value; if (!L) return;
+  if (v === "__outro") { ex.poloManual = true; ex.codPolo = ""; ex.polo = ""; ex.aldeiaManual = true; ex.aldeia = ""; limparAldeia(ex); mudouLocal(); return $('[data-campo="polo"]').focus(); }
+  ex.poloManual = false; ex.codPolo = v; ex.polo = v ? (L.polos.find(p => p.c === v) || {}).n || "" : "";
+  $("#inBuscaAldeia").value = ""; $("#resBuscaAldeia").innerHTML = "";
+  if (ex.codAldeia && !L.aldeias.some(a => a.c === ex.codAldeia && a.polo === v)) { ex.aldeia = ""; limparAldeia(ex); }
+  if (ex.aldeiaManual && !ex.aldeia) ex.aldeiaManual = false;
+  mudouLocal(); if (v) $("#selAldeia").focus();
+});
+$("#selAldeia").addEventListener("change", e => {
+  const ex = estado.ex, L = listaDoDsei(ex.dsei), v = e.target.value; if (!L) return;
+  if (v === "__outra") { ex.aldeiaManual = true; ex.aldeia = ""; limparAldeia(ex); mudouLocal(); return $('[data-campo="aldeia"]').focus(); }
+  ex.aldeiaManual = false;
+  const a = L.aldeias.find(x => x.c === v);
+  if (a) aplicarAldeia(ex, L, a); else { ex.aldeia = ""; limparAldeia(ex); }
+  mudouLocal();
+});
+$("#inBuscaAldeia").addEventListener("input", e => {
+  const L = listaDoDsei(estado.ex.dsei), q = normNome(e.target.value), box = $("#resBuscaAldeia"), cp = estado.ex.codPolo;
+  if (!L || !cp || q.length < 2) { box.innerHTML = ""; return; }
+  const achou = L.aldeias.filter(a => a.polo === cp && normNome(a.n).includes(q)).slice(0, 8);
+  box.innerHTML = achou.length ? achou.map(a => `<button type="button" class="res-aldeia" data-aldeia-busca="${esc(a.c)}"><b>${esc(a.n)}</b></button>`).join("")
+    : `<p class="dica">Nenhuma aldeia com esse nome neste polo. Confira o polo ou use "Outra aldeia (não está na lista)".</p>`;
+});
+$("#resBuscaAldeia").addEventListener("click", e => {
+  const b = e.target.closest("[data-aldeia-busca]"); if (!b) return;
+  const ex = estado.ex, L = listaDoDsei(ex.dsei), a = L && L.aldeias.find(x => x.c === b.dataset.aldeiaBusca); if (!a) return;
+  aplicarAldeia(ex, L, a); $("#inBuscaAldeia").value = ""; $("#resBuscaAldeia").innerHTML = ""; mudouLocal();
+  $('[data-campo="uf"]').value = ex.uf; preencherDsei($("#exDsei"), ex.uf, ex.dsei);
+});
 
 /* ---------- abas por perfil ---------- */
 // [aba, nome, só no computador]. No celular cabem 6 itens no menu de baixo; o resto fica na página inicial.
@@ -3209,6 +3609,7 @@ async function aceitarConvite(b) {
   try {
     const j = await api("aceitarConvite", d, {publica: true});
     store.set(K_SESSAO, {email: j.email, codigo: j.codigo, usuario: j.usuario, verificadoEm: new Date().toISOString()});
+    carregarTerritorios("", true);
     aplicarUsuario(j.usuario); salvarCfg({polo: d.polo}); estAc.vista = "entrar"; estAc.convite = null; estAc.msg = "";
     renderAbas(); irAba(abaInicial()); sincronizar(); carregarNuvem();
     mostrarCodigoNovo(j.usuario, j.codigo);
@@ -3353,6 +3754,7 @@ $("#acessoConteudo").addEventListener("click", async e => {
     try {
       const j = await api("entrar", {aparelho: tipoAparelho()}, {cred: {email, codigo}});
       store.set(K_SESSAO, {email, codigo, usuario: j.usuario, verificadoEm: new Date().toISOString()});
+      carregarTerritorios(j.territoriosVersao || "", true);
       aplicarUsuario(j.usuario); estAc.msg = "";
       renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem();
     } catch (err) {
@@ -3379,7 +3781,6 @@ function renderConfig() {
     <div class="campo" style="justify-content:flex-end"><button class="sec" id="titSalvar">Salvar nome</button></div></div>` : "";
   $("#contaAtende").hidden = !fazExames();
   $$("[data-cfg]").forEach(i => i.value = c[i.dataset.cfg] || "");
-  $$("#segAgrup button").forEach(b => b.setAttribute("aria-pressed", b.dataset.ag === c.agrupamento));
   const pend = meus().filter(e => e.envio.estado !== "enviado").length;
   $("#contaAparelho").textContent = `Conectado a ${c.url ? "o servidor da coordenação" : "nenhum servidor"}.` + (pend ? ` Há ${pend} ${pend === 1 ? "exame" : "exames"} deste aparelho aguardando envio.` : " Todos os exames deste aparelho já foram enviados.");
 }
@@ -3396,7 +3797,7 @@ $("#sair").addEventListener("click", () => {
   // Os exames ainda não enviados (seus e de outras pessoas) ficam guardados; os já enviados saem do aparelho.
   gravarExames(exames().filter(e => e.envio.estado !== "enviado"));
   store.set(K_SESSAO, null); store.set(K_RASC, null); estado.nuvem = null;
-  store.set(K_INICIO, {}); store.set(K_ACOES, {}); store.set(K_ALERTA, {}); estI.dados = null; estAcoes.dados = null; estAcoes.form = false;
+  store.set(K_INICIO, {}); store.set(K_ACOES, {}); store.set(K_ALERTA, {}); store.set(K_TERR, null); estI.dados = null; estAcoes.dados = null; estAcoes.form = false;
   estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null;
   estAc.vista = "entrar"; estAc.msg = "Você saiu deste aparelho. Seus exames enviados continuam na nuvem." + (pend.length ? ` ${pend.length === 1 ? "O exame que ainda não foi enviado ficou guardado" : `Os ${pend.length} exames que ainda não foram enviados ficaram guardados`} neste aparelho: quando você entrar de novo aqui, ${pend.length === 1 ? "ele é enviado" : "eles são enviados"} sozinho${pend.length === 1 ? "" : "s"}. Outra pessoa que entrar neste aparelho não vê nem envia esses exames.` : "");
   renderAbas(); irAba("acesso");
@@ -3521,6 +3922,50 @@ $("#eqConteudo").addEventListener("click", async e => {
   } catch (err) { toast(err.message); b.disabled = false; }
 });
 
+/* ---------- população da SESAI (coordenação) ---------- */
+// O Excel é lido aqui no navegador (o leitor só é baixado quando a coordenação usa este botão)
+// e só o resumo por aldeia, sexo e faixa etária vai para a planilha.
+let xlsxCarregando = null;
+function carregarLeitorExcel() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return xlsxCarregando || (xlsxCarregando = new Promise((ok, erro) => {
+    const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+    s.onload = () => ok(window.XLSX); s.onerror = () => { xlsxCarregando = null; erro(new Error("Não foi possível carregar o leitor de Excel. Confira a internet e tente de novo.")); };
+    document.head.appendChild(s);
+  }));
+}
+function blocoPopulacao(p) {
+  const atual = !p || p.vazio ? `<p class="cad-status falta" style="margin-top:10px">Ainda não foi enviada. Sem ela, polo e aldeia são digitados à mão no exame e o Painel não mostra a cobertura.</p>`
+    : `<div class="pop-atual"><div><b>${fmtN(p.pessoas)}</b><span>pessoas · população de ${esc(String(p.ano))}</span></div><div><b>${fmtN(p.aldeias)}</b><span>aldeias em ${fmtN(p.polos)} polos e ${fmtN(p.dseis)} DSEIs</span></div></div>
+      <p class="dica">Enviada por ${esc(p.enviadoPor || "–")} em ${fmtDataHora(p.enviadoEm)}${p.arquivo ? ` (${esc(p.arquivo)})` : ""}.</p>`;
+  return `<div class="bloco pop-bloco"><div class="bloco-topo"><h2>População e aldeias da SESAI</h2></div>
+    <p class="dica" style="margin:4px 0 0">Com a planilha da população indígena da SESAI, o exame passa a ter as listas de polos e aldeias, e o Painel mostra quantas pessoas de cada lugar já foram examinadas. Envie a planilha nova uma vez por ano, quando a SESAI atualizar a população.</p>
+    ${atual}
+    <div class="acoes-l"><label class="sec botao-arq">${!p || p.vazio ? "Enviar a planilha da população" : "Atualizar população"}<input type="file" id="admPopArq" accept=".xlsx,.xls,.csv"></label>
+      <a class="link" href="https://infoms.saude.gov.br/extensions/sesai_pop_indigena/sesai_pop_indigena.html" target="_blank" rel="noopener">Onde baixar a planilha</a></div>
+    <p class="dica" id="admPopStatus" aria-live="polite"></p></div>`;
+}
+async function enviarPopulacao(arq) {
+  const st = $("#admPopStatus"), diga = t => { if (st) st.textContent = t; };
+  try {
+    diga("Abrindo o leitor de Excel…");
+    const XLSX = await carregarLeitorExcel();
+    diga(`Lendo ${arq.name}… pode levar alguns segundos.`);
+    await new Promise(r => setTimeout(r, 30));
+    const wb = XLSX.read(await arq.arrayBuffer(), {dense: true});
+    const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, raw: true, defval: ""});
+    const p = montarPopulacao(linhas, DSEIS);
+    const nD = Object.keys(p.dseis).length, nP = Object.keys(p.polos).length, nA = Object.keys(p.aldeias).length;
+    diga(`Planilha lida: população de ${p.ano}, ${fmtN(p.pessoas)} pessoas em ${fmtN(nA)} aldeias.`);
+    if (!confirm(`População de ${p.ano}: ${nD} DSEIs, ${nP} polos, ${nA} aldeias e ${p.pessoas.toLocaleString("pt-BR")} pessoas.\n\nEnviar e trocar a lista atual? Os exames já registrados não mudam.`)) { diga("Envio cancelado."); return; }
+    diga("Enviando para a planilha…");
+    const j = await api("atualizarPopulacao", {populacao: p, arquivo: arq.name}, {tempo: 180000});
+    diga(""); toast(`População de ${j.ano} enviada: ${fmtN(j.aldeias)} aldeias. As listas chegam aos aparelhos quando cada pessoa abrir o app com internet.`);
+    carregarTerritorios(j.versao, true); carregarAdmin();
+  } catch (err) { diga(err.message || String(err)); }
+}
+$("#admConteudo").addEventListener("change", e => { if (e.target.id === "admPopArq" && e.target.files && e.target.files[0]) enviarPopulacao(e.target.files[0]); });
+
 /* ---------- administração (coordenação) ---------- */
 const estAdm = {dados: null, fPerfil: "", fDsei: "", fStatus: "", subst: null};
 async function carregarAdmin() {
@@ -3584,7 +4029,7 @@ function renderAdmin() {
     <label class="check" style="margin-top:12px"><input type="checkbox" id="admCoordEhRT"><span>Também é referência técnica de um DSEI (recebe os pedidos dos dentistas do DSEI e registra exames)</span></label>
     <div class="grade" id="admCoordRT" hidden><label class="campo">UF<select id="admCoordUf">${["", ...UFS].map(x => `<option value="${x}">${x || "Escolha a UF"}</option>`).join("")}</select></label><label class="campo">DSEI<select id="admCoordDsei"></select></label><label class="campo">CRO<input id="admCoordCro" placeholder="Ex.: RR 4471"></label></div>
     <div class="acoes-l"><button class="prim" id="admCoordAdd">Adicionar e enviar código</button><span class="dica">A pessoa recebe o código pessoal por e-mail. Ela vê tudo e aprova RTs, mas não adiciona nem desativa outras pessoas da coordenação. Se o e-mail já for de uma RT, ela continua RT e passa a ser também coordenação, com o mesmo código.</span></div></div>`;
-  $("#admConteudo").innerHTML = kpis + conv + ped + coordBloco + rtBloco + mapa + usuarios + acessos;
+  $("#admConteudo").innerHTML = kpis + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
   if ($("#admRtDsei")) preencherDsei($("#admRtDsei"), "", "");
   if ($("#admCoordDsei")) preencherDsei($("#admCoordDsei"), "", "");
 }
