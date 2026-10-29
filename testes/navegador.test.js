@@ -109,11 +109,42 @@ for (let i = 0; i < 8; i++) {
   await pg.evaluate(() => scrollTo(0, 0)); await foto(pg, "2_sem_espaco_cel");
   T("sem espaço: aparece o aviso vermelho para enviar os exames", await pg.isVisible("#avisoArmaz") && /sem espaço/.test(await pg.textContent("#avisoArmaz")), await pg.textContent("#avisoArmaz"));
   T("o exame não some: continua na lista do app (na memória)", await pg.evaluate(c => exames().some(e => e.codigo === c), cod2));
+  T("sem espaço, o app não diz \"salvo\" nem limpa a tela: o exame continua aberto", await pg.evaluate(c => estado.ex.codigoFixo === c && !!estado.ex._soMemoria, cod2), await pg.evaluate(() => [estado.ex.codigoFixo, estado.ex._soMemoria]));
+  T("o botão de salvar passa a ser \"Tentar guardar de novo\"", /Tentar guardar/.test(await pg.textContent("#salvar")), await pg.textContent("#salvar"));
+  T("\"Começar novo exame\" fica bloqueado enquanto o exame só está na memória", await pg.isDisabled("#novoExame"));
+  await pg.evaluate(() => document.getElementById("novoExame").click()); await pg.waitForTimeout(100);
+  T("mesmo forçando o clique, o exame não é descartado", await pg.evaluate(c => estado.ex.codigoFixo === c, cod2));
   await pg.unroute("https://script.google.com/**");
   await pg.route("https://script.google.com/**", async rt => { const q = rt.request(); const corpo = q.method() === "GET" ? G.get() : G.post(JSON.parse(q.postData())); await rt.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(corpo) }); });
   await pg.evaluate(() => sincronizar(true)); await pg.waitForTimeout(2500);
   T("com internet, o exame que estava só na memória é enviado", aba("Exames").some(l => l[1] === cod2));
+  T("depois de enviado, a tela é liberada para um novo exame", await pg.evaluate(c => estado.ex.codigoFixo !== c && !estado.ex._soMemoria, cod2) && !await pg.isDisabled("#novoExame"));
   await pg.evaluate(() => { window.__cheio = false; });
+  T("sem erros de página", !pg.erros.length, pg.erros);
+  await ctx.close();
+
+  /* ------------------------------------------------ local: aldeia digitada só em "Outro polo" / "Outra aldeia" */
+  parte("local do atendimento");
+  ({ ctx, pg } = await pagina(true));
+  await entrar(pg, S.ANA);
+  await pg.evaluate(() => {
+    const aldeias = {}; for (let i = 0; i < 12; i++) aldeias["A" + i] = ["Aldeia " + "ABCDEFGHIJKL"[i], "10", "", "", "RR"];
+    store.set("odonto.territorios.v1", { versao: "t", ano: 2025, email: sessao().email, dseis: { "1": "Yanomami" }, polos: { "10": ["Surucucu", "1"], "11": ["Auaris", "1"] }, aldeias, tis: {}, muns: {} });
+    irAba("exame"); renderExame();
+  });
+  await pg.waitForTimeout(200);
+  const vis = sel => pg.evaluate(q => { const el = document.querySelector(q); return !!el && !el.hidden && el.offsetParent !== null; }, sel);
+  T("com a lista da SESAI, não há caixa de busca de aldeia", !(await pg.$("#buscaAldeia")) && !(await pg.$("#inBuscaAldeia")));
+  T("os campos de digitar polo e aldeia começam escondidos", !await vis("#cPolo") && !await vis("#cAldeia"));
+  await pg.selectOption("#selPolo", "10"); await pg.waitForTimeout(100);
+  T("escolher um polo da lista não abre campo de digitar", !await vis("#cPolo") && !await vis("#cAldeia"));
+  await pg.selectOption("#selAldeia", "A3"); await pg.waitForTimeout(100);
+  T("escolher uma aldeia da lista também não", !await vis("#cAldeia") && await pg.evaluate(() => estado.ex.aldeia === "Aldeia D"));
+  await pg.selectOption("#selAldeia", "__outra"); await pg.waitForTimeout(100);
+  T("\"Outra aldeia\" abre o campo para digitar o nome da aldeia (e só ele)", await vis("#cAldeia") && !await vis("#cPolo"));
+  await pg.selectOption("#selPolo", "__outro"); await pg.waitForTimeout(100);
+  T("\"Outro polo\" abre os campos para digitar o polo e a aldeia", await vis("#cPolo") && await vis("#cAldeia"));
+  await foto(pg, "4_outro_polo_cel", "#blocoLocal");
   T("sem erros de página", !pg.erros.length, pg.erros);
   await ctx.close();
 

@@ -193,8 +193,14 @@ tenta("código de acompanhamento fora do formato", e => { e.codigo = e.codigoInd
 tenta("código com a UF de outro DSEI", e => { e.codigo = e.codigoIndividuo = "SP-SUR-SAU-ABCDEFGH"; }, /UF do DSEI/);
 r = P(ANA, { acao: "enviarExame", registro: exame({ id: "OK2", sufixo: "KBBBBBB2", data: hojeBR(), gerais: ["Escovação supervisionada"], insumos: ["Escova dental"], mud: { 16: { procs: { selante: "realizado", verniz: "indicado" } } } }) });
 T("exame de hoje, com procedimentos, coletivos e insumos válidos, passa", r.ok, r);
-r = P(ANA, { acao: "enviarExame", registro: exame({ id: "OKLEG", codigo: "RR-SUR-SAU-4471-0007" }) });
-T("código no formato antigo (UF-polo-aldeia-CRO-sequência) ainda é aceito", r.ok, r);
+tenta("código no formato antigo (UF-polo-aldeia-CRO-sequência)", e => { e.codigo = e.codigoIndividuo = "RR-SUR-SAU-4471-0007"; }, /formato/);
+tenta("código com a parte do polo vazia", e => { e.codigo = e.codigoIndividuo = "RR--SAU-KCCCCCC2"; }, /formato/);
+tenta("código com mais de 3 caracteres na aldeia", e => { e.codigo = e.codigoIndividuo = "RR-SUR-SAUB-KCCCCCC2"; }, /formato/);
+T("reserva também recusa parte vazia", !P(ANA, { acao: "reservarCodigo", codigoReserva: "RR-SUR--KCCCCCC2", exameId: "RVZ" }).ok);
+T("planilha: código que bate com o local do exame → codigo_confere_local = sim", linhaEx("OK1")[col("Exames", "codigo_confere_local")] === "sim", linhaEx("OK1")[col("Exames", "codigo_confere_local")]);
+r = P(ANA, { acao: "enviarExame", registro: exame({ id: "OKLOC", codigo: "RR-SUR-HAK-KDDDDDD2", aldeia: "Saúba" }) });
+T("código que não bate com a aldeia do exame é aceito, mas sinalizado (codigo_confere_local = não)", r.ok && linhaEx("OKLOC")[col("Exames", "codigo_confere_local")] === "não", r);
+T("o dicionário da planilha explica a coluna codigo_confere_local", aba("Dicionário").some(l => l[1] === "codigo_confere_local") || Object.keys(G.est.sheets).some(n => /icion/.test(n) && G.est.sheets[n].some(l => l.includes("codigo_confere_local"))));
 
 /* ---------------------------------------------------------------- exames: DSEI */
 parte("DSEI");
@@ -251,6 +257,31 @@ T("histórico: dentista de outro DSEI não vê", !P(CARLA, { acao: "pessoa", cod
 T("histórico: RT de outro DSEI não vê", !P(BETO, { acao: "pessoa", codigoIndividuo: "RR-SUR-SAU-KAAAAAA2" }).ok);
 T("histórico: coordenação vê", P(C, { acao: "pessoa", codigoIndividuo: "RR-SUR-SAU-KAAAAAA2" }).ok);
 
+/* ---------------------------------------------------------------- código em mais de um DSEI (defesa) */
+parte("código em dois DSEIs");
+r = P(ANA, { acao: "enviarExame", registro: exame({ id: "MD1", sufixo: "MDMDMDM2" }) });
+r = P(BRUNO, { acao: "enviarExame", registro: exame({ id: "MD2", data: "2026-10-12", vinculo: { codigoIndividuo: "RR-SUR-SAU-MDMDMDM2", chaves: [] } }) });
+T("pessoa com dois exames no mesmo DSEI", r.ok && r.numeroExame === 2, r);
+// Simula um dado corrompido: um dos exames aparece em outro DSEI na planilha.
+(() => { const l = linhaEx("MD2"), j = JSON.parse(l.at(-1)); j.dsei = "Leste de Roraima"; l[col("Exames", "dsei")] = "Leste de Roraima"; l[l.length - 1] = JSON.stringify(j); })();
+const mails0 = mailsPara("coord@teste.org").length;
+r = P(BRUNO, { acao: "pessoa", codigoIndividuo: "RR-SUR-SAU-MDMDMDM2" });
+T("CD do DSEI não vê o histórico de código com exames em dois DSEIs", !r.ok, r);
+T("fica registrado em Acessos como Segurança", aba("Acessos").some(l => l[7] === "Código em mais de um DSEI" && l[6] === "Segurança"));
+T("a coordenação recebe um e-mail de aviso", mailsPara("coord@teste.org").length === mails0 + 1 && /mais de um DSEI/.test(mailsPara("coord@teste.org").at(-1).subject), mailsPara("coord@teste.org").length - mails0);
+r = P(ANA, { acao: "buscarCodigo", codigoBusca: "RR-SUR-SAU-MDMDMDM2", dsei: "Yanomami" });
+T("a busca pelo código não devolve a pessoa para CD", r.ok && !r.pessoa && r.foraDoSeuDsei, r);
+T("nova tentativa não manda outro e-mail (no máximo um aviso a cada 6 h)", mailsPara("coord@teste.org").length === mails0 + 1);
+r = P(C, { acao: "pessoa", codigoIndividuo: "RR-SUR-SAU-MDMDMDM2" });
+T("a coordenação continua vendo, para corrigir", r.ok && r.exames.length === 2, r);
+r = P(C, { acao: "buscarCodigo", codigoBusca: "RR-SUR-SAU-MDMDMDM2", dsei: "Yanomami" });
+T("para a coordenação, a busca diz que o código está em conferência", r.ok && r.emConferencia && /Leste de Roraima/.test(r.outroDsei), r);
+r = P(ANA, { acao: "enviarExame", registro: exame({ id: "MD3", data: "2026-10-14", vinculo: { codigoIndividuo: "RR-SUR-SAU-MDMDMDM2", chaves: [] } }) });
+T("não dá para juntar novo exame a esse código", !r.ok && r.vinculoInvalido && !linhaEx("MD3"), r);
+const md2 = Object.assign(exame({ id: "MD2", data: "2026-10-12", vinculo: { codigoIndividuo: "RR-SUR-SAU-MDMDMDM2", chaves: [] } }), { atualizadoEm: "2026-10-20T12:00:00.000Z" });
+r = P(BRUNO, { acao: "enviarExame", registro: md2 });
+T("exame gravado num DSEI não pode ser reenviado como de outro DSEI", !r.ok && r.dseiInvalido && linhaEx("MD2")[col("Exames", "dsei")] === "Leste de Roraima", r);
+
 /* ---------------------------------------------------------------- painel */
 parte("painel");
 for (let i = 0; i < 6; i++) P(BRUNO, { acao: "enviarExame", registro: exame({ id: "PN" + i, sufixo: "PANEX" + "ABCDEF"[i] + "22", nasc: "2016-0" + (i + 1) + "-10", idade: 10, mud: i < 3 ? { 46: { faces: { O: "ca" } } } : {} }) });
@@ -265,6 +296,9 @@ T("painel agregado não traz códigos de pessoas", !JSON.stringify(r).includes("
 
 /* ---------------------------------------------------------------- reorganização da planilha */
 parte("reorganização");
+// Muitos exames com resultado errado, para conferir que o relatório lista todos (não só os primeiros).
+for (let i = 0; i < 25; i++) P(ANA, { acao: "enviarExame", registro: exame({ id: "RL" + i, sufixo: "RQ" + "ABCDEFGHJKMNPQRSTUVWXYZ23"[i] + "XXXX2" }) });
+for (let i = 0; i < 25; i++) { const j = jsonEx("RL" + i); j.resultado.cpod = { c: 4, p: 0, o: 0, total: 4 }; linhaEx("RL" + i)[aba("Exames")[0].length - 1] = JSON.stringify(j); }
 const examesAntes = JSON.stringify(aba("Exames"));
 const comErro = jsonEx("OK1"); comErro.resultado.ceod = { c: 0, e: 9, o: 0, total: 9 };
 linhaEx("OK1")[aba("Exames")[0].length - 1] = JSON.stringify(comErro);
@@ -291,10 +325,35 @@ r = P(C, { acao: "reorganizar" });
 T("com backup, a titular atualiza a planilha", r.ok && G.ctx.formatoAtual() && G.est.backups.length === nBackups + 1, r);
 T("o resultado errado foi recalculado", jsonEx("OK1").resultado.ceod.e === 0);
 T("relatório antes/depois gravado na planilha", aba("Relatório da reorganização").some(l => l[0] === "OK1"));
+T("o relatório lista todos os exames que mudaram (26), não só uma amostra", aba("Relatório da reorganização").length - 1 === r.resultado.relatorio.mudam && r.resultado.relatorio.mudam >= 26, [aba("Relatório da reorganização").length - 1, r.resultado.relatorio.mudam]);
+T("a resposta ao app leva no máximo 20 exemplos", r.resultado.relatorio.exemplos.length <= 20, r.resultado.relatorio.exemplos.length);
 T("Acessos registra quantos exames mudaram e o backup", aba("Acessos").some(l => l[7] === "Reorganizou a planilha" && /com resultado recalculado/.test(l[8]) && /backup antes/.test(l[8])));
 r = P(ANA, { acao: "enviarExame", registro: exame({ id: "DEPOIS", sufixo: "DEPXSAA2" }) });
 T("depois de concluída, os envios voltam", r.ok, r);
 T("os outros exames continuam lá", JSON.parse(examesAntes).length <= aba("Exames").length);
+
+/* ---------------------------------------------------------------- reativação */
+parte("reativação");
+r = G.post({ acao: "pedirAcesso", link: S.LINK, nome: "Davi Dentista", cro: "RR 4242", email: "davi@teste.org", uf: "RR", dsei: "Yanomami", perfil: "dentista" });
+r = P(RT, { acao: "aprovar", id: S.idDe("davi@teste.org") });
+const DAVI = { email: "davi@teste.org", codigo: S.codigoDoEmail("davi@teste.org") };
+T("novo dentista aprovado entra", P(DAVI, { acao: "entrar" }).ok);
+r = P(RT, { acao: "desativar", id: S.idDe("davi@teste.org") });
+T("RT desativa o dentista", r.ok && !P(DAVI, { acao: "entrar" }).ok, r);
+const mRT = mailsPara("rt@teste.org").length;
+r = G.post({ acao: "pedirAcesso", link: S.LINK, nome: "Davi D.", cro: "RR 9999", email: "davi@teste.org", uf: "RR", dsei: "Leste de Roraima", perfil: "rt" });
+const davi = () => aba("Usuarios").slice(1).find(l => l[3] === "davi@teste.org");
+T("pedido de quem foi desativado vira pedido de reativação", r.ok && r.reativacao === true, r);
+T("o cadastro não muda: continua desativado, no mesmo DSEI e perfil", davi()[8] === "desativado" && davi()[5] === "Yanomami" && davi()[7] === "dentista" && davi()[1] === "Davi Dentista", davi());
+T("a resposta avisa que DSEI e perfil continuam os do cadastro", r.mudouDados === true && r.dseiCadastro === "Yanomami");
+T("a RT do DSEI recebe o aviso de reativação", mailsPara("rt@teste.org").length === mRT + 1 && /reativação/i.test(mailsPara("rt@teste.org").at(-1).subject));
+T("Acessos registra \"Pediu reativação\"", aba("Acessos").some(l => l[7] === "Pediu reativação"));
+T("a Equipe da RT mostra que a pessoa pediu reativação", (() => { const m = P(RT, { acao: "equipe" }).membros.find(x => x.email === "davi@teste.org"); return m && m.status === "desativado" && new Date(m.pedido_em) > new Date(m.aprovado_em); })());
+G.post({ acao: "pedirAcesso", link: S.LINK, nome: "Davi Dentista", cro: "RR 4242", email: "davi@teste.org", uf: "RR", dsei: "Yanomami", perfil: "dentista" });
+T("pedir de novo no mesmo dia não manda outro e-mail", mailsPara("rt@teste.org").length === mRT + 1);
+r = P(RT, { acao: "reativar", id: S.idDe("davi@teste.org") });
+T("a RT reativa e a pessoa volta a entrar com o código de antes", r.ok && P(DAVI, { acao: "entrar" }).ok, r);
+T("a reativação conta como nova aprovação (quem e quando)", davi()[11] === "Rita RT" && new Date(davi()[12]) >= new Date(davi()[10]), davi());
 
 /* ---------------------------------------------------------------- geral */
 parte("geral");
