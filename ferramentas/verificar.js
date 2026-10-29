@@ -46,6 +46,7 @@ icones.forEach(f => ok(existe(f), `O manifest usa ${f}, mas o arquivo não está
 const comp = t => { const i = t.indexOf("/* ===== COMPARTILHADO INICIO ====="), j = t.indexOf("/* ===== COMPARTILHADO FIM ===== */"); return i < 0 || j < 0 ? null : t.slice(i, j); };
 const a = comp(html), b = comp(gs);
 ok(a && b && a === b, "O trecho COMPARTILHADO do index.html e do Codigo.gs está diferente: rode o montar.py antes de enviar.");
+if (existe("compartilhado.js")) ok(comp(ler("compartilhado.js")) === a, "O compartilhado.js mudou e não foi copiado para o index.html e o Codigo.gs: rode o montar.py antes de enviar.");
 
 // 6. Senha nunca no código
 ok(!/CHAVE_COORDENACAO['"]?\s*[:=]\s*['"][^'"]{3,}/.test(gs), "O Codigo.gs parece ter a senha da coordenação escrita no código. Ela deve ficar só nas Propriedades do script.");
