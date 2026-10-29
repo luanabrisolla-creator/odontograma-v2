@@ -52,7 +52,7 @@ const CAB_USO = ['usuario_id', 'nome', 'email', 'perfil', 'dsei', 'ultimo_acesso
 const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Versão do formato das abas. Quando muda, a planilha é reorganizada uma vez (com backup antes).
 const FORMATO = '22';
-const VERSAO = 27;
+const VERSAO = 28;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -142,13 +142,14 @@ function formatoAtual() { return propriedade('FORMATO_PLANILHA') === FORMATO; }
 function precisaJuntarAcessos() {
   try { return planilha().getSheets().some(function (a) { return /^Acessos - formato antigo/.test(a.getName()); }); } catch (x) { return false; }
 }
-// Rode no editor para reorganizar agora (faz backup antes). Também acontece sozinha no primeiro uso.
+// Rode no editor para reorganizar agora (faz backup antes, e cancela se o backup falhar). Com a planilha vazia
+// acontece sozinha; com exames, a coordenação titular confirma na Administração depois de ver o relatório.
 function reorganizarPlanilha() {
   const t = LockService.getScriptLock(); t.waitLock(30000);
   try {
     const r = reorganizarAgora();
     Logger.log('Planilha reorganizada: ' + r.exames + ' exames, ' + r.dentes + ' linhas de dentes, ' + r.acessos + ' eventos em Acessos, ' + r.uso + ' pessoas em Uso.');
-    Logger.log(r.backup ? 'Backup feito antes: ' + r.backup : 'ATENÇÃO: não foi possível fazer o backup antes (' + r.erroBackup + ').');
+    Logger.log('Backup feito antes: ' + r.backup + ' · exames com resultado recalculado: ' + ((r.relatorio || {}).mudam || 0));
   } finally { t.releaseLock(); }
 }
 function garantirFormato() { if (!formatoAtual()) reorganizarAgora(); else juntarAcessosAntigos(); }
@@ -191,14 +192,54 @@ function somarUsoAntigo(porEmail) {
   });
   if (v.length) aba.getRange(2, 1, v.length, CAB_USO.length).setValues(v.map(linhaSegura));
 }
+/* Relatório do que a reorganização muda nos exames: para cada exame, a classe e o ceo-d/CPO-D gravados
+ * comparados com o que o servidor calcula pela regra atual. Não grava nada. */
+/** @param {any[]} regs */
+function relatorioRecalculo(regs) {
+  /** @type {any} */ const r = { exames: regs.length, comDentes: 0, mudam: 0, classe: 0, ceod: 0, cpod: 0, exemplos: [] };
+  const ind = function (x) { x = x || {}; return [x.c || 0, x.e != null ? x.e : x.p || 0, x.o || 0, x.total || 0].join('/'); };
+  regs.forEach(function (e) {
+    if (!e.dentes || !Object.keys(e.dentes).length) return;
+    r.comDentes++;
+    const a = e.resultado || {}, b = avaliarExame(e);
+    const mc = a.classe !== b.classe, me = ind(a.ceod) !== ind(b.ceod), mp = ind(a.cpod) !== ind(b.cpod);
+    if (mc) r.classe++; if (me) r.ceod++; if (mp) r.cpod++;
+    if (mc || me || mp) {
+      r.mudam++;
+      if (r.exemplos.length < 5000) r.exemplos.push({ id: e.id, codigo: codigoIndividuoDe(e), dsei: e.dsei, data: e.dataExame,
+        classe: [a.classe || '', b.classe], ceod: [ind(a.ceod), ind(b.ceod)], cpod: [ind(a.cpod), ind(b.cpod)] });
+    }
+  });
+  return r;
+}
+/** Prévia para a coordenação titular, antes de confirmar. @param {any} d @param {any} u */
+function previaReorganizacao(d, u) {
+  if (!u.titular) return { ok: false, erro: 'Só a coordenação titular atualiza a planilha.' };
+  const rel = relatorioRecalculo(lerExames().map(sanear));
+  return { ok: true, pendente: !formatoAtual(), formatoAtual: propriedade('FORMATO_PLANILHA') || '', formatoNovo: FORMATO,
+    relatorio: Object.assign({}, rel, { exemplos: rel.exemplos.slice(0, 20) }) };
+}
+/** @param {any} d @param {any} u */
+function reorganizarPelaTitular(d, u) {
+  if (!u.titular) return { ok: false, erro: 'Só a coordenação titular atualiza a planilha.' };
+  if (formatoAtual()) return { ok: true, jaFeito: true };
+  try { const r = reorganizarAgora(); return { ok: true, resultado: r }; }
+  catch (err) { return { ok: false, erro: String(err.message || err) }; }
+}
 function reorganizarAgora() {
   const ss = planilha();
-  /** @type {any} */ const r = { exames: 0, dentes: 0, acessos: 0, uso: 0, backup: '', erroBackup: '' };
-  try { r.backup = fazerBackup('reorganizar'); } catch (x) { r.erroBackup = String(x); }
+  /** @type {any} */ const r = { exames: 0, dentes: 0, acessos: 0, uso: 0, backup: '', relatorio: null };
+  // Backup obrigatório: sem cópia, nada é reescrito.
+  try { r.backup = fazerBackup('reorganizar'); }
+  catch (x) { throw new Error('Reorganização cancelada: não foi possível fazer o backup antes (' + x + '). Nada foi alterado na planilha.'); }
   MIGRANDO = true;
   try {
-    // Formato 22: o resultado (classe e índices) de todos os exames é refeito pelo servidor, pela regra atual.
-    const regs = lerExames().map(sanear).map(recalcularResultado);
+    // O resultado (classe e índices) de todos os exames é refeito pelo servidor, pela regra atual.
+    const antes = lerExames().map(sanear);
+    r.relatorio = relatorioRecalculo(antes);
+    if (r.relatorio.mudam) reescreverAba(ss, 'Relatório da reorganização', ['id_exame', 'codigo_individuo', 'dsei', 'data_exame', 'classe_antes', 'classe_depois', 'ceod_antes (c/e/o/total)', 'ceod_depois', 'cpod_antes (C/P/O/total)', 'cpod_depois', 'reorganizado_em'],
+      r.relatorio.exemplos.map(function (x) { return [x.id, x.codigo, x.dsei, x.data, x.classe[0], x.classe[1], x.ceod[0], x.ceod[1], x.cpod[0], x.cpod[1], new Date().toISOString()]; }), null);
+    const regs = antes.map(recalcularResultado);
     const linhasEx = regs.map(linhaExame);
     /** @type {any[]} */ const linhasDe = [];
     regs.forEach(function (e) { linhasDentes(e).forEach(function (l) { linhasDe.push(l); }); });
@@ -210,7 +251,8 @@ function reorganizarAgora() {
     r.exames = linhasEx.length; r.dentes = linhasDe.length; r.acessos = uso.eventos;
     PropertiesService.getScriptProperties().setProperty('FORMATO_PLANILHA', FORMATO);
   } finally { MIGRANDO = false; }
-  registrar({ email: '', nome: 'Sistema' }, 'Reorganizou a planilha', 'Versão ' + FORMATO + ' · ' + r.exames + ' exames' + (r.backup ? ' · backup antes: ' + r.backup : ' · sem backup: ' + r.erroBackup));
+  const rel = r.relatorio || {};
+  registrar({ email: '', nome: 'Sistema' }, 'Reorganizou a planilha', 'Versão ' + FORMATO + ' · ' + r.exames + ' exames · ' + (rel.mudam || 0) + ' com resultado recalculado (classe ' + (rel.classe || 0) + ', ceo-d ' + (rel.ceod || 0) + ', CPO-D ' + (rel.cpod || 0) + ') · backup antes: ' + r.backup);
   return r;
 }
 // O servidor é a fonte do resultado clínico: refaz a classe de risco e o ceo-d/CPO-D a partir dos dentes
@@ -349,11 +391,21 @@ function doPost(e) {
   if (!d.acao) return saida({ ok: false, erro: 'Esta versão do app está desatualizada. Abra o app com internet e recarregue a página para receber a versão com acesso individual.' });
   const A = ACOES[d.acao];
   if (!A) return saida({ ok: false, erro: 'Ação desconhecida: ' + d.acao });
-  // Na primeira vez depois de atualizar o código, reorganiza a planilha (com backup antes).
+  // Reorganização da planilha depois de atualizar o código:
+  // - planilha sem exames (instalação nova): acontece sozinha, com backup antes;
+  // - planilha com exames: NUNCA sozinha. Fica pendente até a coordenação titular ver o relatório do que muda e
+  //   confirmar na Administração. Enquanto isso, só leituras funcionam; os exames esperam guardados no aparelho.
+  // - juntar abas de Acessos antigas (não mexe em exames): sozinha.
+  let pendente = false;
   if (!formatoAtual() || precisaJuntarAcessos()) {
     const tf = LockService.getScriptLock(); tf.waitLock(30000);
-    try { garantirFormato(); } catch (err) { return saida({ ok: false, erro: 'Não foi possível reorganizar a planilha: ' + err }); } finally { tf.releaseLock(); }
+    try {
+      if (formatoAtual()) juntarAcessosAntigos();
+      else if (!lerExames().length) reorganizarAgora();
+      else pendente = true;
+    } catch (err) { return saida({ ok: false, erro: 'Não foi possível reorganizar a planilha: ' + err }); } finally { tf.releaseLock(); }
   }
+  if (pendente && A.escreve && !A.reorganiza) return saida({ ok: false, manutencao: true, erro: 'A planilha está esperando uma atualização da coordenação. Nada foi perdido: os exames ficam guardados no aparelho e serão enviados quando a coordenação concluir. Tente de novo mais tarde.' });
   const trava = A.escreve ? LockService.getScriptLock() : null;
   if (trava) trava.waitLock(30000);
   try {
@@ -362,15 +414,24 @@ function doPost(e) {
       if (d.acao === 'pedirAcesso' && !dentroDoLimite('pedido:' + normEmail(d.email), 5, 3600)) return saida({ ok: false, erro: 'Muitos pedidos com este e-mail na última hora. Espere um pouco e tente de novo.' });
       return saida(A.fn(d));
     }
-    // Login: depois de 20 tentativas erradas em 15 minutos, o e-mail fica bloqueado por 15 minutos.
-    const emailL = normEmail(d.email);
-    if (emailL && limiteEsgotado('falha:' + emailL, 20)) return saida({ ok: false, semAcesso: true, bloqueado: true, erro: 'Muitas tentativas erradas com este e-mail. Espere 15 minutos e tente de novo.' });
+    // Limite de tentativas de login (20 erradas em 15 minutos):
+    // - profissionais: o código certo SEMPRE entra (quem só sabe o e-mail não consegue bloquear o dono). O código é
+    //   sorteado com 12 caracteres, então tentar adivinhar é inviável; o limite só deixa de responder às erradas.
+    // - coordenação titular: a senha é escolhida por pessoa e pode ser curta, então o bloqueio vale até para a senha
+    //   certa (proteção contra tentativa e erro). Use uma senha longa.
+    const emailL = normEmail(d.email), ehTitular = !!emailL && emailL === emailCoord();
+    const bloqueado = !!emailL && limiteEsgotado('falha:' + emailL, 20);
+    const msgBloq = { ok: false, semAcesso: true, bloqueado: true, erro: 'Muitas tentativas erradas com este e-mail. Espere 15 minutos e tente de novo.' };
+    if (bloqueado && ehTitular) return saida(msgBloq);
     const u = autenticar(d);
     if (!u) {
       if (emailL) dentroDoLimite('falha:' + emailL, 1000, 900);
-      if (d.email) registrar({ email: d.email, nome: '' }, 'Tentativa de acesso recusada', d.acao);
-      return saida({ ok: false, semAcesso: true, erro: 'E-mail ou código de acesso inválido, ou acesso desativado.' });
+      // Bloqueado: não registra cada tentativa de novo (evita encher a aba Acessos com um ataque).
+      if (d.email && !bloqueado) registrar({ email: d.email, nome: '' }, 'Tentativa de acesso recusada', d.acao);
+      return saida(bloqueado ? msgBloq : { ok: false, semAcesso: true, erro: 'E-mail ou código de acesso inválido, ou acesso desativado.' });
     }
+    if (bloqueado) { try { CacheService.getScriptCache().remove('lim:falha:' + emailL); } catch (x) {} }
+    if (pendente) u._reorganizacaoPendente = true;
     if (A.perfis && A.perfis.indexOf(u.perfil) < 0) return saida({ ok: false, erro: 'Seu perfil não tem permissão para isso.' });
     return saida(A.fn(d, u));
   } catch (err) {
@@ -384,6 +445,8 @@ const ACOES = {
   pedirAcesso:    { publica: true, escreve: true, fn: pedirAcesso },
   reenviarCodigo: { publica: true, escreve: true, fn: reenviarCodigo },
   confirmarRecuperacao: { publica: true, escreve: true, fn: confirmarRecuperacao },
+  previaReorganizacao: { perfis: ['coord'], fn: previaReorganizacao },
+  reorganizar:    { perfis: ['coord'], escreve: true, reorganiza: true, fn: reorganizarPelaTitular },
   entrar:         { fn: entrar },
   enviarExame:    { escreve: true, fn: enviarExame },
   painel:         { fn: painel },
@@ -441,7 +504,8 @@ function lerUsuarios() {
 /** @param {any} u */
 function salvarUsuario(u) {
   const aba = obterAba(planilha(), 'Usuarios', CAB_USUARIOS);
-  const linha = CAB_USUARIOS.map(function (k) { return u[k] == null ? '' : u[k]; });
+  // Neutraliza textos que a planilha leria como fórmula (o pedido de acesso é público: nome, CRO e polo vêm de fora).
+  const linha = linhaSegura(CAB_USUARIOS.map(function (k) { return u[k] == null ? '' : u[k]; }));
   if (u._linha) aba.getRange(u._linha, 1, 1, linha.length).setValues([linha]);
   else { aba.appendRow(linha); u._linha = aba.getLastRow(); }
 }
@@ -473,7 +537,12 @@ function autenticar(d) {
   const u = lerUsuarios().filter(function (x) { return normEmail(x.email) === email && x.status === 'ativo' && x.codigo_hash === h; })[0];
   if (!u) return null;
   const hoje = new Date().toISOString().slice(0, 10);
-  if (String(u.ultimo_acesso).slice(0, 10) !== hoje) { u.ultimo_acesso = new Date().toISOString(); salvarUsuario(u); }
+  // Grava só a célula do último acesso (fora da trava): regravar a linha inteira poderia desfazer uma desativação
+  // ou um código novo feitos no mesmo instante por outra pessoa.
+  if (String(u.ultimo_acesso).slice(0, 10) !== hoje) {
+    u.ultimo_acesso = new Date().toISOString();
+    try { obterAba(planilha(), 'Usuarios', CAB_USUARIOS).getRange(u._linha, CAB_USUARIOS.indexOf('ultimo_acesso') + 1, 1, 1).setValues([[u.ultimo_acesso]]); } catch (x) {}
+  }
   return u;
 }
 /** @param {any} u @param {any} acao @param {any} detalhe */
@@ -512,13 +581,22 @@ function podeGerir(u, alvo) {
 function enviarEmail(para, assunto, texto) {
   try { MailApp.sendEmail({ to: para, subject: assunto, body: texto, name: NOME_APP }); return true; } catch (x) { return false; }
 }
+/* ---------- endereço oficial do app ----------
+ * Todo link que vai por e-mail (recuperação, convite, aprovação, pedido de acesso) usa este endereço, definido aqui
+ * no servidor. Nunca o que o navegador manda: senão alguém poderia pedir um e-mail legítimo do sistema com o link
+ * de um site falso. Para trocar (por exemplo, um domínio próprio), crie URL_APP em Propriedades do script. */
+const URL_APP_PADRAO = 'https://luanabrisolla-creator.github.io/odontograma-v2/';
+function urlApp() {
+  const p = String(propriedade('URL_APP') || '').trim();
+  return /^https:\/\/[^\s?#'"<>]+$/.test(p) ? p.replace(/\/?$/, '/') : URL_APP_PADRAO;
+}
 /** @param {any} u @param {any} codigo @param {any} link @param {any} novo */
 function emailCodigo(u, codigo, link, novo) {
   return enviarEmail(u.email, novo ? 'Seu novo código de acesso ao Odontograma' : 'Seu acesso ao Odontograma foi aprovado',
     'Olá, ' + u.nome + '.\n\n' +
     (novo ? 'Foi gerado um novo código de acesso para você. O código anterior deixou de funcionar.\n\n'
           : 'Seu acesso como ' + NOME_PERFIL[u.perfil] + (u.dsei ? (u.perfil === 'coord' ? ' e referência técnica' : '') + ' do DSEI ' + u.dsei : '') + ' foi aprovado.\n\n') +
-    'Abra o app' + (link ? ' (' + link + ')' : '') + ', toque em "Já tenho um código" e digite:\n\n' +
+    'Abra o app (' + urlApp() + '), toque em "Já tenho um código" e digite:\n\n' +
     '    E-mail: ' + u.email + '\n    Código: ' + codigo + '\n\n' +
     'O código é pessoal: não compartilhe. Você pode entrar com ele no celular e no computador.\n' +
     'Se perder o código, peça outro no próprio app, em "Esqueci meu código".\n\n' + NOME_APP);
@@ -543,7 +621,7 @@ function pedirAcesso(d) {
   const rts = perfil === 'dentista' ? rtsDo(dsei) : [];
   const destinos = rts.length ? rts.map(function (x) { return x.email; }) : [emailCoord()];
   enviarEmail(destinos.join(','), 'Novo pedido de acesso ao Odontograma',
-    nome + ' (CRO ' + cro + ') pediu acesso como ' + NOME_PERFIL[perfil] + ' do DSEI ' + dsei + '.\n\nAbra o app' + (d.link ? ' (' + d.link + ')' : '') +
+    nome + ' (CRO ' + cro + ') pediu acesso como ' + NOME_PERFIL[perfil] + ' do DSEI ' + dsei + '.\n\nAbra o app (' + urlApp() + ')' +
     ' e vá em "' + (rts.length ? 'Equipe' : 'Administração') + '" para aprovar ou recusar.\n\n' + NOME_APP);
   return { ok: true, para: rts.length ? 'a referência técnica do DSEI ' + dsei : 'a coordenação' };
 }
@@ -582,7 +660,7 @@ function reenviarCodigo(d) {
   if (u) {
     const t = gerarToken(), agora = new Date();
     obterAba(planilha(), ABA_RECUP, CAB_RECUP).appendRow([hashRecuperacao(t), u.id, u.email, agora.toISOString(), new Date(agora.getTime() + MINUTOS_RECUP * 60000).toISOString(), '']);
-    const base = /^https?:\/\//.test(String(d.link || '')) ? String(d.link) : '';
+    const base = urlApp();
     enviarEmail(u.email, 'Pedido de novo código de acesso ao Odontograma',
       'Olá, ' + u.nome + '.\n\nRecebemos um pedido de novo código de acesso para este e-mail.\n\n' +
       (base ? 'Se foi você, abra este link em até ' + MINUTOS_RECUP + ' minutos e toque em "Gerar meu novo código":\n\n' + base + '?recuperar=' + t + '\n\n'
@@ -610,7 +688,7 @@ function confirmarRecuperacao(d) {
   const agora = new Date().toISOString();
   v.forEach(function (l, j) { if (!l[5] && String(l[1]) === u.id) aba.getRange(j + 2, 6, 1, 1).setValues([[j === i ? agora : 'substituído ' + agora]]); });
   const c = gerarCodigo(); u.codigo_hash = hashCodigo(c); salvarUsuario(u);
-  emailCodigo(u, c, d.link, true);
+  emailCodigo(u, c, '', true);
   registrar(u, 'Confirmou novo código', 'pelo link de recuperação');
   return { ok: true, email: u.email, nome: u.nome, codigo: c };
 }
@@ -618,7 +696,8 @@ function confirmarRecuperacao(d) {
 /* ---------- ações de quem tem acesso ---------- */
 function entrar(d, u) {
   registrar(u, 'Entrou no app', d.aparelho || '');
-  return { ok: true, versao: VERSAO, usuario: publico(u), territoriosVersao: propriedade('POP_VERSAO') };
+  return { ok: true, versao: VERSAO, usuario: publico(u), territoriosVersao: propriedade('POP_VERSAO'),
+    reorganizacaoPendente: !!u._reorganizacaoPendente };
 }
 /** @param {any} r */
 function autorDe(r) { return r.usuarioId || ''; }
@@ -722,6 +801,8 @@ function enviarExame(d, u) {
       // então nunca é trocado aqui. Com 8 caracteres sorteados e a reserva feita antes de mostrar, a repetição é
       // praticamente impossível; se mesmo assim acontecer, o exame é recusado (nunca juntado à outra pessoa) e o profissional avisado.
       const cod = String(reg.codigo || reg.id);
+      if (!codigoBemFormado(cod, reg.dsei)) return { ok: false, exameIncompleto: true, faltam: ['código de acompanhamento'],
+        erro: 'O código de acompanhamento ' + cod + ' não está no formato do app ou não é de uma UF do DSEI ' + reg.dsei + '. Abra o exame, toque em "Trocar identificação" e gere um código novo.' };
       const dono = outros.filter(function (r) { return codigoIndividuoDe(r).toUpperCase() === cod.toUpperCase(); })[0]
         || lerReservas().filter(function (r) { return r.codigo === cod.toUpperCase() && r.exameId !== String(reg.id); })[0];
       if (dono) {
@@ -786,10 +867,10 @@ const STATUS_DENTE = ['presente', 'nao_erupc', 'ausente', 'ausente_carie', 'extr
 const FACES_VALIDAS = ['', 'ca', 'cc', 'restc', 'rest', 'mba', 'mbi', 'sel'];
 /** Lista do que falta ou está fora do permitido no exame (vazia = ok). @param {any} r */
 function problemasDoExame(r) {
+  // "Hoje" no fuso do script (Brasília). Nenhum DSEI fica à frente desse horário, então o exame nunca é de amanhã.
   const f = [], hoje = hojeIso(), cr = r.crianca || {};
-  const amanha = fmtDia(new Date(Date.now() + 36 * 3600 * 1000));
   if (!dataValida(r.dataExame)) f.push('data do exame');
-  else if (r.dataExame > amanha) f.push('data do exame (está no futuro)');
+  else if (r.dataExame > hoje) f.push('data do exame (está no futuro)');
   else if (r.dataExame < '2015-01-01') f.push('data do exame (antes de 2015)');
   if (!dataValida(cr.nascimento)) f.push('data de nascimento');
   else if (dataValida(r.dataExame) && cr.nascimento > r.dataExame) f.push('data de nascimento (depois da data do exame)');
@@ -803,6 +884,9 @@ function problemasDoExame(r) {
   if (LOCAIS_ATENDIMENTO.indexOf(r.localAtendimento) < 0) f.push('local de atendimento');
   const vig = Array.isArray(r.vigilancia) ? r.vigilancia : [];
   if (!vig.length || vig.some(function (v) { return VIGILANCIA.indexOf(v) < 0; }) || (vig.length > 1 && vig.indexOf(VIG_NENHUM) >= 0)) f.push('vigilância em saúde bucal');
+  if (!Array.isArray(r.gerais || []) || (r.gerais || []).some(function (g) { return GERAIS.indexOf(g) < 0; })) f.push('procedimentos coletivos (fora da lista)');
+  if (!Array.isArray(r.insumos || []) || (r.insumos || []).some(function (g) { return INSUMOS.indexOf(g) < 0; })) f.push('insumos (fora da lista)');
+  if (r.observacoes != null && (typeof r.observacoes !== 'string' || r.observacoes.length > 2000)) f.push('observações (texto até 2.000 caracteres)');
   if (typeof r.placa !== 'boolean') f.push('placa visível (Sim ou Não)');
   if (typeof r.gengivite !== 'boolean') f.push('gengivite (Sim ou Não)');
   const pr = r.protese || {};
@@ -812,6 +896,17 @@ function problemasDoExame(r) {
   if (!chaves.length) f.push('dentes (odontograma vazio)');
   const fora = chaves.filter(function (n) { return permitidos.indexOf(String(n)) < 0; });
   if (fora.length) f.push('dentes fora da dentição escolhida (' + fora.slice(0, 5).join(', ') + ')');
+  // O app sempre manda a dentição inteira: faltar dente é odontograma incompleto.
+  const faltamD = permitidos.filter(function (n) { return chaves.map(String).indexOf(n) < 0; });
+  if (chaves.length && faltamD.length) f.push('odontograma incompleto (faltam os dentes ' + faltamD.slice(0, 6).join(', ') + (faltamD.length > 6 ? '…' : '') + ')');
+  const procRuim = chaves.filter(function (n) {
+    const d = ds[n] || {}, p = d.procs || {};
+    if (d.dor != null && typeof d.dor !== 'boolean') return true;
+    if (d.obs != null && (typeof d.obs !== 'string' || d.obs.length > 500)) return true;
+    if (typeof p !== 'object' || Array.isArray(p)) return true;
+    return Object.keys(p).some(function (k) { return !NOMES_PROC[k] || ['', 'indicado', 'realizado'].indexOf(p[k]) < 0; });
+  });
+  if (procRuim.length) f.push('dor, procedimentos ou observação dos dentes ' + procRuim.slice(0, 5).join(', '));
   const ruins = chaves.filter(function (n) {
     const d = ds[n] || {}, fc = d.faces || {};
     return STATUS_DENTE.indexOf(d.status) < 0 || Object.keys(fc).some(function (k) { return ['O', 'M', 'D', 'V', 'L'].indexOf(k) < 0 || FACES_VALIDAS.indexOf(fc[k] || '') < 0; });
@@ -820,6 +915,14 @@ function problemasDoExame(r) {
   const pend = chaves.filter(function (n) { return (ds[n] || {}).status === 'a_confirmar'; });
   if (pend.length) f.push('dentes ainda com ? para conferir na boca (' + pend.slice(0, 8).join(', ') + ')');
   return f;
+}
+// Código de acompanhamento de pessoa nova: UF-POLO-ALDEIA-8 caracteres (desde a versão 30) ou o formato antigo
+// UF-POLO-ALDEIA-CRO-sequência, sempre com a UF de um estado do DSEI do exame.
+/** @param {string} cod @param {string} dsei */
+function codigoBemFormado(cod, dsei) {
+  const c = String(cod || '').toUpperCase();
+  const m = /^([A-Z]{2})-[A-Z0-9]{0,3}-[A-Z0-9]{0,3}-(?:[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}|[A-Z0-9]{1,12}-\d{4})$/.exec(c);
+  return !!m && ufDoDsei(m[1], dsei);
 }
 /** Escopo ADMINISTRATIVO (equipe, convites, listas): CD e RT ficam no DSEI do cadastro; coordenação vê vários. @param {any} u */
 function atuaEmUmDsei(u) { return u.perfil !== 'coord'; }
@@ -1050,7 +1153,12 @@ function acoes(d, u) {
   return { ok: true, versao: VERSAO, hoje: hoje, acoes: l, podeCriar: u.perfil === 'coord' };
 }
 /** @param {any} v */
-function dataValida(v) { return /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !isNaN(new Date(String(v) + 'T12:00:00').getTime()); }
+// Data AAAA-MM-DD que existe de verdade: confere dia, mês e ano um a um (31/02 não vira 03/03).
+function dataValida(v) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '')); if (!m) return false;
+  const a = +m[1], me = +m[2], di = +m[3], d = new Date(Date.UTC(a, me - 1, di));
+  return d.getUTCFullYear() === a && d.getUTCMonth() === me - 1 && d.getUTCDate() === di;
+}
 /** @param {any} d @param {any} u */
 function criarAcao(d, u) {
   const dsei = String(d.dsei || '').trim();
@@ -1144,7 +1252,7 @@ function aprovar(d, u) {
   const c = gerarCodigo();
   Object.assign(a, { status: 'ativo', codigo_hash: hashCodigo(c), aprovado_por: u.nome, aprovado_em: new Date().toISOString() });
   salvarUsuario(a);
-  const foi = emailCodigo(a, c, d.link, false);
+  const foi = emailCodigo(a, c, '', false);
   registrar(u, 'Aprovou acesso', a.nome + ' · ' + NOME_PERFIL[a.perfil] + ' · DSEI ' + a.dsei);
   return { ok: true, emailEnviado: foi, codigo: foi ? '' : c };
 }
@@ -1174,7 +1282,7 @@ function novoCodigoPara(d, u) {
   if (!a || a.status !== 'ativo') return { ok: false, erro: 'O acesso precisa estar ativo.' };
   if (!podeGerir(u, a)) return { ok: false, erro: 'Você não pode alterar este acesso.' };
   const c = gerarCodigo(); a.codigo_hash = hashCodigo(c); salvarUsuario(a);
-  const foi = emailCodigo(a, c, d.link, true);
+  const foi = emailCodigo(a, c, '', true);
   registrar(u, 'Gerou novo código', a.nome);
   return { ok: true, emailEnviado: foi, codigo: foi ? '' : c };
 }
@@ -1191,6 +1299,7 @@ function admin(d, u) {
   const qtdEquipe = {};
   us.forEach(function (x) { if (x.status === 'ativo') qtdEquipe[x.dsei] = (qtdEquipe[x.dsei] || 0) + 1; });
   return { ok: true, usuarios: us.map(publico), acessos: acessos, dseisRT: dseisRT, qtdEquipe: qtdEquipe, titular: !!u.titular, convites: listaConvites(u, ''), populacao: populacaoInfo(d, u),
+    reorganizacaoPendente: !formatoAtual(), senhaCurta: !!u.titular && chaveCfg().length < 12,
     auditoria: { falhas: Number(propriedade('AUDITORIA_FALHAS') || 0), ultima: propriedade('AUDITORIA_ULTIMA') || '' } };
 }
 // Só a coordenação titular adiciona pessoas à coordenação. Elas entram com código pessoal.
@@ -1229,7 +1338,7 @@ function adicionarCoord(d, u) {
   Object.assign(a, { nome: nome, cro: rt.cro, email: email, uf: rt.uf, dsei: rt.dsei, polo: '', perfil: 'coord', status: 'ativo', codigo_hash: hashCodigo(c),
     pedido_em: new Date().toISOString(), aprovado_por: u.nome, aprovado_em: new Date().toISOString() });
   salvarUsuario(a);
-  const foi = emailCodigo(a, c, d.link, false);
+  const foi = emailCodigo(a, c, '', false);
   registrar(u, 'Adicionou coordenação', nome + ' · ' + email + (rt.dsei ? ' · também RT do DSEI ' + rt.dsei : ''));
   return { ok: true, emailEnviado: foi, codigo: foi ? '' : c };
 }
@@ -1261,7 +1370,7 @@ function substituirRT(d, u) {
       const c = gerarCodigo();
       Object.assign(nova, { perfil: 'rt', status: 'ativo', codigo_hash: hashCodigo(c), aprovado_por: u.nome, aprovado_em: new Date().toISOString() });
       salvarUsuario(nova);
-      foi = emailCodigo(nova, c, d.link, false); cod = foi ? '' : c;
+      foi = emailCodigo(nova, c, '', false); cod = foi ? '' : c;
     } else {
       nova.perfil = 'rt'; nova.status = 'ativo'; salvarUsuario(nova);
       enviarEmail(nova.email, 'Você agora é referência técnica no Odontograma', 'Olá, ' + nova.nome + '.\n\nVocê passou a ser referência técnica do DSEI ' + nova.dsei +
@@ -1362,7 +1471,7 @@ function convidar(d, u) {
     const c = { id: Utilities.getUuid(), email: email, perfil: perfil, dsei: dsei, situacao: 'pendente', token_hash: hashToken(token),
       convidado_por: u.nome, convidado_por_id: u.id, convidado_por_email: u.email, criado_em: new Date().toISOString(), valido_ate: somarDias(DIAS_CONVITE), aceito_em: '', usuario_id: '' };
     salvarConvite(c);
-    const link = linkDoConvite(d.link, token);
+    const link = linkDoConvite(urlApp(), token);
     return { email: email, res: emailConvite(c, link, u) ? 'enviado' : 'sem_email', link: link };
   });
   const enviados = resultados.filter(function (r) { return r.link; });
@@ -1388,7 +1497,7 @@ function reenviarConvite(d, u) {
   const token = gerarToken();
   Object.assign(c, { situacao: 'pendente', token_hash: hashToken(token), valido_ate: somarDias(DIAS_CONVITE), criado_em: new Date().toISOString(), convidado_por: u.nome, convidado_por_id: u.id, convidado_por_email: u.email });
   salvarConvite(c);
-  const link = linkDoConvite(d.link, token), foi = emailConvite(c, link, u);
+  const link = linkDoConvite(urlApp(), token), foi = emailConvite(c, link, u);
   registrar(u, 'Reenviou convite', c.email + ' · DSEI ' + c.dsei);
   return { ok: true, emailEnviado: foi, link: link };
 }
@@ -1433,7 +1542,7 @@ function aceitarConvite(d) {
     codigo_hash: hashCodigo(cod), pedido_em: agora, aprovado_por: c.convidado_por + ' (convite)', aprovado_em: agora, ultimo_acesso: agora });
   salvarUsuario(novo);
   Object.assign(c, { situacao: 'aceito', aceito_em: agora, usuario_id: novo.id }); salvarConvite(c);
-  emailCodigo(novo, cod, String(d.link || '').split('?')[0], false);
+  emailCodigo(novo, cod, '', false);
   if (c.convidado_por_email) enviarEmail(c.convidado_por_email, nome + ' aceitou o convite do Odontograma',
     nome + ' (CRO ' + cro + ') aceitou o convite e já tem acesso como ' + NOME_PERFIL[c.perfil] + ' do DSEI ' + c.dsei + '.\n\n' + NOME_APP);
   registrar(novo, 'Aceitou convite', NOME_PERFIL[c.perfil] + ' · DSEI ' + c.dsei + ' · convite de ' + c.convidado_por);
@@ -1694,6 +1803,8 @@ var DSEI_UF = {"AC": ["Alto Rio Juruá", "Alto Rio Purus"], "AL": ["Alagoas e Se
 var DSEIS = ["Alagoas e Sergipe", "Altamira", "Alto Rio Juruá", "Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Amapá e Norte do Pará", "Araguaia", "Bahia", "Ceará", "Cuiabá", "Guamá-Tocantins", "Interior Sul", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Leste de Roraima", "Litoral Sul", "Manaus", "Maranhão", "Mato Grosso do Sul", "Minas Gerais e Espírito Santo", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Pernambuco", "Porto Velho", "Potiguara", "Rio Tapajós", "Tocantins", "Vale do Javari", "Vilhena", "Xavante", "Xingu", "Yanomami"];
 // Listas usadas no exame (termos genéricos dos prontuários eletrônicos da atenção primária).
 var LOCAIS_ATENDIMENTO = ["UBSI", "CASAI", "Domicílio", "Escola ou creche", "Unidade móvel", "Outro"];
+var INSUMOS = ["Escova dental","Creme dental","Fio dental"];
+var GERAIS = ["Escovação supervisionada","Aplicação tópica de flúor","Orientação de higiene e dieta","Profilaxia / remoção de placa","Raspagem supragengival","Encaminhamento para especialidade"];
 var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", "Fendas ou fissuras lábio palatais", "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
 var VIG_FLUOROSE = "Fluorose dentária moderada ou severa", VIG_NENHUM = "Não identificado";
 /** @type {any} */

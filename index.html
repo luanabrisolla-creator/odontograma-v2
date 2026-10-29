@@ -951,6 +951,7 @@ body.na-entrada{background:#DCEEFC}
 
 <main>
   <div id="avisoServidor" class="aviso aviso-servidor" role="alert" hidden></div>
+  <div id="avisoArmaz" class="aviso" role="alert" hidden>Este navegador não está guardando dados de forma permanente. Os exames podem se perder ao fechar a página: abra o aplicativo pelo endereço publicado ou instale-o na tela inicial.</div>
   <!-- INÍCIO -->
   <section id="aba-inicio" hidden>
     <div class="ini-hero"><div class="ini-hero-img paisagem-img" aria-hidden="true"></div>
@@ -975,7 +976,6 @@ body.na-entrada{background:#DCEEFC}
 
   <!-- EXAME -->
   <section id="aba-exame">
-    <div id="avisoArmaz" class="aviso" hidden>Este navegador não está guardando dados de forma permanente. Os exames podem se perder ao fechar a página: abra o aplicativo pelo endereço publicado ou instale-o na tela inicial.</div>
     <div id="avisoConfig" class="aviso" hidden>Entre com o seu acesso para registrar exames. <button class="link" data-ir="acesso">Entrar</button></div>
     <div id="avisoEdicao" class="aviso" hidden>Você está editando um exame já salvo. <button class="link" id="cancelarEdicao">Descartar alterações</button></div>
 
@@ -1008,7 +1008,7 @@ body.na-entrada{background:#DCEEFC}
       <div id="identTopo"></div>
       <div class="grade" id="indGrade">
         <label class="campo">Data de nascimento<input type="date" data-campo="crianca.nascimento" id="inNasc"></label>
-        <label class="campo">Sexo<select data-campo="crianca.sexo" id="inSexo"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
+        <label class="campo">Sexo<select data-campo="crianca.sexo" id="inSexo" required><option value="">Escolha</option><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
         <div class="campo">Idade no exame<output id="idade" style="font-size:1rem;color:var(--ink);padding:10px 0">Informe a data de nascimento</output></div>
       </div>
       <div id="pessoaBox"></div>
@@ -1181,13 +1181,43 @@ body.na-entrada{background:#DCEEFC}
 const memoria = {};
 let armazenamentoOk = true;
 try { localStorage.setItem("__t","1"); localStorage.removeItem("__t"); } catch (e) { armazenamentoOk = false; }
+// Armazenamento do aparelho. Se o navegador recusar uma gravação (espaço cheio), o app NÃO perde o dado em silêncio:
+// libera o que pode ser refeito (cache do Painel, exames já enviados, que estão na nuvem), tenta de novo e, se ainda
+// assim não couber, mantém o dado na memória e avisa em vermelho para enviar os exames antes de fechar o app.
+const falhouGravar = {};
 const store = {
   get(k, def) {
+    if (falhouGravar[k] && k in memoria) return memoria[k];
     try { const v = localStorage.getItem(k); if (v != null) return JSON.parse(v); } catch (e) {}
     return k in memoria ? memoria[k] : def;
   },
-  set(k, v) { memoria[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  set(k, v) {
+    memoria[k] = v;
+    try { localStorage.setItem(k, JSON.stringify(v)); delete falhouGravar[k]; return true; } catch (e) {}
+    if (k !== K_PAINEL) {
+      try { localStorage.removeItem(K_PAINEL); } catch (e) {}
+      if (k === K_EXAMES && Array.isArray(v)) { v = podarEnviados(v, 0); memoria[k] = v; }
+      else { try { const l = JSON.parse(localStorage.getItem(K_EXAMES) || "[]"); localStorage.setItem(K_EXAMES, JSON.stringify(podarEnviados(l, 0))); } catch (e) {} }
+      try { localStorage.setItem(k, JSON.stringify(v)); delete falhouGravar[k]; return true; } catch (e) {}
+    }
+    falhouGravar[k] = true;
+    if (k !== K_PAINEL) avisarSemEspaco();
+    return false;
+  }
 };
+// Tira do aparelho os exames já enviados há mais de "dias" dias (0 = todos os enviados). Eles continuam na nuvem
+// e aparecem em Meus exames > Na nuvem. Nunca tira exame não enviado, com erro ou aberto para edição.
+function podarEnviados(l, dias) {
+  // "estado" pode ainda não existir (gravação durante a abertura do app): nesse caso nenhum exame está aberto.
+  let aberto = ""; try { aberto = estado.editando || ""; } catch (e) {}
+  const limite = Date.now() - dias * 86400000;
+  return l.filter(e => !(e && e.envio && e.envio.estado === "enviado" && e.id !== aberto && new Date(e.envio.em || 0).getTime() <= limite));
+}
+function avisarSemEspaco() {
+  const a = document.getElementById("avisoArmaz"); if (!a) return;
+  a.innerHTML = "<b>Este aparelho ficou sem espaço para guardar exames.</b> Não feche o app: conecte-se à internet e toque em Enviar em Meus exames. Depois de enviados, os exames saem do aparelho e liberam espaço.";
+  a.classList.add("aviso-servidor"); a.hidden = false;
+}
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_SEQ = "odonto.seq.v1";
 const K_SESSAO = "odonto.sessao.v1";
@@ -1248,8 +1278,6 @@ const PROCS = [
   ["pulpotomia","Pulpotomia"],["pulpectomia","Pulpectomia"],["coroa","Coroa de aço"],["exodontia","Exodontia"]
 ];
 const PROC_NOME = Object.fromEntries(PROCS);
-const INSUMOS = ["Escova dental","Creme dental","Fio dental"];
-const GERAIS = ["Escovação supervisionada","Aplicação tópica de flúor","Orientação de higiene e dieta","Profilaxia / remoção de placa","Raspagem supragengival","Encaminhamento para especialidade"];
 const CLASSES = {
   A:"Sem lesão de cárie, sem placa, sem gengivite e sem mancha branca ativa.",
   B:"História de dente restaurado ou perdido por cárie, sem sinais de atividade.",
@@ -1772,6 +1800,7 @@ function montarRegistro(ex) {
 // Perguntas que precisam de resposta para o dado não ficar ambíguo na planilha.
 function camposFaltando(ex) {
   const f = [];
+  if (ex.crianca.sexo !== "F" && ex.crianca.sexo !== "M") f.push(["o sexo (Feminino ou Masculino)", "#inSexo"]);
   if (!ex.localAtendimento) f.push(["o local de atendimento (UBSI, CASAI…)", "#locais"]);
   if (!(ex.vigilancia || []).length) f.push([`a vigilância em saúde bucal (ou “${VIG_NENHUM}”)`, "#blocoCond"]);
   if (ex.placa == null) f.push(["placa visível (Sim ou Não)", '[data-bool="placa"]']);
@@ -2433,6 +2462,8 @@ var DSEI_UF = {"AC": ["Alto Rio Juruá", "Alto Rio Purus"], "AL": ["Alagoas e Se
 var DSEIS = ["Alagoas e Sergipe", "Altamira", "Alto Rio Juruá", "Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Amapá e Norte do Pará", "Araguaia", "Bahia", "Ceará", "Cuiabá", "Guamá-Tocantins", "Interior Sul", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Leste de Roraima", "Litoral Sul", "Manaus", "Maranhão", "Mato Grosso do Sul", "Minas Gerais e Espírito Santo", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Pernambuco", "Porto Velho", "Potiguara", "Rio Tapajós", "Tocantins", "Vale do Javari", "Vilhena", "Xavante", "Xingu", "Yanomami"];
 // Listas usadas no exame (termos genéricos dos prontuários eletrônicos da atenção primária).
 var LOCAIS_ATENDIMENTO = ["UBSI", "CASAI", "Domicílio", "Escola ou creche", "Unidade móvel", "Outro"];
+var INSUMOS = ["Escova dental","Creme dental","Fio dental"];
+var GERAIS = ["Escovação supervisionada","Aplicação tópica de flúor","Orientação de higiene e dieta","Profilaxia / remoção de placa","Raspagem supragengival","Encaminhamento para especialidade"];
 var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", "Fendas ou fissuras lábio palatais", "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
 var VIG_FLUOROSE = "Fluorose dentária moderada ou severa", VIG_NENHUM = "Não identificado";
 /** @type {any} */
@@ -2906,7 +2937,7 @@ async function carregarPainel() {
     if (!j.resumo || j.versao == null || j.versao < 5) throw new Error("A planilha ainda está rodando uma versão antiga do código, por isso o painel fica vazio. No Apps Script, cole o Codigo.gs novo e clique em Implantar > Gerenciar implantações > lápis > Versão: Nova versão > Implantar.");
     cache[chave] = {em: new Date().toISOString(), dados: j};
     const ks = Object.keys(cache).sort((a, b) => cache[b].em.localeCompare(cache[a].em));
-    ks.slice(20).forEach(k => delete cache[k]);
+    ks.slice(5).forEach(k => delete cache[k]);
     store.set(K_PAINEL, cache);
     const novos = (j.dseis || []).filter(d => !DSEIS.includes(d));
     if (novos.join() !== estP.extras.join()) { estP.extras = novos; }
@@ -3512,7 +3543,7 @@ async function api(acao, dados, opc) {
   if (!c.url) throw new Error("O endereço do servidor não está configurado. Abra o app pelo link enviado pela coordenação.");
   if (!navigator.onLine) throw new Error("Sem internet agora.");
   const cred = opc.cred || (opc.publica ? null : s);
-  const corpo = Object.assign({acao, versaoApp: 31, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
+  const corpo = Object.assign({acao, versaoApp: 33, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), opc.tempo || 30000);
   try {
     const r = await fetch(c.url, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(corpo), signal: ctrl.signal});
@@ -3536,7 +3567,7 @@ function acessoPerdido(msg) {
   renderAbas(); irAba("acesso");
 }
 // Esta versão do app precisa do Codigo.gs a partir desta versão (mostrada no /exec como "versao").
-const SERVIDOR_MIN = 27;
+const SERVIDOR_MIN = 28;
 // App e servidor têm numerações próprias: o aviso só aparece se o servidor for MAIS ANTIGO que o mínimo
 // de que este app precisa (servidor igual ou mais novo é compatível). Servidor que não informa a versão é antigo.
 function avisarServidor(v) {
@@ -3546,6 +3577,18 @@ function avisarServidor(v) {
   if (velho) box.innerHTML = perfil() === "coord"
     ? `<b>${v ? `O servidor está na versão ${v}` : "O servidor está numa versão antiga"}, e este app precisa da ${SERVIDOR_MIN} ou mais nova.</b> Algumas funções podem falhar. No Apps Script, cole o Codigo.gs desta versão e publique pelo lápis (Gerenciar implantações > lápis > Nova versão > Implantar).`
     : `<b>O servidor do app está desatualizado.</b> Algumas funções podem falhar até a coordenação atualizar. Seus exames continuam guardados neste aparelho.`;
+}
+// Pergunta a versão ao servidor toda vez que o app abre (com internet). O aviso nunca usa um número guardado
+// de antes: assim ele some assim que o servidor é atualizado, sem precisar sair e entrar de novo.
+async function conferirVersaoServidor() {
+  const c = cfg(), s = sessao();
+  if (!s || !c.url || !navigator.onLine) return avisarServidor(null);
+  try {
+    const j = await (await fetch(c.url)).json();
+    const v = typeof j.versao === "number" ? j.versao : 0;
+    const s2 = sessao(); if (s2) store.set(K_SESSAO, Object.assign(s2, {versaoServidor: v}));
+    avisarServidor(v);
+  } catch (e) { avisarServidor(null); }
 }
 function aplicarUsuario(u) {
   salvarCfg({nome: u.nome || "Coordenação", cro: u.cro || "", uf: u.uf || cfg().uf, dsei: u.dsei || cfg().dsei, polo: cfg().polo || u.polo || ""});
@@ -3678,6 +3721,29 @@ $("#resBuscaAldeia").addEventListener("click", e => {
   const sel = $("#selAldeia"); sel.classList.remove("piscar"); void sel.offsetWidth; sel.classList.add("piscar");
 });
 
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-reorg]"); if (!b) return;
+  const box = $("#admReorgPrevia"), fazer = $('[data-reorg="fazer"]');
+  b.disabled = true;
+  try {
+    if (b.dataset.reorg === "previa") {
+      const j = await api("previaReorganizacao"), r = j.relatorio || {};
+      box.innerHTML = `<div class="tabela"><table class="conta"><tbody>
+        <tr><th>Exames na planilha</th><td>${fmtN(r.exames)}</td></tr>
+        <tr><th>Com resultado que muda</th><td><b>${fmtN(r.mudam)}</b></td></tr>
+        <tr><th>Classe de risco muda</th><td>${fmtN(r.classe)}</td></tr>
+        <tr><th>ceo-d muda</th><td>${fmtN(r.ceod)}</td></tr>
+        <tr><th>CPO-D muda</th><td>${fmtN(r.cpod)}</td></tr></tbody></table></div>
+        ${(r.exemplos || []).length ? `<p class="dica" style="margin-top:8px">Exemplos (antes → depois):</p><ul class="totais">${r.exemplos.slice(0, 10).map(x => `<li>${esc(x.codigo)} (${esc(fmtData(x.data))}): classe ${esc(x.classe[0])} → ${esc(x.classe[1])}; ceo-d ${esc(x.ceod[0])} → ${esc(x.ceod[1])}; CPO-D ${esc(x.cpod[0])} → ${esc(x.cpod[1])}</li>`).join("")}</ul>` : ""}
+        <p class="nota">A lista completa vai para a aba "Relatório da reorganização" da planilha. Formato ${esc(j.formatoAtual || "antigo")} → ${esc(j.formatoNovo)}.</p>`;
+      fazer.hidden = false;
+    } else if (confirm("Fazer o backup completo e atualizar a planilha agora? Pode levar alguns minutos.")) {
+      const j = await api("reorganizar", {}, {tempo: 300000});
+      toast(j.jaFeito ? "A planilha já estava atualizada." : `Planilha atualizada. Backup: ${j.resultado.backup}.`);
+      carregarAdmin();
+    }
+  } catch (err) { toast(err.message); } finally { b.disabled = false; }
+});
 document.addEventListener("click", e => {
   if (!e.target.closest("#assumirOrfaos")) return;
   const u = (sessao() || {}).usuario; if (!u) return;
@@ -3955,16 +4021,17 @@ function manterEmails(ctx, render) { const i = $(`#${ctx}ConvEmails`), v = i ? i
 function contarEmails(ctx) { const i = $(`#${ctx}ConvEmails`), o = $(`#${ctx}ConvConta`); if (!i || !o) return; const n = separarEmails(i.value).length; o.textContent = n ? `${n} ${n === 1 ? "e-mail" : "e-mails"}` : ""; }
 document.addEventListener("input", e => { const m = /^(eq|adm)ConvEmails$/.exec(e.target.id || ""); if (m) contarEmails(m[1]); });
 
+// Situação do servidor: só para a coordenação, no fim da aba Administração.
 async function mostrarDiagnostico() {
-  const c = cfg(); if (!c.url) return;
+  const c = cfg(); if (!c.url || perfil() !== "coord" || !$("#admConteudo")) return;
   try {
     const j = await (await fetch(c.url)).json(), d = j.instalacao;
     const box = document.createElement("div"); box.className = "bloco"; box.id = "acDiag";
     const linha = (rot, v) => `<tr><th>${rot}</th><td>${v === "ok" ? "✓ ok" : esc(v || "–")}</td></tr>`;
-    box.innerHTML = `<h2>Situação do servidor</h2><p class="dica" style="margin:4px 0 10px">Serve para a coordenação conferir a instalação. Versão do servidor: ${esc(j.versao || "antiga")}.</p>` +
+    box.innerHTML = `<h3>Situação do servidor</h3><p class="dica" style="margin:4px 0 10px">Para conferir a instalação. Versão do servidor: ${esc(j.versao || "antiga")} · versão do app: 33.</p>` +
       (d ? `<div class="tabela"><table class="conta"><tbody>${linha("E-mail da coordenação", d.email)}${linha("Senha da coordenação", d.chave)}${linha("Planilha", d.planilha)}${linha("Envio de e-mails", d.email_envio)}</tbody></table></div>`
          : `<p class="dica">O servidor ainda roda um código antigo: cole o Codigo.gs novo e publique uma nova versão.</p>`);
-    $("#acDiag")?.remove(); $("#acessoConteudo").appendChild(box);
+    $("#acDiag")?.remove(); if ($("#admConteudo")) $("#admConteudo").appendChild(box);
   } catch (e) {}
 }
 const lerUrlAcesso = () => { const i = $("#acUrl"); if (i && i.value.trim()) salvarCfg({url: i.value.trim()}); };
@@ -4000,7 +4067,7 @@ $("#acessoConteudo").addEventListener("click", async e => {
       renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem();
     } catch (err) {
       estAc.msg = err.semAcesso ? "O e-mail ou o código não conferem. Confira os dois (o código diferencia maiúsculas de minúsculas) ou peça um novo código." : err.message;
-      renderAcesso(); $("#acEmail").value = email; mostrarDiagnostico();
+      renderAcesso(); $("#acEmail").value = email;
     } finally { const bb = $("#acEntrar"); if (bb) bb.disabled = false; }
   }
   if (b.id === "acReenviar") {
@@ -4023,7 +4090,7 @@ function renderConfig() {
   $("#contaAtende").hidden = !fazExames();
   $$("[data-cfg]").forEach(i => i.value = c[i.dataset.cfg] || "");
   const pend = meus().filter(e => e.envio.estado !== "enviado").length;
-  $("#contaAparelho").textContent = `${c.url ? "Conectado ao servidor da coordenação" : "Sem servidor configurado"} · app versão 31${(s || {}).versaoServidor ? ` · servidor versão ${s.versaoServidor}` : ""}.` + (pend ? ` Há ${pend} ${pend === 1 ? "exame" : "exames"} deste aparelho aguardando envio.` : " Todos os exames deste aparelho já foram enviados.");
+  $("#contaAparelho").textContent = `${c.url ? "Conectado ao servidor da coordenação" : "Sem servidor configurado"} · app versão 33${(s || {}).versaoServidor ? ` · servidor versão ${s.versaoServidor}` : ""}.` + (pend ? ` Há ${pend} ${pend === 1 ? "exame" : "exames"} deste aparelho aguardando envio.` : " Todos os exames deste aparelho já foram enviados.");
 }
 $("#contaNomeTit").addEventListener("click", async e => {
   if (e.target.id !== "titSalvar") return;
@@ -4273,8 +4340,16 @@ function renderAdmin() {
     <label class="check" style="margin-top:12px"><input type="checkbox" id="admCoordEhRT"><span>Também é referência técnica de um DSEI (recebe os pedidos dos dentistas do DSEI e registra exames)</span></label>
     <div class="grade" id="admCoordRT" hidden><label class="campo">UF<select id="admCoordUf">${["", ...UFS].map(x => `<option value="${x}">${x || "Escolha a UF"}</option>`).join("")}</select></label><label class="campo">DSEI<select id="admCoordDsei"></select></label><label class="campo">CRO<input id="admCoordCro" placeholder="Ex.: RR 4471"></label></div>
     <div class="acoes-l"><button class="prim" id="admCoordAdd">Adicionar e enviar código</button><span class="dica">A pessoa recebe o código pessoal por e-mail. Ela vê tudo e aprova RTs, mas não adiciona nem desativa outras pessoas da coordenação. Se o e-mail já for de uma RT, ela continua RT e passa a ser também coordenação, com o mesmo código.</span></div></div>`;
+  // Atualização da planilha pendente (código novo com mudança de formato e planilha com exames): só a titular confirma.
+  const reorg = d.reorganizacaoPendente ? (d.titular ? `<div class="bloco" id="admReorg" style="border-left:5px solid var(--sesai-amarelo)"><h3>Atualização da planilha pendente</h3>
+      <p class="dica" style="margin:4px 0 10px">O código novo do servidor muda o formato da planilha. Enquanto você não confirmar, os profissionais conseguem consultar, mas os exames novos esperam guardados nos aparelhos. Antes de mudar qualquer coisa, o app faz um backup completo no seu Drive; se o backup falhar, nada é alterado.</p>
+      <div id="admReorgPrevia"></div>
+      <div class="acoes-l"><button class="sec" data-reorg="previa">Ver o que vai mudar</button><button class="prim" data-reorg="fazer" hidden>Fazer o backup e atualizar a planilha</button></div></div>`
+    : `<div class="aviso">A planilha está esperando uma atualização que só a coordenação titular pode confirmar, na Administração.</div>`) : "";
+  const senha = d.senhaCurta ? `<div class="aviso">A senha da coordenação titular tem menos de 12 caracteres. Para proteger o acesso, troque por uma senha longa em Propriedades do script (CHAVE_COORDENACAO) e publique uma nova versão.</div>` : "";
   const aud = d.auditoria && d.auditoria.falhas ? `<div class="aviso-servidor" style="padding:12px 14px;border-radius:10px"><b>${d.auditoria.falhas} ${d.auditoria.falhas === 1 ? "registro" : "registros"} de acesso não ${d.auditoria.falhas === 1 ? "pôde" : "puderam"} ser gravado${d.auditoria.falhas === 1 ? "" : "s"} na aba Acessos.</b> O atendimento continuou normalmente, mas a trilha de auditoria ficou incompleta. Última falha: ${esc(d.auditoria.ultima)}. Confira se a planilha não está cheia ou protegida.</div>` : "";
-  $("#admConteudo").innerHTML = aud + kpis + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
+  setTimeout(mostrarDiagnostico, 0);
+  $("#admConteudo").innerHTML = reorg + senha + aud + kpis + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
   if ($("#admRtDsei")) preencherDsei($("#admRtDsei"), "", "");
   if ($("#admCoordDsei")) preencherDsei($("#admCoordDsei"), "", "");
 }
@@ -4352,13 +4427,16 @@ $("#admConteudo").addEventListener("click", async e => {
 /* ---------- início ---------- */
 $$(".lista-uf").forEach(sel => sel.innerHTML = `<option value="">Escolha a UF</option>` + UFS.map(u => `<option>${u}</option>`).join(""));
 $("#avisoArmaz").hidden = armazenamentoOk;
+// Faxina: exames enviados há mais de 30 dias saem do aparelho (continuam na nuvem).
+try { const l0 = store.get(K_EXAMES, []), l1 = podarEnviados(l0, 30); if (l1.length !== l0.length) store.set(K_EXAMES, l1); } catch (e) {}
 completarCampos(estado.ex);
 if (CONVITE_URL) {
   if (sessao()) setTimeout(() => toast(`Este aparelho já está conectado com a conta de ${sessao().usuario.nome}. Para aceitar o convite, saia em "Minha conta" e abra o link do convite de novo.`), 900);
   else { estAc.vista = "convite"; estAc.convite = {token: CONVITE_URL}; }
 }
 renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao();
-if (RECUPERAR_URL) abrirRecuperacao(); avisarServidor(((sessao() || {}).versaoServidor));
+if (RECUPERAR_URL) abrirRecuperacao();
+conferirVersaoServidor();
 sincronizar();
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>

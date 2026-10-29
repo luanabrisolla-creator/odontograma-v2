@@ -1,5 +1,73 @@
 # Odontograma: guia de instalação
 
+## Versão 33: correções da auditoria antes do uso real (inclui tudo da 32)
+
+**Como instalar.** O servidor muda, mas a planilha não precisa ser reorganizada (o formato continua o 22). Faça na ordem:
+1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
+2. **Confira:** abra o /exec. Ele deve mostrar `"versao":28`.
+3. **GitHub:** clique em **Add file > Upload files** e arraste, de uma vez:
+   - os arquivos `index.html`, `sw.js`, `Codigo.gs`, `LEIA-ME.md`, `compartilhado.js` e `montar.py`;
+   - as pastas `testes` e `ferramentas` inteiras (o GitHub mantém as pastas quando você arrasta a pasta).
+
+   Depois, abra `.github/workflows/verificar.yml` no GitHub, toque no lápis, apague tudo, cole o conteúdo do `verificar.yml` novo e salve.
+4. **Confira a aba Actions:** o envio deve ficar com ✓ verde. Agora o GitHub roda, a cada envio:
+   - a conferência de que app, servidor e modo sem internet combinam;
+   - os testes do servidor (cerca de 120 verificações);
+   - a abertura do app no navegador;
+   - os testes dos fluxos principais no navegador.
+5. **Senha da coordenação:** se a Administração mostrar o aviso de senha curta, troque `CHAVE_COORDENACAO` em Propriedades do script por uma senha de 12 caracteres ou mais e publique de novo pelo lápis.
+6. **Teste:**
+   - um exame sem escolher o sexo (tem que ser barrado);
+   - "Esqueci meu código" (o link do e-mail deve começar com `https://luanabrisolla-creator.github.io/odontograma-v2/`);
+   - um convite.
+
+**Segurança:**
+- **Endereço fixo nos e-mails.** Todo link enviado por e-mail (recuperação de código, convite, aprovação, aviso de pedido de acesso) usa o endereço oficial do app, definido no servidor. O endereço que o navegador manda é ignorado. Isso fecha a falha que permitia mandar, por um e-mail legítimo do sistema, um link para um site falso e roubar a conta. Se um dia o app mudar de endereço, crie `URL_APP` em Propriedades do script.
+- **Planilha protegida contra fórmulas na aba Usuarios.** Um nome, CRO ou polo começado por `=`, `+`, `-` ou `@` é gravado como texto.
+- **Login:**
+  - o profissional com o código certo sempre entra, mesmo que alguém tenha errado o código dele 20 vezes;
+  - para a coordenação titular, cuja senha é escolhida por pessoa, o bloqueio de 15 minutos continua;
+  - a Administração avisa se essa senha tem menos de 12 caracteres;
+  - tentativas durante o bloqueio não enchem mais a aba Acessos.
+- **Login sem regravar o cadastro.** O registro do último acesso grava só aquela célula, e não a linha inteira. Assim ele não desfaz uma desativação ou um código novo feitos no mesmo instante.
+
+**Exame:**
+- **Sexo obrigatório.** A opção "Não informado" saiu, e o app e o servidor exigem Feminino ou Masculino.
+- **O servidor confere o exame inteiro:**
+  - todos os dentes da dentição;
+  - dor, procedimentos (só os da lista, indicado ou realizado), procedimentos coletivos, insumos e observações;
+  - datas que existem de verdade (31/02 é recusado) e nunca depois de hoje;
+  - o formato do código de acompanhamento e a UF do DSEI, também no envio.
+- **Raiz residual no decíduo** continua contando como "e" no ceo-d, como você confirmou.
+
+**Celular:**
+- **Nenhum exame some quando o aparelho enche.** Se o navegador recusar a gravação, o app libera espaço sozinho: apaga o cache do Painel e os exames já enviados, que estão na nuvem. Se ainda assim não couber, o exame fica na memória e aparece um aviso vermelho no topo de todas as telas pedindo para enviar antes de fechar o app.
+- **Faxina automática:** exames enviados há mais de 30 dias saem do aparelho. Eles continuam na nuvem, em Meus exames > Na nuvem.
+- **Cache do Painel menor:** 5 consultas guardadas, em vez de 20.
+
+**Planilha:**
+- **Reorganizações futuras só com a sua confirmação.** Quando um código novo mudar o formato da planilha, e ela já tiver exames, nada acontece sozinho:
+  - a Administração mostra "Atualização da planilha pendente";
+  - em "Ver o que vai mudar", aparece quantos exames mudam de classe, de ceo-d ou de CPO-D;
+  - só então o botão faz o backup e atualiza;
+  - se o backup falhar, nada é alterado;
+  - a lista completa do antes e depois fica na aba "Relatório da reorganização", e o resumo fica nos Acessos;
+  - enquanto estiver pendente, os profissionais conseguem consultar, e os exames novos esperam guardados nos aparelhos.
+- Planilha vazia (instalação nova) continua sendo organizada sozinha, sempre com backup antes.
+
+**Testes no repositório:**
+- **Pasta `testes`:** tem um simulador do Apps Script e um cenário montado do zero pelos fluxos do próprio app (pedido de acesso, aprovação, convite). Não usa nenhum dado real nem senha real.
+- **`servidor.test.js`:** testa o servidor. Roda com `node testes/servidor.test.js`.
+- **`navegador.test.js`:** testa o app num navegador de verdade.
+- Os dois rodam no GitHub a cada envio.
+
+## Versão 32: aviso de servidor corrigido e situação do servidor na Administração (inclui tudo da 31)
+
+**Como instalar:** só o GitHub. Envie o `index.html` e o `sw.js`. O servidor continua na versão 27 e o Apps Script não muda.
+
+- **Aviso vermelho "o servidor está na versão 26":** o app guardava a versão do servidor do momento do login e só conferia de novo no dia seguinte. Quem entrou antes de o servidor ser atualizado continuava vendo o aviso. Agora o app pergunta a versão ao servidor toda vez que abre (com internet), e o aviso some assim que o servidor é atualizado. Sem internet, o aviso não aparece.
+- **"Situação do servidor"** saiu da tela de entrada (aparecia depois de um erro ao entrar). Agora fica só para a coordenação, no fim da aba Administração.
+
 ## Versão 31: índices pela regra do material, painel por pessoa, servidor como fonte do resultado e segurança (inclui tudo da 30)
 
 **Como instalar.** O servidor muda. Faça tudo no mesmo dia e nesta ordem, sem misturar arquivos novos e antigos no GitHub:
