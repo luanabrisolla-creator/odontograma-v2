@@ -388,6 +388,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);
 .ex-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:2px 2px 12px}
 .ex-cab .sub b{color:var(--ink)}
 .ex-cab #novoExame{white-space:nowrap;font-size:.84rem;margin-top:6px}
+.ex-cab #novoExame:disabled{opacity:.45;cursor:not-allowed;text-decoration:none}
 .p-topo h3 .sg{font-size:.78rem;padding:3px 5px;vertical-align:3px}
 .etapas{position:sticky;top:0;z-index:15;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:#fff;border-radius:var(--r-md);padding:8px 6px;box-shadow:var(--sombra);margin-bottom:14px}
 @media (min-width:900px){.etapas{top:52px}}
@@ -792,17 +793,9 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .cad-status.erro{background:var(--erro);color:var(--erro-ink)}
 /* ===== versão 27: listas da SESAI, população e cobertura ===== */
 .grade>.largo{grid-column:1/-1}
-.busca-aldeia{gap:6px}
-.busca-aldeia>.dica{margin:0;font-size:.82rem}
-.res-busca{display:grid;gap:6px}
-.res-busca:empty{display:none}
-.res-aldeia{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;font:inherit;color:var(--ink);cursor:pointer;min-height:44px}
-.res-aldeia:hover{border-color:var(--accent);background:var(--accent-soft)}
-.res-aldeia span{font-size:.82rem;color:var(--muted)}
 .cp-dados .outra-aldeia{color:#8A5A00;font-weight:600}
 .tab-indices .num{text-align:right;font-variant-numeric:tabular-nums}.tab-indices td.comp{color:var(--muted);white-space:nowrap}.tab-indices th{text-align:center}.tab-indices td:first-child,.tab-indices th:first-child{text-align:left}
 #selAldeia.ok{border-color:var(--sesai-verde);background:#EDF7F0;font-weight:600}
-#inBuscaAldeia.ok{border-color:var(--sesai-verde);background:#EDF7F0}
 #infoAldeia.ok{color:var(--sesai-verde);font-weight:600}
 @keyframes piscarVerde{0%{box-shadow:0 0 0 0 rgba(26,127,60,.55)}100%{box-shadow:0 0 0 12px rgba(26,127,60,0)}}
 #selAldeia.piscar{animation:piscarVerde .8s ease-out 2}
@@ -991,10 +984,6 @@ body.na-entrada{background:#DCEEFC}
         <label class="campo" id="cPoloLista" hidden>Polo base<select id="selPolo"></select></label>
         <label class="campo" id="cPolo"><span class="rot">Polo base</span><input data-campo="polo" autocomplete="off" placeholder="Só o nome do polo"></label>
         <label class="campo" id="cAldeiaLista" hidden>Aldeia ou comunidade<select id="selAldeia"></select></label>
-        <div class="campo largo busca-aldeia" id="buscaAldeia" hidden>
-          <label class="campo"><span id="rotBusca">Procurar aldeia no polo</span><input id="inBuscaAldeia" type="search" autocomplete="off" placeholder="Digite parte do nome"></label>
-          <div class="res-busca" id="resBuscaAldeia"></div>
-        </div>
         <label class="campo" id="cAldeia"><span class="rot">Aldeia ou comunidade</span><input data-campo="aldeia" autocomplete="off" placeholder="Só o nome, ex.: Kamaiurá"></label>
         <p class="dica largo" id="infoAldeia" hidden></p>
         <label class="campo">Data do exame<input type="date" data-campo="dataExame"></label>
@@ -1450,7 +1439,7 @@ function preencherDsei(sel, uf, valor) {
   sel.innerHTML = `<option value="">${uf ? "Escolha o DSEI" : "Escolha a UF primeiro"}</option>` + lista.map(d => `<option>${esc(d)}</option>`).join("");
   sel.value = lista.includes(valor) ? valor : "";
 }
-const tres = t => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^0-9A-Za-z]/g, "").slice(0, 3).toUpperCase();
+const tres = t => parteCodigo(t);
 // Código de acompanhamento da pessoa: UF-POLO-ALDEIA + 8 caracteres sorteados (sem 0, O, 1, I e L).
 // É sorteado no aparelho, funciona sem internet e nunca muda depois de mostrado.
 const ALFA_COD = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
@@ -1462,8 +1451,6 @@ function sufixoAleatorio(n) {
 function codigoDe(ex) {
   const base = `${(ex.uf || "").toUpperCase()}-${tres(ex.polo)}-${tres(ex.aldeia)}`;
   if (ex.sufixo) return `${base}-${ex.sufixo}`;
-  // Exames de antes da versão 30: CRO + número do aparelho.
-  if (ex.seq) return `${base}-${ex.croCod || croCod(cfg().cro) || "CRO"}-${String(ex.seq).padStart(4, "0")}`;
   return `${base}-????????`;
 }
 function renderCodigo() {
@@ -1569,7 +1556,8 @@ function renderResultado() {
   $("#motivosLista").innerHTML = r.motivos.map(m => `<li>${esc(m)}</li>`).join("") +
     (temDec ? `<li>ceo-d ${r.ceod.total} (c ${r.ceod.c}, e ${r.ceod.e}, o ${r.ceod.o})</li>` : "") +
     (temPerm ? `<li>CPO-D ${r.cpod.total} (C ${r.cpod.c}, P ${r.cpod.p}, O ${r.cpod.o})</li>` : "");
-  $("#salvar").textContent = estado.editando ? "Salvar alterações" : "Salvar";
+  $("#salvar").textContent = estado.ex._soMemoria ? "Tentar guardar de novo" : estado.editando ? "Salvar alterações" : "Salvar";
+  const nm = soNaMemoria().length > 0; $("#novoExame").disabled = nm; $("#novoExame").title = nm ? MSG_MEMORIA : "";
   renderConf();
 }
 function renderFormulario() {
@@ -1780,7 +1768,23 @@ function ehMeu(e) {
 }
 const semDono = e => !e.dono && !e.usuarioId && !croCod((e.profissional || {}).cro) && e.envio && e.envio.estado !== "enviado";
 const meus = () => exames().filter(ehMeu);
-const gravarExames = l => { store.set(K_EXAMES, l); atualizarRede(); };
+// Devolve false quando o aparelho não conseguiu guardar (sem espaço): a lista fica só na memória do app.
+const gravarExames = l => { const ok = store.set(K_EXAMES, l); atualizarRede(); return ok; };
+// Exames ainda não enviados que só existem na memória do app (o aparelho não conseguiu guardá-los).
+const soNaMemoria = () => falhouGravar[K_EXAMES] ? exames().filter(e => e.envio.estado !== "enviado") : [];
+const MSG_MEMORIA = "Há exame que o aparelho não conseguiu guardar (sem espaço). Envie em Meus exames antes de começar outro.";
+// Depois de um salvamento que ficou só na memória: assim que o exame estiver guardado no aparelho ou enviado, libera a tela.
+function liberarSeGuardado() {
+  const id = estado.ex && estado.ex._soMemoria; if (!id) return;
+  // Sem espaço, o exame enviado sai da lista do aparelho (está na nuvem): não estar mais na lista também é "enviado".
+  const e = exames().find(x => x.id === id), enviado = !e || e.envio.estado === "enviado";
+  if (enviado || !falhouGravar[K_EXAMES]) {
+    const cod = e ? e.codigo : estado.ex.codigoFixo || "";
+    estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null; store.set(K_RASC, null);
+    if (estado.aba === "exame") renderExame();
+    toast(`Exame ${cod} ${enviado ? "enviado para o banco de dados" : "guardado no aparelho"}.`);
+  }
+}
 
 function montarRegistro(ex) {
   const c = cfg(), r = avaliar(ex), idade = idadeEm(ex.crianca.nascimento, ex.dataExame);
@@ -1843,7 +1847,12 @@ function salvarExame() {
   const reg = montarRegistro(ex);
   const lista = exames(), i = lista.findIndex(e => e.id === reg.id);
   if (i >= 0) { reg.criadoEm = lista[i].criadoEm; lista[i] = reg; } else lista.push(reg);
-  gravarExames(lista);
+  if (!gravarExames(lista)) {
+    // Não coube no aparelho: o exame continua na tela e na memória do app, e o app tenta enviá-lo já.
+    estado.ex._soMemoria = reg.id; renderExame();
+    toast(navigator.onLine && c.url ? "O aparelho está sem espaço e não guardou o exame. Ele continua na tela e está sendo enviado: não feche o app." : "O aparelho está sem espaço e não guardou o exame. Ele continua na tela: não feche o app, conecte-se à internet e toque em Enviar em Meus exames.");
+    sincronizar(); return;
+  }
   estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null; store.set(K_RASC, null);
   renderExame(); window.scrollTo({top: 0});
   toast(`Exame ${reg.codigo} salvo (classe ${reg.resultado.classe}).` + (navigator.onLine && c.url ? " Enviando…" : " Será enviado quando houver internet."));
@@ -1851,6 +1860,7 @@ function salvarExame() {
 }
 function abrirExame(id) {
   const reg = meus().find(e => e.id === id); if (!reg) return;
+  if (soNaMemoria().length && estado.ex._soMemoria !== id) return toast(MSG_MEMORIA);
   if (estado.ex._tocado && !estado.editando && !confirm("Há um exame em andamento que ainda não foi salvo. Deseja descartá-lo para abrir este?")) return;
   estado.ex = {id: reg.id, criadoEm: reg.criadoEm, dataExame: reg.dataExame, uf: reg.uf || "", dsei: reg.dsei || "", polo: reg.polo || "", aldeia: reg.aldeia || "", seq: reg.seq || null, sufixo: reg.sufixo || "",
     codPolo: reg.codPolo || "", codAldeia: reg.codAldeia || "", codTI: reg.codTI || "", ti: reg.ti || "", codMunicipio: reg.codMunicipio || "", municipio: reg.municipio || "", croCod: reg.croCod || "", crianca: {nascimento: reg.crianca.nascimento || "", sexo: reg.crianca.sexo || ""}, denticao: reg.denticao,
@@ -1868,6 +1878,7 @@ function excluirExame(id) {
   const reg = exames().find(e => e.id === id); if (!reg) return;
   const aviso = reg.envio.estado === "enviado" ? "\n\nEle já está na nuvem e continua valendo. Para tirá-lo do painel, use \"Cancelar exame\"." : "\n\nEle ainda não foi enviado e será perdido.";
   if (!confirm(`Excluir o exame ${reg.codigo || "sem código"} deste aparelho?` + aviso)) return;
+  if (estado.ex._soMemoria === id) delete estado.ex._soMemoria;
   gravarExames(exames().filter(e => e.id !== id)); renderLista();
 }
 const estL = {filtro: "todos", busca: ""};
@@ -2027,7 +2038,7 @@ async function buscarPorCodigo() {
   if (estado.ex !== ex) return;
   st.buscando = false; st.offline = offline;
   if (r.foraDoDsei) toast(avisoForaDoDsei(r.foraDoDsei));
-  if (r.pessoa) st.achado = r.pessoa; else if (r.outroDsei) st.outroDsei = r.outroDsei; else st.naoAchado = true;
+  st.emConferencia = !!r.emConferencia; if (r.pessoa) st.achado = r.pessoa; else if (r.outroDsei) st.outroDsei = r.outroDsei; else st.naoAchado = true;
   renderPessoa();
 }
 function vincular(c, travar) {
@@ -2153,6 +2164,7 @@ function renderPessoa() {
     if (st.buscando) res = `<p class="dica">Buscando…</p>`;
     else if (st.achado) res = `<div class="achado"><h3>Pessoa localizada</h3><p class="dica">Esta pessoa já possui exames registrados no DSEI ${esc(ex.dsei)}.</p>` +
       cartaoPessoa(st.achado, `<button class="sec mini" data-id-acao="historico-achado">Ver histórico</button><button class="prim mini" data-id-acao="usar-achado">Usar esta pessoa →</button>`) + `</div>`;
+    else if (st.outroDsei && st.emConferencia) res = `<div class="aviso-id">Este código tem exames em mais de um DSEI (<b>${esc(st.outroDsei)}</b>) e está em conferência. A coordenação foi avisada por e-mail. Use "Não tenho o código" para seguir.</div>`;
     else if (st.outroDsei) res = `<div class="aviso-id">Este código é de uma pessoa examinada no DSEI <b>${esc(st.outroDsei)}</b>. Só dá para juntar exames do mesmo DSEI: confira o DSEI do atendimento ou use "Não tenho o código".</div>`;
     else if (st.naoAchado) res = `<div class="aviso-id">${st.offline ? `Sem internet: não encontrei este código nos exames deste aparelho. Se tiver certeza do código, use mesmo assim: ele é conferido quando o exame for enviado.
         <div class="acoes-l"><button class="sec mini" data-id-acao="usar-mesmo-assim">Usar este código mesmo assim</button></div>` : `Não encontramos o código <b>${esc(st.codigo)}</b> no DSEI ${esc(ex.dsei || "")}. Confira o código ou use "Não tenho o código".`}</div>`;
@@ -2272,6 +2284,7 @@ async function sincronizar(manual) {
   }
   if (ok) estado.nuvemEm = 0;
   estado.enviando = false; atualizarRede(); if (estado.aba === "lista") renderLista();
+  liberarSeGuardado();
   if (ok || manual || falha) toast(falha ? `${ok} enviado(s), ${falha} com erro. Veja em Meus exames.` : `${ok} ${ok === 1 ? "exame enviado" : "exames enviados"} para o banco de dados.`);
 }
 function atualizarRede() {
@@ -2385,10 +2398,12 @@ $("#odonto").addEventListener("click", e => {
   aplicarFerr(n, fe ? fe.dataset.face : null);
 });
 $("#novoExame").addEventListener("click", () => {
+  if (soNaMemoria().length) return toast(MSG_MEMORIA);
   if (estado.ex._tocado && !confirm("Descartar o exame em andamento e começar outro?")) return;
   estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null; store.set(K_RASC, null); renderExame();
 });
 $("#cancelarEdicao").addEventListener("click", () => {
+  if (soNaMemoria().length) return toast(MSG_MEMORIA);
   if (!confirm("Descartar as alterações feitas neste exame?")) return;
   estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null; store.set(K_RASC, null); renderExame();
 });
@@ -2666,7 +2681,7 @@ var NOMES_PROC = {selante: "Selante", art: "ART (restauração atraumática)", c
   amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado", cdf: "Cariostático (diamino fluoreto de prata)", selprov: "Selamento provisório / adequação do meio",
   pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço", exodontia: "Exodontia"};
 var CAB_EXAME = ["id_exame", "codigo_individuo", "numero_exame", "codigo_exame", "situacao_registro", "data_exame", "faixa_etaria", "idade_anos", "sexo", "nascimento",
-  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "codigo_municipio_ibge", "terra_indigena", "codigo_terra_indigena", "codigo_polo_base", "codigo_aldeia", "aldeia_fora_da_lista", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
+  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "codigo_municipio_ibge", "terra_indigena", "codigo_terra_indigena", "codigo_polo_base", "codigo_aldeia", "aldeia_fora_da_lista", "codigo_confere_local", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
   "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod", "dentes_cariados", "placa_visivel", "gengivite", "fluorose_moderada_severa",
   "vigilancia_saude_bucal", "protese_superior", "protese_inferior", "dentes_com_dor_abscesso", "procedimentos_gerais", "insumos_fornecidos", "observacoes", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
   "motivo_cancelamento", "observacao_cancelamento", "cancelado_em", "cancelado_por", "criado_em", "atualizado_em", "usuario_id", "dados_completos_json"];
@@ -2688,12 +2703,23 @@ function registroParaJson(e) {
   Object.keys(e).forEach(function (k) { if (k !== "envio" && k.charAt(0) !== "_") j[k] = e[k]; });
   return JSON.stringify(j);
 }
+// Parte do código de acompanhamento: 1 a 3 letras ou números do nome, sem acento. Nome sem letra nem número vira "X".
+/** @param {any} t */
+function parteCodigo(t) { return String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^0-9A-Za-z]/g, "").slice(0, 3).toUpperCase() || "X"; }
+// O começo do código de acompanhamento (UF-POLO-ALDEIA) bate com o local deste exame? O código nunca muda depois de
+// mostrado; então "não" aparece quando a pessoa foi examinada em outra aldeia ou o local foi corrigido depois.
+/** @param {any} e */
+function codigoConfereLocal(e) {
+  var m = /^([A-Z]{2})-([A-Z0-9]{1,3})-([A-Z0-9]{1,3})-/.exec(String(codigoIndividuoDe(e)).toUpperCase());
+  if (!m) return "";
+  return m[1] === String(e.uf || "").toUpperCase() && m[2] === parteCodigo(e.polo) && m[3] === parteCodigo(e.aldeia) ? "sim" : "não";
+}
 /** @param {any} e */
 function linhaExame(e) {
   var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, sn = function (/** @type {any} */ b) { return b == null ? "" : b ? "sim" : "não"; };
   return [e.id, codigoIndividuoDe(e), e.numeroExame || 1, e.codigo || "", exameValido(e) ? "válido" : "cancelado", e.dataExame || "", faixaEtaria(e.idadeAnos),
     e.idadeAnos, (e.crianca || {}).sexo || "", (e.crianca || {}).nascimento || "", e.uf || "", e.dsei || "", e.polo || "", e.aldeia || "", e.municipio || "", e.codMunicipio || "", e.ti || "", e.codTI || "", e.codPolo || "", e.codAldeia || "",
-    e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), e.localAtendimento || "",
+    e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), codigoConfereLocal(e), e.localAtendimento || "",
     (e.profissional || {}).nome || "", (e.profissional || {}).cro || "", e.denticao || "", r.classe || "", nivelDaClasse(r.classe) || r.risco || "",
     ce.c, ce.e, ce.o, ce.total, cp.c, cp.p, cp.o, cp.total, cariadosDe(e), sn(e.placa), sn(e.gengivite), sn(e.fluorose),
     (e.vigilancia || []).join("; "), e.protese ? NOMES_PROTESE[e.protese.sup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.inf || ""] : "",
@@ -3543,7 +3569,7 @@ async function api(acao, dados, opc) {
   if (!c.url) throw new Error("O endereço do servidor não está configurado. Abra o app pelo link enviado pela coordenação.");
   if (!navigator.onLine) throw new Error("Sem internet agora.");
   const cred = opc.cred || (opc.publica ? null : s);
-  const corpo = Object.assign({acao, versaoApp: 33, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
+  const corpo = Object.assign({acao, versaoApp: 34, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), opc.tempo || 30000);
   try {
     const r = await fetch(c.url, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(corpo), signal: ctrl.signal});
@@ -3567,7 +3593,7 @@ function acessoPerdido(msg) {
   renderAbas(); irAba("acesso");
 }
 // Esta versão do app precisa do Codigo.gs a partir desta versão (mostrada no /exec como "versao").
-const SERVIDOR_MIN = 28;
+const SERVIDOR_MIN = 29;
 // App e servidor têm numerações próprias: o aviso só aparece se o servidor for MAIS ANTIGO que o mínimo
 // de que este app precisa (servidor igual ou mais novo é compatível). Servidor que não informa a versão é antigo.
 function avisarServidor(v) {
@@ -3654,7 +3680,7 @@ function casarLocal(ex, L) {
 }
 function renderLocalLista() {
   const ex = estado.ex, L = listaDoDsei(ex.dsei), lista = !!L;
-  $("#buscaAldeia").hidden = true; $("#listaFonte").hidden = !lista; $("#cPoloLista").hidden = !lista; $("#cAldeiaLista").hidden = !lista;
+  $("#listaFonte").hidden = !lista; $("#cPoloLista").hidden = !lista; $("#cAldeiaLista").hidden = !lista;
   $("#cPolo").hidden = lista && !ex.poloManual; $("#cAldeia").hidden = lista && !ex.aldeiaManual;
   $("#cPolo .rot").textContent = lista ? "Nome do polo base (fora da lista)" : "Polo base";
   $("#cAldeia .rot").textContent = lista ? "Nome da aldeia ou comunidade (fora da lista)" : "Aldeia ou comunidade";
@@ -3673,9 +3699,6 @@ function renderLocalLista() {
     $("#infoAldeia").textContent = `✓ Aldeia escolhida: ${ex.aldeia}${info ? " · " + info : ""}`; $("#infoAldeia").hidden = false; $("#infoAldeia").classList.add("ok");
   } else if (ex.aldeiaManual) { $("#infoAldeia").textContent = "Esta aldeia vai para a planilha como digitada, fora da lista da SESAI. Confira a grafia."; $("#infoAldeia").hidden = false; }
   $("#listaFonte").textContent = `Lista da SESAI (${L.t.ano || "população"}): ${L.polos.length} polos e ${L.aldeias.length} aldeias no DSEI ${ex.dsei}. Escolha o polo base e depois a aldeia.`;
-  const nomePoloAtual = ex.codPolo ? (L.polos.find(p => p.c === ex.codPolo) || {}).n : "";
-  $("#buscaAldeia").hidden = !ex.codPolo || doPolo.length <= 8 || ex.aldeiaManual;
-  $("#rotBusca").textContent = `Não achou na lista? Procure pelo nome (${doPolo.length} aldeias no polo ${nomePoloAtual || ""})`;
   $("#selAldeia").classList.toggle("ok", !!ex.codAldeia);
 }
 function mudouLocal() {
@@ -3689,7 +3712,6 @@ $("#selPolo").addEventListener("change", e => {
   const ex = estado.ex, L = listaDoDsei(ex.dsei), v = e.target.value; if (!L) return;
   if (v === "__outro") { ex.poloManual = true; ex.codPolo = ""; ex.polo = ""; ex.aldeiaManual = true; ex.aldeia = ""; limparAldeia(ex); mudouLocal(); return $('[data-campo="polo"]').focus(); }
   ex.poloManual = false; ex.codPolo = v; ex.polo = v ? (L.polos.find(p => p.c === v) || {}).n || "" : "";
-  limparBuscaAldeia();
   if (ex.codAldeia && !L.aldeias.some(a => a.c === ex.codAldeia && a.polo === v)) { ex.aldeia = ""; limparAldeia(ex); }
   if (ex.aldeiaManual && !ex.aldeia) ex.aldeiaManual = false;
   mudouLocal(); if (v) $("#selAldeia").focus();
@@ -3697,30 +3719,11 @@ $("#selPolo").addEventListener("change", e => {
 $("#selAldeia").addEventListener("change", e => {
   const ex = estado.ex, L = listaDoDsei(ex.dsei), v = e.target.value; if (!L) return;
   if (v === "__outra") { ex.aldeiaManual = true; ex.aldeia = ""; limparAldeia(ex); mudouLocal(); return $('[data-campo="aldeia"]').focus(); }
-  ex.aldeiaManual = false; limparBuscaAldeia();
+  ex.aldeiaManual = false;
   const a = L.aldeias.find(x => x.c === v);
   if (a) aplicarAldeia(ex, L, a); else { ex.aldeia = ""; limparAldeia(ex); }
   mudouLocal();
 });
-function limparBuscaAldeia() { $("#inBuscaAldeia").value = ""; $("#inBuscaAldeia").classList.remove("ok"); $("#resBuscaAldeia").innerHTML = ""; }
-$("#inBuscaAldeia").addEventListener("input", e => {
-  e.target.classList.remove("ok");
-  const L = listaDoDsei(estado.ex.dsei), q = normNome(e.target.value), box = $("#resBuscaAldeia"), cp = estado.ex.codPolo;
-  if (!L || !cp || q.length < 2) { box.innerHTML = ""; return; }
-  const achou = L.aldeias.filter(a => a.polo === cp && normNome(a.n).includes(q)).slice(0, 8);
-  box.innerHTML = achou.length ? achou.map(a => `<button type="button" class="res-aldeia" data-aldeia-busca="${esc(a.c)}"><b>${esc(a.n)}</b></button>`).join("")
-    : `<p class="dica">Nenhuma aldeia com esse nome neste polo. Confira o polo ou use "Outra aldeia (não está na lista)".</p>`;
-});
-$("#resBuscaAldeia").addEventListener("click", e => {
-  const b = e.target.closest("[data-aldeia-busca]"); if (!b) return;
-  const ex = estado.ex, L = listaDoDsei(ex.dsei), a = L && L.aldeias.find(x => x.c === b.dataset.aldeiaBusca); if (!a) return;
-  aplicarAldeia(ex, L, a); mudouLocal(); preencherLocalDsei(ex);
-  // A aldeia escolhida fica visível nos dois lugares: no campo de busca (com ✓) e no campo Aldeia, que pisca em verde.
-  const inp = $("#inBuscaAldeia"); inp.value = a.n; inp.classList.add("ok");
-  $("#resBuscaAldeia").innerHTML = "";
-  const sel = $("#selAldeia"); sel.classList.remove("piscar"); void sel.offsetWidth; sel.classList.add("piscar");
-});
-
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-reorg]"); if (!b) return;
   const box = $("#admReorgPrevia"), fazer = $('[data-reorg="fazer"]');
@@ -3836,7 +3839,7 @@ function renderAcesso() {
       <label class="campo" style="margin-top:10px">Endereço do servidor<input id="acUrl" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"></label></div>`;
   const msg = estAc.msg ? `<div class="aviso">${esc(estAc.msg)}</div>` : "";
   if (estAc.vista === "enviado") {
-    box.innerHTML = `<div class="bloco acesso-enviado"><h2>Pedido enviado</h2><p class="cad-status ok" style="margin-top:12px">Seu pedido foi encaminhado para <b>${esc(estAc.para)}</b>. Quando o acesso for aprovado, você receberá um código por e-mail.</p>
+    box.innerHTML = `<div class="bloco acesso-enviado">${estAc.reativacao ? `<h2>Pedido de reativação enviado</h2><p class="cad-status ok" style="margin-top:12px">Este e-mail já teve acesso, que foi desativado. Seu pedido para voltar foi encaminhado para <b>${esc(estAc.para)}</b>. Se o acesso for reativado, você entra com o seu código de antes ou usa "Esqueci meu código".</p>${estAc.reativacao.mudou ? `<p class="dica" style="margin-top:8px">Seu cadastro continua no DSEI ${esc(estAc.reativacao.dsei)} e com o mesmo perfil. Para mudar de DSEI ou de perfil, fale com a coordenação.</p>` : ""}` : `<h2>Pedido enviado</h2><p class="cad-status ok" style="margin-top:12px">Seu pedido foi encaminhado para <b>${esc(estAc.para)}</b>. Quando o acesso for aprovado, você receberá um código por e-mail.</p>`}
       <div class="acoes-l"><button class="sec" data-ac="entrar">Já recebi meu código</button></div></div>`;
     return;
   }
@@ -4051,7 +4054,7 @@ $("#acessoConteudo").addEventListener("click", async e => {
     if (!d.nome || !d.cro || !d.email || !d.uf || !d.dsei) return toast("Preencha nome, CRO, e-mail, UF e DSEI.");
     if (!$("#acTermo").checked) return toast("Marque a declaração para enviar o pedido.");
     b.disabled = true;
-    try { const j = await api("pedirAcesso", d, {publica: true}); estAc.vista = "enviado"; estAc.para = j.para; salvarCfg({polo: d.polo}); renderAcesso(); }
+    try { const j = await api("pedirAcesso", d, {publica: true}); estAc.vista = "enviado"; estAc.para = j.para; estAc.reativacao = j.reativacao ? {dsei: j.dseiCadastro || "", mudou: !!j.mudouDados} : null; salvarCfg({polo: d.polo}); renderAcesso(); }
     catch (err) { toast(err.message); } finally { b.disabled = false; }
   }
   if (b.id === "acEntrar") {
@@ -4090,7 +4093,7 @@ function renderConfig() {
   $("#contaAtende").hidden = !fazExames();
   $$("[data-cfg]").forEach(i => i.value = c[i.dataset.cfg] || "");
   const pend = meus().filter(e => e.envio.estado !== "enviado").length;
-  $("#contaAparelho").textContent = `${c.url ? "Conectado ao servidor da coordenação" : "Sem servidor configurado"} · app versão 33${(s || {}).versaoServidor ? ` · servidor versão ${s.versaoServidor}` : ""}.` + (pend ? ` Há ${pend} ${pend === 1 ? "exame" : "exames"} deste aparelho aguardando envio.` : " Todos os exames deste aparelho já foram enviados.");
+  $("#contaAparelho").textContent = `${c.url ? "Conectado ao servidor da coordenação" : "Sem servidor configurado"} · app versão 34${(s || {}).versaoServidor ? ` · servidor versão ${s.versaoServidor}` : ""}.` + (pend ? ` Há ${pend} ${pend === 1 ? "exame" : "exames"} deste aparelho aguardando envio.` : " Todos os exames deste aparelho já foram enviados.");
 }
 $("#contaNomeTit").addEventListener("click", async e => {
   if (e.target.id !== "titSalvar") return;
@@ -4101,7 +4104,9 @@ $("#contaNomeTit").addEventListener("click", async e => {
 });
 $("#sair").addEventListener("click", () => {
   const pend = meus().filter(e => e.envio.estado !== "enviado");
-  if (estado.ex._tocado && !estado.editando && !confirm("Há um exame em andamento que ainda não foi salvo. Se sair agora, ele é descartado. Para guardar, toque em Salvar exame antes de sair. Sair mesmo assim?")) return;
+  if (estado.ex._tocado && !estado.editando && !estado.ex._soMemoria && !confirm("Há um exame em andamento que ainda não foi salvo. Se sair agora, ele é descartado. Para guardar, toque em Salvar exame antes de sair. Sair mesmo assim?")) return;
+  const mem = soNaMemoria().length;
+  if (mem && !confirm(`${mem === 1 ? "Um exame não foi guardado" : `${mem} exames não foram guardados`} no aparelho por falta de espaço e ainda não ${mem === 1 ? "foi enviado" : "foram enviados"}. Se sair agora, ${mem === 1 ? "ele se perde" : "eles se perdem"}. Envie em Meus exames antes de sair. Sair mesmo assim?`)) return;
   // Os exames ainda não enviados (seus e de outras pessoas) ficam guardados; os já enviados saem do aparelho.
   gravarExames(exames().filter(e => e.envio.estado !== "enviado"));
   store.set(K_SESSAO, null); store.set(K_RASC, null); estado.nuvem = null;
@@ -4175,6 +4180,8 @@ async function carregarEquipe() {
   try { estEq.dados = await api("equipe", {dsei: estEq.dsei}); st.textContent = `Atualizado agora.`; renderEquipe(); }
   catch (err) { st.textContent = err.message; }
 }
+// Desativado que pediu para voltar: o pedido é mais recente que a última aprovação (ou reativação).
+const pediuVoltar = u => u.status === "desativado" && !!u.pedido_em && (!u.aprovado_em || new Date(u.pedido_em) > new Date(u.aprovado_em));
 function renderEquipe() {
   const d = estEq.dados; if (!d) return;
   const p = perfil(), meuId = sessao().usuario.id;
@@ -4192,7 +4199,7 @@ function renderEquipe() {
     <div class="tabela"><table class="esq"><thead><tr><th>Profissional</th><th>Perfil</th><th>CRO</th><th>Polo base</th><th class="num">Exames no mês</th><th class="num">Total</th><th>Último envio</th><th>Situação</th><th></th></tr></thead><tbody>
     ${d.membros.map(m => { const parado = m.status === "ativo" && m.ultimoEnvio && (Date.now() - new Date(m.ultimoEnvio)) > 30 * 864e5;
       return `<tr><td><b>${esc(m.nome)}</b><br><span class="dica">${esc(m.email)}</span></td><td>${nomePerfil(m)}</td><td>${esc(m.cro)}</td><td>${esc(m.polo)}</td><td class="num">${m.mes}</td><td class="num">${m.total}</td>
-      <td>${quando(m.ultimoEnvio)}${parado ? ` <span class="estado pendente">mais de 30 dias</span>` : ""}</td><td><span class="estado ${m.status === "ativo" ? "enviado" : "inativo"}">${m.status === "ativo" ? "Ativo" : "Desativado"}</span></td>
+      <td>${quando(m.ultimoEnvio)}${parado ? ` <span class="estado pendente">mais de 30 dias</span>` : ""}</td><td><span class="estado ${m.status === "ativo" ? "enviado" : "inativo"}">${m.status === "ativo" ? "Ativo" : "Desativado"}</span>${pediuVoltar(m) ? ` <span class="estado pendente">pediu reativação ${quando(m.pedido_em)}</span>` : ""}</td>
       <td><div class="bts">${podeMexer(m) ? (m.status === "ativo" ? `<button class="sec mini" data-eq="novoCodigo" data-id="${m.id}" data-nome="${esc(m.nome)}">Novo código</button><button class="sec mini perigo-t" data-eq="desativar" data-id="${m.id}" data-nome="${esc(m.nome)}">Desativar</button>` : `<button class="sec mini" data-eq="reativar" data-id="${m.id}" data-nome="${esc(m.nome)}">Reativar</button>`) : ""}</div></td></tr>`; }).join("") || `<tr><td colspan="9" class="dica">Ninguém com acesso neste DSEI ainda.</td></tr>`}
     </tbody></table></div></div>`;
   const nomes = [...new Set(d.exames.map(e => e.profissional).filter(Boolean))].sort();
@@ -4320,7 +4327,7 @@ function renderAdmin() {
       <select id="admFStatus" style="width:auto"><option value="">Ativos e desativados</option><option value="ativo" ${estAdm.fStatus === "ativo" ? "selected" : ""}>Só ativos</option><option value="desativado" ${estAdm.fStatus === "desativado" ? "selected" : ""}>Só desativados</option></select></div>
     <div class="tabela"><table class="esq"><thead><tr><th>Nome</th><th>Perfil</th><th>DSEI</th><th>E-mail</th><th>Aprovado por</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead><tbody>
     ${filtrados.map(u => `<tr><td><b>${esc(u.nome)}</b><br><span class="dica">CRO ${esc(u.cro)}</span></td><td><span class="pill-p ${u.perfil}">${NOME_PERFIL[u.perfil]}</span></td><td>${esc(u.dsei)}</td><td>${esc(u.email)}</td><td>${esc(u.aprovado_por || "–")}</td><td>${quando(u.ultimo_acesso)}</td>
-      <td><span class="estado ${u.status === "ativo" ? "enviado" : "inativo"}">${u.status === "ativo" ? "Ativo" : "Desativado"}</span></td>
+      <td><span class="estado ${u.status === "ativo" ? "enviado" : "inativo"}">${u.status === "ativo" ? "Ativo" : "Desativado"}</span>${pediuVoltar(u) ? ` <span class="estado pendente">pediu reativação ${quando(u.pedido_em)}</span>` : ""}</td>
       <td><div class="bts">${u.status === "ativo" ? `<button class="sec mini" data-adm="novoCodigo" data-id="${u.id}" data-nome="${esc(u.nome)}">Novo código</button><button class="sec mini perigo-t" data-adm="desativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Desativar</button>` : `<button class="sec mini" data-adm="reativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Reativar</button>`}</div></td></tr>`).join("") || `<tr><td colspan="8" class="dica">Nenhum usuário neste filtro.</td></tr>`}
     </tbody></table></div></div>`;
   const linhaAc = a => Array.isArray(a) ? {data: fmtDataHora(a[0]), hora: "", quem: a[2] || a[1], perfil: "", tipo: "", acao: a[3], detalhe: a[4]} : Object.assign({}, a, {data: fmtData(a.data)});

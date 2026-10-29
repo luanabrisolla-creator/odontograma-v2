@@ -51,14 +51,14 @@ const CAB_USO = ['usuario_id', 'nome', 'email', 'perfil', 'dsei', 'ultimo_acesso
   'consultas_equipe', 'exames_validos', 'exames_cancelados', 'ultimo_exame'];
 const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Versão do formato das abas. Quando muda, a planilha é reorganizada uma vez (com backup antes).
-const FORMATO = '22';
-const VERSAO = 28;
+const FORMATO = '23';
+const VERSAO = 29;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
-const TIPO_ACAO = { 'Pediu acesso': 'Cadastro', 'Pediu novo código': 'Cadastro', 'Confirmou novo código': 'Cadastro', 'Aprovou acesso': 'Gestão de acesso', 'Recusou acesso': 'Gestão de acesso',
+const TIPO_ACAO = { 'Pediu acesso': 'Cadastro', 'Pediu reativação': 'Cadastro', 'Pediu novo código': 'Cadastro', 'Confirmou novo código': 'Cadastro', 'Aprovou acesso': 'Gestão de acesso', 'Recusou acesso': 'Gestão de acesso',
   'Desativou acesso': 'Gestão de acesso', 'Reativou acesso': 'Gestão de acesso', 'Gerou novo código': 'Gestão de acesso', 'Substituiu referência técnica': 'Gestão de acesso',
-  'Adicionou coordenação': 'Gestão de acesso', 'Definiu coordenação como RT': 'Gestão de acesso', 'Tirou RT da coordenação': 'Gestão de acesso', 'Tentativa de acesso recusada': 'Segurança', 'Código repetido': 'Exame', 'Resultado recalculado': 'Exame', 'Viu um exame': 'Consulta', 'Viu o acompanhamento de uma pessoa': 'Consulta',
+  'Adicionou coordenação': 'Gestão de acesso', 'Definiu coordenação como RT': 'Gestão de acesso', 'Tirou RT da coordenação': 'Gestão de acesso', 'Tentativa de acesso recusada': 'Segurança', 'Código em mais de um DSEI': 'Segurança', 'Código repetido': 'Exame', 'Resultado recalculado': 'Exame', 'Viu um exame': 'Consulta', 'Viu o acompanhamento de uma pessoa': 'Consulta',
   'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Reorganizou a planilha': 'Sistema' };
 let MIGRANDO = false;
 const NOME_PERFIL = { dentista: 'cirurgião-dentista', rt: 'referência técnica', coord: 'coordenação' };
@@ -206,7 +206,8 @@ function relatorioRecalculo(regs) {
     if (mc) r.classe++; if (me) r.ceod++; if (mp) r.cpod++;
     if (mc || me || mp) {
       r.mudam++;
-      if (r.exemplos.length < 5000) r.exemplos.push({ id: e.id, codigo: codigoIndividuoDe(e), dsei: e.dsei, data: e.dataExame,
+      // Todos os exames que mudam entram no relatório (a aba lista um por um); a resposta ao app leva só alguns.
+      r.exemplos.push({ id: e.id, codigo: codigoIndividuoDe(e), dsei: e.dsei, data: e.dataExame,
         classe: [a.classe || '', b.classe], ceod: [ind(a.ceod), ind(b.ceod)], cpod: [ind(a.cpod), ind(b.cpod)] });
     }
   });
@@ -223,7 +224,11 @@ function previaReorganizacao(d, u) {
 function reorganizarPelaTitular(d, u) {
   if (!u.titular) return { ok: false, erro: 'Só a coordenação titular atualiza a planilha.' };
   if (formatoAtual()) return { ok: true, jaFeito: true };
-  try { const r = reorganizarAgora(); return { ok: true, resultado: r }; }
+  try {
+    const r = reorganizarAgora();
+    if (r.relatorio) r.relatorio = Object.assign({}, r.relatorio, { exemplos: r.relatorio.exemplos.slice(0, 20) });
+    return { ok: true, resultado: r };
+  }
   catch (err) { return { ok: false, erro: String(err.message || err) }; }
 }
 function reorganizarAgora() {
@@ -613,6 +618,9 @@ function pedirAcesso(d) {
   const todos = lerUsuarios(), ex = todos.filter(function (x) { return normEmail(x.email) === email; })[0];
   if (ex && ex.status === 'ativo') return { ok: false, erro: 'Este e-mail já tem acesso. Use "Esqueci meu código" para receber um novo.' };
   if (ex && ex.status === 'pendente') return { ok: false, erro: 'Já existe um pedido com este e-mail aguardando aprovação.' };
+  // Acesso desativado: o pedido vira um pedido de REATIVAÇÃO explícito. O cadastro não é trocado (DSEI e perfil
+  // continuam os de antes), quem desativou é avisado e decide em "Reativar". Mudança de DSEI ou de perfil é com a coordenação.
+  if (ex && ex.status === 'desativado') return pedirReativacao(ex, dsei !== ex.dsei || perfil !== ex.perfil);
   const u = ex || { id: Utilities.getUuid() };
   Object.assign(u, { nome: nome, cro: cro, email: email, uf: String(d.uf || ''), dsei: dsei, polo: String(d.polo || '').trim(), perfil: perfil,
     status: 'pendente', codigo_hash: '', pedido_em: new Date().toISOString(), aprovado_por: '', aprovado_em: '' });
@@ -624,6 +632,23 @@ function pedirAcesso(d) {
     nome + ' (CRO ' + cro + ') pediu acesso como ' + NOME_PERFIL[perfil] + ' do DSEI ' + dsei + '.\n\nAbra o app (' + urlApp() + ')' +
     ' e vá em "' + (rts.length ? 'Equipe' : 'Administração') + '" para aprovar ou recusar.\n\n' + NOME_APP);
   return { ok: true, para: rts.length ? 'a referência técnica do DSEI ' + dsei : 'a coordenação' };
+}
+/** @param {any} ex @param {boolean} mudou */
+function pedirReativacao(ex, mudou) {
+  const quem = ex.perfil === 'dentista' && rtsDo(ex.dsei).length ? 'a referência técnica do DSEI ' + ex.dsei : 'a coordenação';
+  const resposta = { ok: true, reativacao: true, para: quem, dseiCadastro: ex.dsei, mudouDados: mudou };
+  // No máximo um aviso por dia para cada e-mail (a resposta é a mesma, para não revelar nada a mais).
+  if (!dentroDoLimite('reativ:' + normEmail(ex.email), 1, 86400)) return resposta;
+  ex.pedido_em = new Date().toISOString();
+  salvarUsuario(ex);
+  registrar(ex, 'Pediu reativação', NOME_PERFIL[ex.perfil] + ' · DSEI ' + ex.dsei + (mudou ? ' · pediu com DSEI ou perfil diferente do cadastro' : ''));
+  const rts = ex.perfil === 'dentista' ? rtsDo(ex.dsei) : [];
+  const destinos = rts.length ? rts.map(function (x) { return x.email; }) : [emailCoord()];
+  enviarEmail(destinos.join(','), 'Pedido de reativação no Odontograma',
+    ex.nome + ' (CRO ' + ex.cro + '), ' + NOME_PERFIL[ex.perfil] + ' do DSEI ' + ex.dsei + ', teve o acesso desativado e pediu para voltar.\n\n' +
+    (mudou ? 'Atenção: no pedido, a pessoa informou um DSEI ou perfil diferente do cadastro. O cadastro não foi alterado; mudança de DSEI ou de perfil é feita pela coordenação.\n\n' : '') +
+    'Se for o caso, abra o app (' + urlApp() + '), vá em "' + (rts.length ? 'Equipe' : 'Administração') + '" e toque em "Reativar". Se não for, não é preciso fazer nada.\n\n' + NOME_APP);
+  return resposta;
 }
 /** @param {any} d */
 /* ---------- "Esqueci meu código": recuperação em duas etapas ----------
@@ -753,6 +778,11 @@ function enviarExame(d, u) {
   // Só quem fez o exame pode alterá-lo.
   if (anterior && !ehDoUsuario(anterior, u)) return { ok: false, erro: 'Só o profissional que fez este exame pode alterá-lo.' };
   if (anterior && !exameValido(anterior)) return { ok: false, erro: 'Este exame foi cancelado e não pode ser alterado.' };
+  // Um exame nunca muda de DSEI (senão a mesma pessoa ficaria com exames em dois DSEIs).
+  if (anterior && String(anterior.dsei || '') !== String(reg.dsei || '')) {
+    registrar(u, 'Tentativa de acesso recusada', 'exame ' + reg.id + ' do DSEI ' + anterior.dsei + ' enviado como do DSEI ' + (reg.dsei || '(vazio)'));
+    return { ok: false, dseiInvalido: true, erro: 'Este exame foi registrado no DSEI ' + anterior.dsei + ' e não pode passar para outro DSEI. Nada foi alterado na planilha.' };
+  }
   // Exame feito por outra pessoa no mesmo aparelho: espera o dono entrar para ser enviado.
   if (!anterior && reg.dono && reg.dono !== u.id) return { ok: false, erro: 'Este exame foi feito por outro profissional neste aparelho e só pode ser enviado por ele.' };
   reg = sanear(JSON.parse(registroParaJson(reg)));
@@ -775,7 +805,9 @@ function enviarExame(d, u) {
     // Mesma pessoa: confere dente a dente com o exame anterior.
     const daPessoa = outros.filter(function (r) { return exameValido(r) && codigoIndividuoDe(r) === v.codigoIndividuo; });
     if (!daPessoa.length) return { ok: false, vinculoInvalido: true, erro: 'A pessoa ' + v.codigoIndividuo + ' não tem mais exames válidos (o exame anterior pode ter sido cancelado). Abra este exame e confirme de novo se é a mesma pessoa.' };
-    if (daPessoa[0].dsei !== reg.dsei) return { ok: false, vinculoInvalido: true, erro: 'A pessoa ' + v.codigoIndividuo + ' é de outro DSEI. Só dá para juntar exames do mesmo DSEI.' };
+    const dsP = dseisDaPessoa(daPessoa);
+    if (dsP.length > 1) { alertarCodigoEmVariosDseis(v.codigoIndividuo, dsP, u); return { ok: false, vinculoInvalido: true, erro: 'O código ' + v.codigoIndividuo + ' está em conferência pela coordenação e não pode receber exames agora. Registre o exame como pessoa nova e avise a sua RT.' }; }
+    if (dsP[0] !== reg.dsei) return { ok: false, vinculoInvalido: true, erro: 'A pessoa ' + v.codigoIndividuo + ' é de outro DSEI. Só dá para juntar exames do mesmo DSEI.' };
     const ref = exameReferencia(daPessoa, reg);
     const nascRef = (ref.crianca || {}).nascimento || '', sexoRef = (ref.crianca || {}).sexo || '';
     if ((nascRef && nascRef !== (reg.crianca || {}).nascimento) || (sexoRef && sexoRef !== (reg.crianca || {}).sexo))
@@ -916,12 +948,12 @@ function problemasDoExame(r) {
   if (pend.length) f.push('dentes ainda com ? para conferir na boca (' + pend.slice(0, 8).join(', ') + ')');
   return f;
 }
-// Código de acompanhamento de pessoa nova: UF-POLO-ALDEIA-8 caracteres (desde a versão 30) ou o formato antigo
-// UF-POLO-ALDEIA-CRO-sequência, sempre com a UF de um estado do DSEI do exame.
+// Código de acompanhamento de pessoa nova: UF-POLO-ALDEIA-8 caracteres, com 1 a 3 letras ou números no polo e na
+// aldeia e a UF de um estado do DSEI do exame. (O formato antigo, com CRO, saiu: não há exames nele.)
+const RE_CODIGO = /^([A-Z]{2})-([A-Z0-9]{1,3})-([A-Z0-9]{1,3})-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/;
 /** @param {string} cod @param {string} dsei */
 function codigoBemFormado(cod, dsei) {
-  const c = String(cod || '').toUpperCase();
-  const m = /^([A-Z]{2})-[A-Z0-9]{0,3}-[A-Z0-9]{0,3}-(?:[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}|[A-Z0-9]{1,12}-\d{4})$/.exec(c);
+  const m = RE_CODIGO.exec(String(cod || '').toUpperCase());
   return !!m && ufDoDsei(m[1], dsei);
 }
 /** Escopo ADMINISTRATIVO (equipe, convites, listas): CD e RT ficam no DSEI do cadastro; coordenação vê vários. @param {any} u */
@@ -980,6 +1012,11 @@ function buscarCodigo(d, u) {
   if (!ex) return { ok: true, pessoa: null };
   const ci = codigoIndividuoDe(ex);
   const l = regs.filter(function (r) { return codigoIndividuoDe(r) === ci; }).sort(ordemExame);
+  const ds = dseisDaPessoa(l);
+  if (ds.length > 1) {
+    alertarCodigoEmVariosDseis(ci, ds, u);
+    return u.perfil === 'coord' ? { ok: true, pessoa: null, emConferencia: true, outroDsei: ds.join(', ') } : { ok: true, pessoa: null, foraDoSeuDsei: true };
+  }
   // Para CD e RT, um código de outro DSEI é só "não localizado no seu DSEI" (sem dizer qual é o DSEI).
   if (l[0].dsei !== dsei) return u.perfil === 'coord' ? { ok: true, pessoa: null, outroDsei: l[0].dsei } : { ok: true, pessoa: null, foraDoSeuDsei: true };
   const ult = l[l.length - 1], nomePor = nomesUsuarios();
@@ -1002,7 +1039,7 @@ function reservarCodigo(d, u) {
   // O código vem em codigoReserva (o campo codigo é o código de acesso de quem está usando o app).
   const cod = String(d.codigoReserva || '').trim().toUpperCase(), id = String(d.exameId || '');
   // Formato UF-POLO-ALDEIA-XXXXXXXX (8 caracteres sem 0, O, 1, I e L) e UF do DSEI de quem reserva.
-  const m = cod.match(/^([A-Z]{2})-[A-Z0-9]{0,3}-[A-Z0-9]{0,3}-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
+  const m = cod.match(RE_CODIGO);
   if (!m || !id) return { ok: false, erro: 'Código inválido para reserva.' };
   const dseiR = dseiClinico(u) !== null ? dseiClinico(u) : String(d.dsei || '');
   if (dseiR && !ufDoDsei(m[1], dseiR)) return { ok: false, erro: 'A UF do código não é do DSEI ' + dseiR + '.' };
@@ -1012,6 +1049,29 @@ function reservarCodigo(d, u) {
   if (usado) return { ok: true, ocupado: true };
   obterAba(planilha(), ABA_RESERVAS, CAB_RESERVAS).appendRow([cod, id, dseiR, u.id, new Date()]);
   return { ok: true, reservado: true };
+}
+/** DSEIs (sem repetir) dos exames de uma pessoa. @param {any[]} l */
+function dseisDaPessoa(l) {
+  /** @type {any} */ const v = {};
+  l.forEach(function (r) { v[String(r.dsei || '')] = 1; });
+  return Object.keys(v).sort();
+}
+// Código de acompanhamento com exames em mais de um DSEI: fica registrado em Acessos e a coordenação recebe um e-mail
+// (no máximo um aviso por código a cada 6 horas, para não lotar a caixa).
+/** @param {string} cod @param {string[]} dseis @param {any} u */
+function alertarCodigoEmVariosDseis(cod, dseis, u) {
+  try {
+    const c = CacheService.getScriptCache(), k = 'multi:' + cod;
+    if (c.get(k)) return;
+    c.put(k, '1', 21600);
+  } catch (x) { /* sem cache: avisa mesmo assim */ }
+  registrar(u, 'Código em mais de um DSEI', cod + ' · DSEIs ' + dseis.join(', ') + ' · consulta bloqueada para CD e RT');
+  const para = emailCoord();
+  if (para) enviarEmail(para, 'Odontograma: código em mais de um DSEI',
+    'O código de acompanhamento ' + cod + ' tem exames em mais de um DSEI (' + dseis.join(', ') + ').\n\n' +
+    'Isso não deveria acontecer. Enquanto não for corrigido, cirurgiões-dentistas e RTs não conseguem ver nem juntar exames a esse código. ' +
+    'Confira na planilha (aba Exames, coluna codigo_individuo) e, se for o caso, cancele o exame que ficou no DSEI errado.\n\n' +
+    'Quem tentou acessar: ' + (u.nome || '') + ' (' + (perfilTexto(u) || '') + (u.dsei ? ', DSEI ' + u.dsei : '') + ').');
 }
 function nomesUsuarios() {
   /** @type {any} */ const m = { coord: 'Coordenação' };
@@ -1026,6 +1086,9 @@ function nomesUsuarios() {
 // Toda consulta ao histórico feita por quem não fez todos os exames fica registrada nos Acessos.
 /** @param {any[]} l @param {any} u */
 function podeVerPessoa(l, u) {
+  // Defesa: um código com exames em mais de um DSEI não deveria existir. Só a coordenação vê, e ela é avisada.
+  const ds = dseisDaPessoa(l);
+  if (ds.length > 1) { alertarCodigoEmVariosDseis(codigoIndividuoDe(l[0]), ds, u); return u.perfil === 'coord'; }
   if (u.perfil === 'coord') return true;
   // RT e dentistas do DSEI da pessoa veem o histórico dela (continuidade do cuidado). Fora do DSEI do cadastro, não.
   return !!u.dsei && l.some(function (r) { return r.dsei === u.dsei; });
@@ -1272,7 +1335,10 @@ function mudarStatus(d, u, status) {
   const a = alvoDe(d);
   if (!a || a.status === 'pendente') return { ok: false, erro: 'Usuário não encontrado.' };
   if (!podeGerir(u, a)) return { ok: false, erro: 'Você não pode alterar este acesso.' };
-  a.status = status; salvarUsuario(a);
+  a.status = status;
+  // Reativar é uma nova aprovação: fica registrado quem reativou e quando (e some o aviso de "pediu reativação").
+  if (status === 'ativo') Object.assign(a, { aprovado_por: u.nome, aprovado_em: new Date().toISOString() });
+  salvarUsuario(a);
   registrar(u, status === 'ativo' ? 'Reativou acesso' : 'Desativou acesso', a.nome + ' · DSEI ' + a.dsei);
   return { ok: true };
 }
@@ -2007,7 +2073,7 @@ var NOMES_PROC = {selante: "Selante", art: "ART (restauração atraumática)", c
   amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado", cdf: "Cariostático (diamino fluoreto de prata)", selprov: "Selamento provisório / adequação do meio",
   pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço", exodontia: "Exodontia"};
 var CAB_EXAME = ["id_exame", "codigo_individuo", "numero_exame", "codigo_exame", "situacao_registro", "data_exame", "faixa_etaria", "idade_anos", "sexo", "nascimento",
-  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "codigo_municipio_ibge", "terra_indigena", "codigo_terra_indigena", "codigo_polo_base", "codigo_aldeia", "aldeia_fora_da_lista", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
+  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "codigo_municipio_ibge", "terra_indigena", "codigo_terra_indigena", "codigo_polo_base", "codigo_aldeia", "aldeia_fora_da_lista", "codigo_confere_local", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
   "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod", "dentes_cariados", "placa_visivel", "gengivite", "fluorose_moderada_severa",
   "vigilancia_saude_bucal", "protese_superior", "protese_inferior", "dentes_com_dor_abscesso", "procedimentos_gerais", "insumos_fornecidos", "observacoes", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
   "motivo_cancelamento", "observacao_cancelamento", "cancelado_em", "cancelado_por", "criado_em", "atualizado_em", "usuario_id", "dados_completos_json"];
@@ -2029,12 +2095,23 @@ function registroParaJson(e) {
   Object.keys(e).forEach(function (k) { if (k !== "envio" && k.charAt(0) !== "_") j[k] = e[k]; });
   return JSON.stringify(j);
 }
+// Parte do código de acompanhamento: 1 a 3 letras ou números do nome, sem acento. Nome sem letra nem número vira "X".
+/** @param {any} t */
+function parteCodigo(t) { return String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^0-9A-Za-z]/g, "").slice(0, 3).toUpperCase() || "X"; }
+// O começo do código de acompanhamento (UF-POLO-ALDEIA) bate com o local deste exame? O código nunca muda depois de
+// mostrado; então "não" aparece quando a pessoa foi examinada em outra aldeia ou o local foi corrigido depois.
+/** @param {any} e */
+function codigoConfereLocal(e) {
+  var m = /^([A-Z]{2})-([A-Z0-9]{1,3})-([A-Z0-9]{1,3})-/.exec(String(codigoIndividuoDe(e)).toUpperCase());
+  if (!m) return "";
+  return m[1] === String(e.uf || "").toUpperCase() && m[2] === parteCodigo(e.polo) && m[3] === parteCodigo(e.aldeia) ? "sim" : "não";
+}
 /** @param {any} e */
 function linhaExame(e) {
   var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, sn = function (/** @type {any} */ b) { return b == null ? "" : b ? "sim" : "não"; };
   return [e.id, codigoIndividuoDe(e), e.numeroExame || 1, e.codigo || "", exameValido(e) ? "válido" : "cancelado", e.dataExame || "", faixaEtaria(e.idadeAnos),
     e.idadeAnos, (e.crianca || {}).sexo || "", (e.crianca || {}).nascimento || "", e.uf || "", e.dsei || "", e.polo || "", e.aldeia || "", e.municipio || "", e.codMunicipio || "", e.ti || "", e.codTI || "", e.codPolo || "", e.codAldeia || "",
-    e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), e.localAtendimento || "",
+    e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), codigoConfereLocal(e), e.localAtendimento || "",
     (e.profissional || {}).nome || "", (e.profissional || {}).cro || "", e.denticao || "", r.classe || "", nivelDaClasse(r.classe) || r.risco || "",
     ce.c, ce.e, ce.o, ce.total, cp.c, cp.p, cp.o, cp.total, cariadosDe(e), sn(e.placa), sn(e.gengivite), sn(e.fluorose),
     (e.vigilancia || []).join("; "), e.protese ? NOMES_PROTESE[e.protese.sup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.inf || ""] : "",
@@ -2235,6 +2312,7 @@ const DICIONARIO = [
   ['Exames', 'codigo_polo_base', 'Código do polo base na planilha da SESAI.', 'número'],
   ['Exames', 'codigo_aldeia', 'Código da aldeia na planilha da SESAI. Em branco quando a aldeia foi digitada à mão.', 'número'],
   ['Exames', 'aldeia_fora_da_lista', 'Se a aldeia foi digitada à mão, por não estar na lista da SESAI.', 'sim · não'],
+  ['Exames', 'codigo_confere_local', 'Se o começo do código de acompanhamento (UF-polo-aldeia) bate com o local deste exame. O código nunca muda depois de mostrado: "não" aparece quando a pessoa foi examinada em outra aldeia ou quando o polo ou a aldeia foram corrigidos depois. Serve para conferência, não é erro por si só.', 'sim · não'],
   ['Exames', 'local_atendimento', 'Tipo de local onde o atendimento foi feito.', LOCAIS_ATENDIMENTO.join(' · ') + ' · vazio (exames antigos)'],
   ['Exames', 'profissional', 'Nome do cirurgião-dentista que fez o exame.', 'texto'],
   ['Exames', 'cro', 'CRO do profissional.', 'texto'],

@@ -1,5 +1,39 @@
 # Odontograma: guia de instalação
 
+## Versão 34: correções curtas antes do piloto (inclui tudo da 33)
+
+**Como instalar.** O servidor muda e a planilha ganha uma coluna nova (formato 23). Faça na ordem:
+1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
+2. **Confira:** abra o /exec. Ele deve mostrar `"versao":29`.
+3. **GitHub:** clique em **Add file > Upload files** e arraste, de uma vez:
+   - os arquivos `index.html`, `sw.js`, `Codigo.gs`, `compartilhado.js` e `LEIA-ME.md`;
+   - a pasta `testes` inteira.
+4. **Confira a aba Actions:** o envio deve ficar com ✓ verde.
+5. **Planilha:**
+   - se ela ainda não tem exames, é reorganizada sozinha no primeiro uso, com backup antes;
+   - se já tem exames de teste, entre como coordenação titular, vá em **Administração > Atualização da planilha pendente**, toque em "Ver o que vai mudar" e depois em "Fazer backup e atualizar". Enquanto isso não for feito, os exames novos esperam guardados nos aparelhos.
+6. **No celular:** feche e abra o app com internet (deve aparecer "app versão 34" em Conta).
+
+**Exame salvo de verdade:**
+- Se o aparelho estiver sem espaço e não conseguir guardar o exame, o app **não** diz mais "salvo" e não limpa a tela. O exame continua aberto, o botão vira "Tentar guardar de novo" e o app tenta enviá-lo na hora.
+- Enquanto houver exame que só está na memória, "Começar novo exame" e abrir outro exame ficam bloqueados. Sair da conta pede uma confirmação a mais.
+- Assim que o exame é enviado (ou o aparelho consegue guardá-lo), a tela é liberada sozinha para o próximo.
+
+**Código de acompanhamento:**
+- O polo e a aldeia do código têm de 1 a 3 letras ou números. Nome sem nenhuma letra ou número vira "X".
+- O formato antigo, com CRO, saiu (não há exames nele).
+- **Coluna nova `codigo_confere_local`** na aba Exames: "sim" quando o começo do código (UF-polo-aldeia) bate com o local do exame, "não" quando não bate. "Não" é esperado quando a pessoa foi examinada em outra aldeia ou quando o local foi corrigido depois de o código ser mostrado (o código nunca muda). Serve para conferência.
+- **Código em mais de um DSEI:** isso não deveria acontecer, mas, se acontecer, cirurgiões-dentistas e RTs deixam de ver e de juntar exames a esse código, fica registrado em Acessos (Segurança) e a coordenação recebe um e-mail (no máximo um a cada 6 horas por código). A coordenação continua vendo para corrigir.
+- Um exame já gravado num DSEI não pode ser reenviado como de outro DSEI.
+
+**Acesso desativado que pede de novo:** vira um **pedido de reativação**. O cadastro não muda (o DSEI e o perfil continuam os de antes), quem desativou recebe um e-mail e vê "pediu reativação" ao lado do nome em Equipe ou Administração. Para aceitar, basta tocar em "Reativar". Mudança de DSEI ou de perfil continua sendo feita pela coordenação.
+
+**Relatório da reorganização completo:** a aba "Relatório da reorganização" lista todos os exames que mudaram, sem o limite de 5000.
+
+**Local do atendimento:** a caixa "Não achou na lista? Procure pelo nome" saiu. O campo para digitar o nome só aparece quando se escolhe "Outro polo (não está na lista)" ou "Outra aldeia (não está na lista)".
+
+**Testes:** 147 verificações do servidor e 42 no navegador, incluindo cada correção desta versão.
+
 ## Versão 33: correções da auditoria antes do uso real (inclui tudo da 32)
 
 **Como instalar.** O servidor muda, mas a planilha não precisa ser reorganizada (o formato continua o 22). Faça na ordem:
