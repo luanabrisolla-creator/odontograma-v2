@@ -13,8 +13,13 @@ jobs:
           node-version: 20
       - name: App, servidor e modo sem internet combinam
         run: node $( [ -f ferramentas/verificar.js ] && echo ferramentas/verificar.js || echo verificar.js )
-      - name: O app abre sem erros
+      - name: Testes do servidor (simulador do Apps Script, sem dados reais)
+        run: node testes/servidor.test.js
+      - name: Instala o navegador de teste
         run: |
           npm install --no-save playwright@1.48.2
           npx playwright install --with-deps chromium
-          node $( [ -f ferramentas/abrir-app.js ] && echo ferramentas/abrir-app.js || echo abrir-app.js )
+      - name: O app abre sem erros
+        run: node $( [ -f ferramentas/abrir-app.js ] && echo ferramentas/abrir-app.js || echo abrir-app.js )
+      - name: Testes no navegador (fluxos principais)
+        run: node testes/navegador.test.js
