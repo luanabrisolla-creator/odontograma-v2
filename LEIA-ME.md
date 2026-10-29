@@ -1,5 +1,77 @@
 # Odontograma: guia de instalação
 
+## Versão 31: índices pela regra do material, painel por pessoa, servidor como fonte do resultado e segurança (inclui tudo da 30)
+
+**Como instalar.** O servidor muda. Faça tudo no mesmo dia e nesta ordem, sem misturar arquivos novos e antigos no GitHub:
+1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
+2. **Confira:** abra o endereço /exec. Ele deve mostrar `"versao":27`.
+3. **Primeiro uso:** a planilha é reorganizada sozinha (formato 22), com backup antes. Nessa reorganização, o servidor **refaz a classe de risco e o ceo-d/CPO-D de todos os exames já gravados** pela regra nova. Por isso, os números antigos de ceo-d e CPO-D na planilha podem mudar (veja "Índices" abaixo). A classe de risco segue a mesma regra de antes; ela só muda em exames muito antigos que tinham sido calculados por uma regra anterior do app.
+4. **GitHub, tudo no mesmo envio:** `index.html`, `sw.js`, `manifest.webmanifest`, `icon.svg`, `icon-192.png`, `icon-512.png`, `mapa-ti.json`, `paisagem.webp` e `Codigo.gs`.
+5. **Verificação automática.** O GitHub só roda o que está dentro da pasta `.github/workflows`. Hoje o `verificar.yml` está solto na raiz, por isso não roda. Para corrigir:
+   - no GitHub, toque em **Add file > Create new file**;
+   - no nome do arquivo, digite `.github/workflows/verificar.yml` (as barras criam as pastas sozinhas);
+   - cole o conteúdo do `verificar.yml` do pacote e salve (Commit changes);
+   - do mesmo jeito, crie `ferramentas/verificar.js` e `ferramentas/abrir-app.js`;
+   - depois apague o `verificar.yml` e o `verificar.js` da raiz, e o `.github/workflows/main.yml` vazio.
+
+   A partir daí, a aba **Actions** mostra, a cada envio, um ✓ verde ou um ✗ vermelho. Há duas conferências: se app, servidor e modo sem internet combinam, e se o app abre sem erro num navegador de verdade (celular e computador).
+6. **Teste antes de usar com dados reais:**
+   - "Esqueci meu código" do começo ao fim;
+   - pessoa nova com e sem internet;
+   - busca sem código de uma pessoa que mudou de aldeia;
+   - o Painel com a tabela por faixa etária;
+   - a Administração.
+
+**Índices (ceo-d e CPO-D), pela regra do seu material de ensino:**
+- **CPO-D (permanentes):**
+  - C = cavidade ativa ou crônica, ou restauração com cárie. Cárie e restauração no mesmo dente contam como cariado.
+  - P = extraído por cárie, extração indicada ou coroa destruída (raiz residual). **Mudou:** a raiz residual contava como C.
+  - O = restaurado sem cárie. Mancha branca e restauração no mesmo dente contam como restaurado.
+  - Mancha branca não conta (só há cárie com cavitação).
+- **ceo-d (decíduos):**
+  - c = como no CPO-D.
+  - e = extração indicada ou raiz residual. **Mudou:** o decíduo ausente por cárie não conta mais, porque pode ter esfoliado ("os extraídos não contamos").
+  - o = restaurado sem cárie.
+- Cada dente conta uma vez, pela pior situação: perdido ou extração indicada > cariado > obturado.
+- **O servidor recalcula** a classe de risco e os índices a partir dos dentes a cada exame recebido. O que o navegador manda pronto é ignorado. Se um app antigo mandar uma classe diferente da calculada, isso fica nos Acessos como "Resultado recalculado".
+
+**Painel por pessoa:**
+- Risco, ceo-d, CPO-D, placa, gengivite, vigilância, prótese, idade e sexo contam **cada pessoa uma vez, pelo exame mais recente dela no período**. O ceo-d e o CPO-D médios são a soma dos índices dividida pelo número de pessoas (o "índice comunitário").
+- Exames, exames por mês, procedimentos, insumos e locais de atendimento continuam contando **todos os exames**. Há um número novo, "exames realizados", ao lado de "pessoas examinadas".
+- **Nova tabela "Índices médios por faixa etária"**, no bloco Cárie por faixa etária: ceo-d e CPO-D médios de cada faixa, com os componentes (c · e · o e C · P · O) e o número de pessoas.
+- Na comparação entre DSEIs, o percentual de alto risco some quando revelaria um grupo de 1 a 4 pessoas.
+- O Painel continua mostrando dados agregados de todos os DSEIs para todos os perfis, como você decidiu na versão 30.
+
+**Servidor confere o que chega do app:**
+- O exame só é gravado com todos os campos certos:
+  - datas válidas (exame não pode estar no futuro; nascimento não pode ser depois do exame);
+  - sexo, dentição, local de atendimento e vigilância da lista ("Não identificado" sozinho);
+  - placa e gengivite respondidas;
+  - UF do DSEI, polo e aldeia preenchidos;
+  - dentes da dentição escolhida, com situações e faces válidas;
+  - nenhum dente com ? para conferir.
+- Se faltar algo, o exame não é gravado e o app mostra o que corrigir.
+- DSEI e UF também são conferidos no pedido de acesso, no convite, na coordenação + RT e nas ações do Dia B.
+- O código de acompanhamento só é reservado no formato certo e com a UF do DSEI de quem reserva.
+
+**Segurança:**
+- **"Esqueci meu código" em duas etapas.** O pedido manda por e-mail um link válido por 1 hora, e **o código atual continua valendo**. Só quando a pessoa abre o link e toca em "Gerar meu novo código" o código muda. O código novo aparece na tela e também vai por e-mail. Assim, quem só sabe o e-mail de alguém não consegue derrubar o acesso da pessoa, e uma falha no e-mail não deixa ninguém sem código. Limite: 3 pedidos por hora por e-mail.
+- **Limite de tentativas:** depois de 20 tentativas erradas de entrar em 15 minutos, aquele e-mail fica bloqueado por 15 minutos. Pedidos de acesso: no máximo 5 por hora por e-mail.
+- **Coordenação + RT:** na gestão (Painel, histórico, Administração), continua vendo vários DSEIs. No clínico (registrar exame, buscar pessoa, reservar código), fica no DSEI de RT, como qualquer RT. O campo DSEI do exame fica travado para ela também.
+- **Código de outro DSEI:** para CD e RT, a busca diz só "não encontramos no seu DSEI", sem dizer qual é o outro DSEI. A coordenação continua vendo.
+- **Exames antigos sem dono no aparelho:** não são mais atribuídos sozinhos a quem entrar. Em Meus exames aparece um aviso com o botão "São meus", para a pessoa assumir.
+- **Identificadores completos:** usuários, convites e ações novos usam o identificador completo (36 caracteres), em vez de 8.
+- **Auditoria:** se um registro na aba Acessos falhar, o atendimento continua, mas a falha é contada e aparece em vermelho para a coordenação na Administração.
+
+**Outras melhorias:**
+- **Busca de aldeia mais clara:** o campo de busca fica logo abaixo do campo Aldeia. Depois de escolher, a aldeia continua escrita na busca, com fundo verde; o campo Aldeia pisca em verde; e aparece a linha "✓ Aldeia escolhida".
+- **Pessoa que mudou de aldeia:** na busca sem código, se ninguém com o mesmo nascimento e sexo foi examinado na aldeia, o app procura nas outras aldeias do mesmo DSEI. Os resultados aparecem com o aviso "Último exame em outra aldeia". Nada é ligado sozinho.
+- **Prefixo do código:** UF, polo e aldeia no código mostram o **local do primeiro cadastro**, não onde a pessoa mora hoje. Isso está escrito no Dicionário da planilha.
+
+**Ficou para a próxima rodada:**
+- **Sessão temporária no lugar do código guardado no aparelho, bloqueio por inatividade e dados offline protegidos.** Exige mudar o login e o armazenamento; para o piloto, o risco é aceitável.
+- **Desempenho com dezenas de milhares de exames:** índices auxiliares e, no futuro, um banco de dados no lugar da planilha.
+
 ## Versão 30: código de acompanhamento novo, campos obrigatórios e correções da revisão (inclui tudo da 29)
 
 **Como instalar.** Desta vez o servidor muda. Faça tudo de uma vez e nesta ordem, sem misturar arquivos novos com os antigos do GitHub:

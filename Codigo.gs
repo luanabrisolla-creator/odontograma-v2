@@ -51,14 +51,14 @@ const CAB_USO = ['usuario_id', 'nome', 'email', 'perfil', 'dsei', 'ultimo_acesso
   'consultas_equipe', 'exames_validos', 'exames_cancelados', 'ultimo_exame'];
 const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Versão do formato das abas. Quando muda, a planilha é reorganizada uma vez (com backup antes).
-const FORMATO = '21';
-const VERSAO = 26;
+const FORMATO = '22';
+const VERSAO = 27;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
-const TIPO_ACAO = { 'Pediu acesso': 'Cadastro', 'Pediu novo código': 'Cadastro', 'Aprovou acesso': 'Gestão de acesso', 'Recusou acesso': 'Gestão de acesso',
+const TIPO_ACAO = { 'Pediu acesso': 'Cadastro', 'Pediu novo código': 'Cadastro', 'Confirmou novo código': 'Cadastro', 'Aprovou acesso': 'Gestão de acesso', 'Recusou acesso': 'Gestão de acesso',
   'Desativou acesso': 'Gestão de acesso', 'Reativou acesso': 'Gestão de acesso', 'Gerou novo código': 'Gestão de acesso', 'Substituiu referência técnica': 'Gestão de acesso',
-  'Adicionou coordenação': 'Gestão de acesso', 'Definiu coordenação como RT': 'Gestão de acesso', 'Tirou RT da coordenação': 'Gestão de acesso', 'Tentativa de acesso recusada': 'Segurança', 'Código repetido': 'Exame', 'Viu um exame': 'Consulta', 'Viu o acompanhamento de uma pessoa': 'Consulta',
+  'Adicionou coordenação': 'Gestão de acesso', 'Definiu coordenação como RT': 'Gestão de acesso', 'Tirou RT da coordenação': 'Gestão de acesso', 'Tentativa de acesso recusada': 'Segurança', 'Código repetido': 'Exame', 'Resultado recalculado': 'Exame', 'Viu um exame': 'Consulta', 'Viu o acompanhamento de uma pessoa': 'Consulta',
   'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Reorganizou a planilha': 'Sistema' };
 let MIGRANDO = false;
 const NOME_PERFIL = { dentista: 'cirurgião-dentista', rt: 'referência técnica', coord: 'coordenação' };
@@ -197,7 +197,8 @@ function reorganizarAgora() {
   try { r.backup = fazerBackup('reorganizar'); } catch (x) { r.erroBackup = String(x); }
   MIGRANDO = true;
   try {
-    const regs = lerExames().map(sanear);
+    // Formato 22: o resultado (classe e índices) de todos os exames é refeito pelo servidor, pela regra atual.
+    const regs = lerExames().map(sanear).map(recalcularResultado);
     const linhasEx = regs.map(linhaExame);
     /** @type {any[]} */ const linhasDe = [];
     regs.forEach(function (e) { linhasDentes(e).forEach(function (l) { linhasDe.push(l); }); });
@@ -210,6 +211,15 @@ function reorganizarAgora() {
     PropertiesService.getScriptProperties().setProperty('FORMATO_PLANILHA', FORMATO);
   } finally { MIGRANDO = false; }
   registrar({ email: '', nome: 'Sistema' }, 'Reorganizou a planilha', 'Versão ' + FORMATO + ' · ' + r.exames + ' exames' + (r.backup ? ' · backup antes: ' + r.backup : ' · sem backup: ' + r.erroBackup));
+  return r;
+}
+// O servidor é a fonte do resultado clínico: refaz a classe de risco e o ceo-d/CPO-D a partir dos dentes
+// (avaliarExame, no trecho compartilhado). Exame muito antigo sem dentes guardados mantém o resultado que tinha.
+/** @param {any} r */
+function recalcularResultado(r) {
+  if (!r || !r.dentes || !Object.keys(r.dentes).length) return r;
+  const c = avaliarExame(r);
+  r.resultado = Object.assign({}, r.resultado || {}, { classe: c.classe, risco: c.risco, descricao: c.descricao, motivos: c.motivos, ceod: c.ceod, cpod: c.cpod, agrupamento: 'tres' });
   return r;
 }
 // Tira dados que identificam a pessoa, se algum exame muito antigo ainda os tiver.
@@ -347,9 +357,17 @@ function doPost(e) {
   const trava = A.escreve ? LockService.getScriptLock() : null;
   if (trava) trava.waitLock(30000);
   try {
-    if (A.publica) return saida(A.fn(d));
+    if (A.publica) {
+      // Pedidos de acesso: no máximo 5 por e-mail por hora.
+      if (d.acao === 'pedirAcesso' && !dentroDoLimite('pedido:' + normEmail(d.email), 5, 3600)) return saida({ ok: false, erro: 'Muitos pedidos com este e-mail na última hora. Espere um pouco e tente de novo.' });
+      return saida(A.fn(d));
+    }
+    // Login: depois de 20 tentativas erradas em 15 minutos, o e-mail fica bloqueado por 15 minutos.
+    const emailL = normEmail(d.email);
+    if (emailL && limiteEsgotado('falha:' + emailL, 20)) return saida({ ok: false, semAcesso: true, bloqueado: true, erro: 'Muitas tentativas erradas com este e-mail. Espere 15 minutos e tente de novo.' });
     const u = autenticar(d);
     if (!u) {
+      if (emailL) dentroDoLimite('falha:' + emailL, 1000, 900);
       if (d.email) registrar({ email: d.email, nome: '' }, 'Tentativa de acesso recusada', d.acao);
       return saida({ ok: false, semAcesso: true, erro: 'E-mail ou código de acesso inválido, ou acesso desativado.' });
     }
@@ -365,6 +383,7 @@ function doPost(e) {
 const ACOES = {
   pedirAcesso:    { publica: true, escreve: true, fn: pedirAcesso },
   reenviarCodigo: { publica: true, escreve: true, fn: reenviarCodigo },
+  confirmarRecuperacao: { publica: true, escreve: true, fn: confirmarRecuperacao },
   entrar:         { fn: entrar },
   enviarExame:    { escreve: true, fn: enviarExame },
   painel:         { fn: painel },
@@ -467,7 +486,14 @@ function registrar(u, acao, detalhe) {
     // Mais recente em cima.
     aba.insertRowAfter(1);
     aba.getRange(2, 1, 1, linha.length).setValues([linha]);
-  } catch (x) {}
+  } catch (x) {
+    // O atendimento continua, mas a falha fica contada e aparece para a coordenação na Administração.
+    try {
+      const pr = PropertiesService.getScriptProperties();
+      pr.setProperty('AUDITORIA_FALHAS', String(Number(pr.getProperty('AUDITORIA_FALHAS') || 0) + 1));
+      pr.setProperty('AUDITORIA_ULTIMA', new Date().toISOString() + ' · ' + acao + ' · ' + String(x).slice(0, 200));
+    } catch (y) {}
+  }
 }
 /** @param {any} dsei */
 function rtsDo(dsei) { return lerUsuarios().filter(function (x) { return ehRT(x) && x.status === 'ativo' && x.dsei === dsei; }); }
@@ -503,12 +529,13 @@ function pedirAcesso(d) {
   const email = normEmail(d.email), perfil = d.perfil === 'rt' ? 'rt' : 'dentista';
   const nome = String(d.nome || '').trim(), cro = String(d.cro || '').trim(), dsei = String(d.dsei || '').trim();
   if (!nome || !cro || !dsei || !d.uf) return { ok: false, erro: 'Preencha nome, CRO, UF e DSEI.' };
+  if (!dseiValido(dsei) || !ufDoDsei(d.uf, dsei)) return { ok: false, erro: 'Escolha um DSEI da lista e uma UF desse DSEI.' };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, erro: 'E-mail inválido.' };
   if (email === emailCoord()) return { ok: false, erro: 'Este é o e-mail da coordenação: entre com a chave da coordenação.' };
   const todos = lerUsuarios(), ex = todos.filter(function (x) { return normEmail(x.email) === email; })[0];
   if (ex && ex.status === 'ativo') return { ok: false, erro: 'Este e-mail já tem acesso. Use "Esqueci meu código" para receber um novo.' };
   if (ex && ex.status === 'pendente') return { ok: false, erro: 'Já existe um pedido com este e-mail aguardando aprovação.' };
-  const u = ex || { id: Utilities.getUuid().slice(0, 8) };
+  const u = ex || { id: Utilities.getUuid() };
   Object.assign(u, { nome: nome, cro: cro, email: email, uf: String(d.uf || ''), dsei: dsei, polo: String(d.polo || '').trim(), perfil: perfil,
     status: 'pendente', codigo_hash: '', pedido_em: new Date().toISOString(), aprovado_por: '', aprovado_em: '' });
   salvarUsuario(u);
@@ -521,11 +548,71 @@ function pedirAcesso(d) {
   return { ok: true, para: rts.length ? 'a referência técnica do DSEI ' + dsei : 'a coordenação' };
 }
 /** @param {any} d */
+/* ---------- "Esqueci meu código": recuperação em duas etapas ----------
+ * 1. reenviarCodigo: manda por e-mail um link pessoal, válido por 1 hora. O código atual CONTINUA valendo.
+ * 2. confirmarRecuperacao: quem abriu o link (e tocou em "Gerar meu novo código") recebe o código novo na tela
+ *    e por e-mail; só então o código antigo deixa de funcionar.
+ * Assim, alguém que só sabe o e-mail de outra pessoa não consegue derrubar o acesso dela, e uma falha no envio
+ * do e-mail não deixa ninguém sem código. Pedidos por e-mail são limitados (3 por hora). */
+const ABA_RECUP = '_recuperacoes', CAB_RECUP = ['token_hash', 'usuario_id', 'email', 'criado_em', 'valido_ate', 'usado_em'];
+const MINUTOS_RECUP = 60;
+/** @param {any} t */
+function hashRecuperacao(t) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'recuperar:' + String(t || '').trim().toLowerCase())
+    .map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('');
+}
+/** Limite de tentativas (janela de tempo no cache do Apps Script). Sem cache disponível, não bloqueia.
+ * @param {string} chave @param {number} max @param {number} segundos */
+function dentroDoLimite(chave, max, segundos) {
+  try {
+    const c = CacheService.getScriptCache(), k = 'lim:' + chave, n = Number(c.get(k) || 0);
+    if (n >= max) return false;
+    c.put(k, String(n + 1), segundos);
+    return true;
+  } catch (x) { return true; }
+}
+/** @param {string} chave @param {number} max */
+function limiteEsgotado(chave, max) { try { return Number(CacheService.getScriptCache().get('lim:' + chave) || 0) >= max; } catch (x) { return false; } }
+/** @param {any} d */
 function reenviarCodigo(d) {
   const email = normEmail(d.email);
+  if (!email) return { ok: false, erro: 'Informe o e-mail.' };
+  if (!dentroDoLimite('recup:' + email, 3, 3600)) return { ok: false, erro: 'Já foram pedidos vários links para este e-mail na última hora. Confira a caixa de entrada (e o spam) ou espere uma hora para pedir de novo.' };
   const u = lerUsuarios().filter(function (x) { return normEmail(x.email) === email && x.status === 'ativo'; })[0];
-  if (u) { const c = gerarCodigo(); u.codigo_hash = hashCodigo(c); salvarUsuario(u); emailCodigo(u, c, d.link, true); registrar(u, 'Pediu novo código', ''); }
+  if (u) {
+    const t = gerarToken(), agora = new Date();
+    obterAba(planilha(), ABA_RECUP, CAB_RECUP).appendRow([hashRecuperacao(t), u.id, u.email, agora.toISOString(), new Date(agora.getTime() + MINUTOS_RECUP * 60000).toISOString(), '']);
+    const base = /^https?:\/\//.test(String(d.link || '')) ? String(d.link) : '';
+    enviarEmail(u.email, 'Pedido de novo código de acesso ao Odontograma',
+      'Olá, ' + u.nome + '.\n\nRecebemos um pedido de novo código de acesso para este e-mail.\n\n' +
+      (base ? 'Se foi você, abra este link em até ' + MINUTOS_RECUP + ' minutos e toque em "Gerar meu novo código":\n\n' + base + '?recuperar=' + t + '\n\n'
+            : 'Peça o link de novo pelo app.\n\n') +
+      'Enquanto você não confirmar, o seu código atual continua funcionando. Se não foi você, ignore este e-mail.\n\n' + NOME_APP);
+    registrar(u, 'Pediu novo código', 'link de confirmação enviado por e-mail');
+  }
   return { ok: true };
+}
+/** @param {any} d */
+function confirmarRecuperacao(d) {
+  const t = String(d.recuperar || '').trim();
+  if (!/^[0-9a-f]{20,64}$/i.test(t)) return { ok: false, erro: 'Link de recuperação inválido.' };
+  const aba = planilha().getSheetByName(ABA_RECUP);
+  if (!aba || aba.getLastRow() < 2) return { ok: false, erro: 'Link de recuperação inválido.' };
+  const v = aba.getRange(2, 1, aba.getLastRow() - 1, CAB_RECUP.length).getValues(), h = hashRecuperacao(t);
+  const i = v.findIndex(function (l) { return String(l[0]) === h; });
+  if (i < 0) return { ok: false, erro: 'Link de recuperação inválido.' };
+  if (v[i][5]) return { ok: false, usado: true, erro: 'Este link já foi usado. Se precisar, peça outro em "Esqueci meu código".' };
+  if (String(v[i][4]) < new Date().toISOString()) return { ok: false, usado: true, erro: 'Este link expirou (vale ' + MINUTOS_RECUP + ' minutos). Peça outro em "Esqueci meu código".' };
+  const u = lerUsuarios().filter(function (x) { return x.id === String(v[i][1]) && x.status === 'ativo'; })[0];
+  if (!u) return { ok: false, erro: 'Este acesso não está mais ativo. Fale com a coordenação.' };
+  // Primeiro marca o link como usado (e invalida os outros pedidos abertos da mesma pessoa); só depois troca o código.
+  // Se algo falhar no meio, o código antigo continua valendo.
+  const agora = new Date().toISOString();
+  v.forEach(function (l, j) { if (!l[5] && String(l[1]) === u.id) aba.getRange(j + 2, 6, 1, 1).setValues([[j === i ? agora : 'substituído ' + agora]]); });
+  const c = gerarCodigo(); u.codigo_hash = hashCodigo(c); salvarUsuario(u);
+  emailCodigo(u, c, d.link, true);
+  registrar(u, 'Confirmou novo código', 'pelo link de recuperação');
+  return { ok: true, email: u.email, nome: u.nome, codigo: c };
 }
 
 /* ---------- ações de quem tem acesso ---------- */
@@ -576,7 +663,7 @@ function enviarExame(d, u) {
   }
   if (!reg || !reg.id || !reg.resultado) return { ok: false, erro: 'Exame incompleto.' };
   // CD e RT só registram exames no DSEI do próprio cadastro, mesmo que o DSEI tenha sido alterado no navegador.
-  if (atuaEmUmDsei(u) && String(reg.dsei || '') !== String(u.dsei || '')) {
+  if (dseiClinico(u) !== null && String(reg.dsei || '') !== dseiClinico(u)) {
     registrar(u, 'Tentativa de acesso recusada', 'exame no DSEI ' + (reg.dsei || '(vazio)') + ', fora do DSEI do cadastro (' + (u.dsei || 'sem DSEI') + ')');
     return { ok: false, dseiInvalido: true, erro: u.dsei
       ? 'Você só pode registrar exames no DSEI ' + u.dsei + ', o do seu cadastro. Este exame está marcado no DSEI ' + (reg.dsei || '(vazio)') + ' e não foi gravado.'
@@ -590,6 +677,12 @@ function enviarExame(d, u) {
   // Exame feito por outra pessoa no mesmo aparelho: espera o dono entrar para ser enviado.
   if (!anterior && reg.dono && reg.dono !== u.id) return { ok: false, erro: 'Este exame foi feito por outro profissional neste aparelho e só pode ser enviado por ele.' };
   reg = sanear(JSON.parse(registroParaJson(reg)));
+  const faltas = problemasDoExame(reg);
+  if (faltas.length) return { ok: false, exameIncompleto: true, faltam: faltas,
+    erro: 'O exame não foi gravado. Falta ou está errado: ' + faltas.join('; ') + '. Abra o exame no app, corrija e salve de novo. Se o app não pedir esses campos, atualize o app (feche e abra de novo com internet).' };
+  const classeDoApp = (reg.resultado || {}).classe;
+  recalcularResultado(reg);
+  if (classeDoApp && classeDoApp !== reg.resultado.classe) registrar(u, 'Resultado recalculado', 'Exame ' + reg.id + ': o app mandou classe ' + classeDoApp + ', o servidor calculou ' + reg.resultado.classe);
   if (u.id === 'coord') return { ok: false, erro: 'A coordenação titular não registra exames.' };
   if (u.perfil === 'coord' && !u.dsei) return { ok: false, erro: 'Para registrar exames, a pessoa da coordenação precisa ser também RT de um DSEI.' };
   reg.profissional = { nome: u.nome, cro: u.cro };
@@ -645,7 +738,7 @@ function enviarExame(d, u) {
   gravarRegistro(reg);
   if (novoVinculo) registrar(u, 'Registrou novo exame de pessoa já examinada', reg.codigoIndividuo + ' · ' + reg.numeroExame + 'º exame · DSEI ' + reg.dsei);
   atualizarUsoExames(u, todos);
-  return { ok: true, id: reg.id, codigoIndividuo: reg.codigoIndividuo, numeroExame: reg.numeroExame, vinculo: reg.vinculo || null };
+  return { ok: true, id: reg.id, codigoIndividuo: reg.codigoIndividuo, numeroExame: reg.numeroExame, vinculo: reg.vinculo || null, resultado: reg.resultado };
 }
 /** @param {any} d @param {any} u */
 function cancelarExame(d, u) {
@@ -677,19 +770,69 @@ function normTexto(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]
  *     territorios (lista de aldeias do exame), equipe, convites, ações do Dia B e a lista de aldeias sem exame.
  * - Exceção de propósito: o Painel e o acompanhamento mostram DADOS AGREGADOS (números de 1 a 4 ocultados).
  *   Qualquer perfil vê a visão geral, qualquer DSEI e a comparação entre DSEIs. Nenhuma pessoa é identificada ali.
- * - A coordenação (titular, ou coordenação que também é RT) é o único perfil que trabalha com vários DSEIs,
- *   conforme as permissões de gestão.
+ * - A coordenação é o único perfil que trabalha com vários DSEIs, nas funções de GESTÃO (painel, histórico,
+ *   administração). Nas funções CLÍNICAS (registrar exame, buscar pessoa, reservar código), a coordenação que
+ *   também é RT fica no DSEI de RT do cadastro, como qualquer RT (veja dseiClinico).
  * - Continuidade do cuidado: a RT e os cirurgiões-dentistas do DSEI da pessoa veem o histórico dela, inclusive
  *   os exames feitos por outros profissionais do DSEI (veja podeVerPessoa).
  */
-/** @param {any} u */
+/* ---------- validação no servidor do que chega do app ----------
+ * O app já impede estes erros, mas uma versão antiga em cache ou uma requisição feita à mão não passa por ele. */
+/** @param {any} dsei */
+function dseiValido(dsei) { return DSEIS.indexOf(String(dsei || '')) >= 0; }
+/** @param {any} uf @param {any} dsei */
+function ufDoDsei(uf, dsei) { return UFS.indexOf(String(uf || '')) >= 0 && (DSEI_UF[String(uf)] || []).indexOf(String(dsei || '')) >= 0; }
+const STATUS_DENTE = ['presente', 'nao_erupc', 'ausente', 'ausente_carie', 'extr_ind', 'raiz', 'a_confirmar'];
+const FACES_VALIDAS = ['', 'ca', 'cc', 'restc', 'rest', 'mba', 'mbi', 'sel'];
+/** Lista do que falta ou está fora do permitido no exame (vazia = ok). @param {any} r */
+function problemasDoExame(r) {
+  const f = [], hoje = hojeIso(), cr = r.crianca || {};
+  const amanha = fmtDia(new Date(Date.now() + 36 * 3600 * 1000));
+  if (!dataValida(r.dataExame)) f.push('data do exame');
+  else if (r.dataExame > amanha) f.push('data do exame (está no futuro)');
+  else if (r.dataExame < '2015-01-01') f.push('data do exame (antes de 2015)');
+  if (!dataValida(cr.nascimento)) f.push('data de nascimento');
+  else if (dataValida(r.dataExame) && cr.nascimento > r.dataExame) f.push('data de nascimento (depois da data do exame)');
+  else if (cr.nascimento < '1900-01-01') f.push('data de nascimento');
+  if (cr.sexo !== 'F' && cr.sexo !== 'M') f.push('sexo');
+  if (['decidua', 'mista', 'permanente'].indexOf(r.denticao) < 0) f.push('dentição');
+  if (!dseiValido(r.dsei)) f.push('DSEI (fora da lista)');
+  else if (!ufDoDsei(r.uf, r.dsei)) f.push('UF (não é uma UF do DSEI ' + r.dsei + ')');
+  if (!String(r.polo || '').trim() || String(r.polo).length > 150) f.push('polo base');
+  if (!String(r.aldeia || '').trim() || String(r.aldeia).length > 150) f.push('aldeia ou comunidade');
+  if (LOCAIS_ATENDIMENTO.indexOf(r.localAtendimento) < 0) f.push('local de atendimento');
+  const vig = Array.isArray(r.vigilancia) ? r.vigilancia : [];
+  if (!vig.length || vig.some(function (v) { return VIGILANCIA.indexOf(v) < 0; }) || (vig.length > 1 && vig.indexOf(VIG_NENHUM) >= 0)) f.push('vigilância em saúde bucal');
+  if (typeof r.placa !== 'boolean') f.push('placa visível (Sim ou Não)');
+  if (typeof r.gengivite !== 'boolean') f.push('gengivite (Sim ou Não)');
+  const pr = r.protese || {};
+  if (['', 'nao', 'sim'].indexOf(pr.sup || '') < 0 || ['', 'nao', 'sim'].indexOf(pr.inf || '') < 0) f.push('prótese');
+  const ds = r.dentes && typeof r.dentes === 'object' ? r.dentes : {}, permitidos = dentesDaDenticao(r.denticao).map(String);
+  const chaves = Object.keys(ds);
+  if (!chaves.length) f.push('dentes (odontograma vazio)');
+  const fora = chaves.filter(function (n) { return permitidos.indexOf(String(n)) < 0; });
+  if (fora.length) f.push('dentes fora da dentição escolhida (' + fora.slice(0, 5).join(', ') + ')');
+  const ruins = chaves.filter(function (n) {
+    const d = ds[n] || {}, fc = d.faces || {};
+    return STATUS_DENTE.indexOf(d.status) < 0 || Object.keys(fc).some(function (k) { return ['O', 'M', 'D', 'V', 'L'].indexOf(k) < 0 || FACES_VALIDAS.indexOf(fc[k] || '') < 0; });
+  });
+  if (ruins.length) f.push('situação dos dentes ' + ruins.slice(0, 5).join(', '));
+  const pend = chaves.filter(function (n) { return (ds[n] || {}).status === 'a_confirmar'; });
+  if (pend.length) f.push('dentes ainda com ? para conferir na boca (' + pend.slice(0, 8).join(', ') + ')');
+  return f;
+}
+/** Escopo ADMINISTRATIVO (equipe, convites, listas): CD e RT ficam no DSEI do cadastro; coordenação vê vários. @param {any} u */
 function atuaEmUmDsei(u) { return u.perfil !== 'coord'; }
+/** Escopo CLÍNICO (registrar exame, buscar pessoa, reservar código): todo profissional que registra exames,
+ * inclusive a coordenação que também é RT, atua só no DSEI de RT do cadastro. null = coordenação titular,
+ * que não registra exames. @param {any} u */
+function dseiClinico(u) { return u.perfil === 'coord' ? (u.dsei ? String(u.dsei) : null) : String(u.dsei || ''); }
 
 /** @param {any} d @param {any} u */
 function dseiDaConsulta(d, u) {
   const pedido = String(d.dsei || '');
-  if (!atuaEmUmDsei(u)) return { dsei: pedido, negado: false };
-  const proprio = String(u.dsei || '');
+  const proprio = dseiClinico(u);
+  if (proprio === null) return { dsei: pedido, negado: false };
   return { dsei: proprio, negado: !proprio || (!!pedido && pedido !== proprio) };
 }
 /** @param {any} d @param {any} u */
@@ -699,18 +842,27 @@ function buscarPessoa(d, u) {
   const dsei = q.dsei, aldeia = normTexto(d.aldeia), nasc = String(d.nascimento || ''), sexo = String(d.sexo || '');
   if (!dsei || !aldeia || !nasc || (sexo !== 'F' && sexo !== 'M')) return { ok: true, candidatos: [] };
   const nomePor = nomesUsuarios();
-  /** @type {any} */ const grupos = {};
+  // 1º: mesma aldeia, nascimento e sexo. 2º (se não achar): qualquer aldeia do mesmo DSEI, com o mesmo nascimento
+  // e sexo; esses candidatos voltam marcados (outraAldeia) para o app avisar que o exame anterior foi em outra aldeia.
+  // Nunca liga sozinho: o profissional confere e escolhe.
+  /** @type {any} */ const grupos = {}, outros = {};
   lerExames().forEach(function (r) {
-    if (!exameValido(r) || r.id === d.excetoId || r.dsei !== dsei || normTexto(r.aldeia) !== aldeia) return;
+    if (!exameValido(r) || r.id === d.excetoId || r.dsei !== dsei) return;
     if ((r.crianca || {}).nascimento !== nasc || (r.crianca || {}).sexo !== sexo) return;
-    const k = codigoIndividuoDe(r); (grupos[k] = grupos[k] || []).push(r);
+    const k = codigoIndividuoDe(r), alvo = normTexto(r.aldeia) === aldeia ? grupos : outros;
+    (alvo[k] = alvo[k] || []).push(r);
   });
-  const candidatos = Object.keys(grupos).map(function (k) {
-    const l = grupos[k].sort(ordemExame), ult = l[l.length - 1];
-    ult.profissionalNome = nomePor[ult.usuarioId] || (ult.profissional || {}).nome || '';
-    return { codigoIndividuo: k, exames: l.length, ultimo: ult };
-  }).sort(function (a, b) { return String(b.ultimo.dataExame).localeCompare(String(a.ultimo.dataExame)); }).slice(0, 5);
-  return { ok: true, candidatos: candidatos };
+  const montar = function (g, outra) {
+    return Object.keys(g).map(function (k) {
+      const l = g[k].sort(ordemExame), ult = l[l.length - 1];
+      ult.profissionalNome = nomePor[ult.usuarioId] || (ult.profissional || {}).nome || '';
+      return { codigoIndividuo: k, exames: l.length, ultimo: ult, outraAldeia: outra ? (ult.aldeia || '') : '' };
+    }).sort(function (a, b) { return String(b.ultimo.dataExame).localeCompare(String(a.ultimo.dataExame)); }).slice(0, 5);
+  };
+  // Uma pessoa com exames na aldeia e fora dela aparece só uma vez, como da mesma aldeia.
+  Object.keys(grupos).forEach(function (k) { delete outros[k]; });
+  const candidatos = montar(grupos, false);
+  return { ok: true, candidatos: candidatos.length ? candidatos : montar(outros, true), outrasAldeias: !candidatos.length && Object.keys(outros).length > 0 };
 }
 // Busca uma pessoa pelo código de acompanhamento (ou pelo código de um dos exames dela), só no DSEI do atendimento.
 /** @param {any} d @param {any} u */
@@ -725,7 +877,8 @@ function buscarCodigo(d, u) {
   if (!ex) return { ok: true, pessoa: null };
   const ci = codigoIndividuoDe(ex);
   const l = regs.filter(function (r) { return codigoIndividuoDe(r) === ci; }).sort(ordemExame);
-  if (l[0].dsei !== dsei) return { ok: true, pessoa: null, outroDsei: l[0].dsei };
+  // Para CD e RT, um código de outro DSEI é só "não localizado no seu DSEI" (sem dizer qual é o DSEI).
+  if (l[0].dsei !== dsei) return u.perfil === 'coord' ? { ok: true, pessoa: null, outroDsei: l[0].dsei } : { ok: true, pessoa: null, foraDoSeuDsei: true };
   const ult = l[l.length - 1], nomePor = nomesUsuarios();
   ult.profissionalNome = nomePor[ult.usuarioId] || (ult.profissional || {}).nome || '';
   return { ok: true, pessoa: { codigoIndividuo: ci, exames: l.length, ultimo: ult } };
@@ -745,12 +898,16 @@ function lerReservas() {
 function reservarCodigo(d, u) {
   // O código vem em codigoReserva (o campo codigo é o código de acesso de quem está usando o app).
   const cod = String(d.codigoReserva || '').trim().toUpperCase(), id = String(d.exameId || '');
-  if (!/^[A-Z0-9-]{8,40}$/.test(cod) || !id) return { ok: false, erro: 'Código inválido para reserva.' };
+  // Formato UF-POLO-ALDEIA-XXXXXXXX (8 caracteres sem 0, O, 1, I e L) e UF do DSEI de quem reserva.
+  const m = cod.match(/^([A-Z]{2})-[A-Z0-9]{0,3}-[A-Z0-9]{0,3}-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
+  if (!m || !id) return { ok: false, erro: 'Código inválido para reserva.' };
+  const dseiR = dseiClinico(u) !== null ? dseiClinico(u) : String(d.dsei || '');
+  if (dseiR && !ufDoDsei(m[1], dseiR)) return { ok: false, erro: 'A UF do código não é do DSEI ' + dseiR + '.' };
   const ja = lerReservas().filter(function (r) { return r.codigo === cod; })[0];
   if (ja) return ja.exameId === id ? { ok: true, reservado: true } : { ok: true, ocupado: true };
   const usado = lerExames().some(function (r) { return r.id !== id && (codigoIndividuoDe(r).toUpperCase() === cod || String(r.codigo || '').toUpperCase() === cod); });
   if (usado) return { ok: true, ocupado: true };
-  obterAba(planilha(), ABA_RESERVAS, CAB_RESERVAS).appendRow([cod, id, atuaEmUmDsei(u) ? String(u.dsei || '') : String(d.dsei || ''), u.id, new Date()]);
+  obterAba(planilha(), ABA_RESERVAS, CAB_RESERVAS).appendRow([cod, id, dseiR, u.id, new Date()]);
   return { ok: true, reservado: true };
 }
 function nomesUsuarios() {
@@ -898,10 +1055,11 @@ function dataValida(v) { return /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) && !
 function criarAcao(d, u) {
   const dsei = String(d.dsei || '').trim();
   if (!dsei) return { ok: false, erro: 'Escolha o DSEI da ação.' };
+  if (!dseiValido(dsei)) return { ok: false, erro: 'Escolha um DSEI da lista.' };
   if (!dataValida(d.inicio) || !dataValida(d.fim)) return { ok: false, erro: 'Informe as datas de início e de fim.' };
   if (String(d.fim) < String(d.inicio)) return { ok: false, erro: 'A data de fim é antes da data de início.' };
   const lista = (Array.isArray(d.aldeias) ? d.aldeias : String(d.aldeias || '').split(/[;,\n]/)).map(function (x) { return String(x).trim(); }).filter(function (x) { return x; });
-  const a = { id: 'ACAO-' + Utilities.getUuid().slice(0, 8), nome: String(d.nome || '').trim() || 'Dia B', dsei: dsei, aldeias: lista.join('; '),
+  const a = { id: 'ACAO-' + Utilities.getUuid(), nome: String(d.nome || '').trim() || 'Dia B', dsei: dsei, aldeias: lista.join('; '),
     data_inicio: String(d.inicio), data_fim: String(d.fim), situacao: 'ativa', criada_por: u.nome || u.email, criada_em: new Date().toISOString(), cancelada_por: '', cancelada_em: '' };
   salvarAcao(a);
   registrar(u, 'Criou ação do Dia B', a.nome + ' · DSEI ' + dsei + ' · ' + dataBR(a.data_inicio) + ' a ' + dataBR(a.data_fim) + (lista.length ? ' · ' + a.aldeias : ' · todas as aldeias'));
@@ -1032,7 +1190,8 @@ function admin(d, u) {
   us.forEach(function (x) { if (ehRT(x) && x.status === 'ativo') (dseisRT[x.dsei] = dseisRT[x.dsei] || []).push(x.nome); });
   const qtdEquipe = {};
   us.forEach(function (x) { if (x.status === 'ativo') qtdEquipe[x.dsei] = (qtdEquipe[x.dsei] || 0) + 1; });
-  return { ok: true, usuarios: us.map(publico), acessos: acessos, dseisRT: dseisRT, qtdEquipe: qtdEquipe, titular: !!u.titular, convites: listaConvites(u, ''), populacao: populacaoInfo(d, u) };
+  return { ok: true, usuarios: us.map(publico), acessos: acessos, dseisRT: dseisRT, qtdEquipe: qtdEquipe, titular: !!u.titular, convites: listaConvites(u, ''), populacao: populacaoInfo(d, u),
+    auditoria: { falhas: Number(propriedade('AUDITORIA_FALHAS') || 0), ultima: propriedade('AUDITORIA_ULTIMA') || '' } };
 }
 // Só a coordenação titular adiciona pessoas à coordenação. Elas entram com código pessoal.
 // Com UF, DSEI e CRO, a pessoa é também RT daquele DSEI (recebe os pedidos e registra exames).
@@ -1041,6 +1200,7 @@ function dadosRT(d) {
   const dsei = String(d.dsei || '').trim(), cro = String(d.cro || '').trim(), uf = String(d.uf || '').trim();
   if (!dsei) return { ok: true, dsei: '', cro: cro, uf: '' };
   if (!uf || !cro) return { ok: false, erro: 'Para ser também RT, informe UF, DSEI e CRO.' };
+  if (!dseiValido(dsei) || !ufDoDsei(uf, dsei)) return { ok: false, erro: 'Escolha um DSEI da lista e uma UF desse DSEI.' };
   return { ok: true, dsei: dsei, cro: cro, uf: uf };
 }
 /** @param {any} d @param {any} u */
@@ -1064,7 +1224,7 @@ function adicionarCoord(d, u) {
   }
   if (!nome) return { ok: false, erro: 'Informe o nome.' };
   if (ex && (ex.status === 'ativo' || ex.status === 'pendente')) return { ok: false, erro: 'Este e-mail já tem acesso ou pedido como ' + NOME_PERFIL[ex.perfil] + '. Desative esse acesso antes.' };
-  const a = ex || { id: Utilities.getUuid().slice(0, 8) };
+  const a = ex || { id: Utilities.getUuid() };
   const c = gerarCodigo();
   Object.assign(a, { nome: nome, cro: rt.cro, email: email, uf: rt.uf, dsei: rt.dsei, polo: '', perfil: 'coord', status: 'ativo', codigo_hash: hashCodigo(c),
     pedido_em: new Date().toISOString(), aprovado_por: u.nome, aprovado_em: new Date().toISOString() });
@@ -1183,6 +1343,7 @@ function convidar(d, u) {
   const perfil = d.perfil === 'rt' ? 'rt' : 'dentista';
   const dsei = atuaEmUmDsei(u) ? u.dsei : String(d.dsei || '').trim();
   if (!dsei) return { ok: false, erro: 'Escolha o DSEI.' };
+  if (!dseiValido(dsei)) return { ok: false, erro: 'Escolha um DSEI da lista.' };
   if (!podeConvidar(u, perfil, dsei)) return { ok: false, erro: u.perfil === 'rt' ? 'A referência técnica convida só cirurgiões-dentistas do próprio DSEI.' : 'Você não pode enviar este convite.' };
   const lista = String(d.emails || '').split(/[\s,;]+/).map(normEmail).filter(function (x, i, l) { return x && l.indexOf(x) === i; });
   if (!lista.length) return { ok: false, erro: 'Informe pelo menos um e-mail.' };
@@ -1198,7 +1359,7 @@ function convidar(d, u) {
     // Convite anterior ainda aberto para o mesmo e-mail: o novo substitui (o link antigo para de funcionar).
     cs.filter(function (c) { return c.email === email && c.situacao === 'pendente'; }).forEach(function (c) { c.situacao = 'substituido'; salvarConvite(c); });
     const token = gerarToken();
-    const c = { id: Utilities.getUuid().slice(0, 8), email: email, perfil: perfil, dsei: dsei, situacao: 'pendente', token_hash: hashToken(token),
+    const c = { id: Utilities.getUuid(), email: email, perfil: perfil, dsei: dsei, situacao: 'pendente', token_hash: hashToken(token),
       convidado_por: u.nome, convidado_por_id: u.id, convidado_por_email: u.email, criado_em: new Date().toISOString(), valido_ate: somarDias(DIAS_CONVITE), aceito_em: '', usuario_id: '' };
     salvarConvite(c);
     const link = linkDoConvite(d.link, token);
@@ -1263,9 +1424,10 @@ function aceitarConvite(d) {
   const g = conviteDoToken(d); if (g.erro) return { ok: false, erro: g.erro, usado: !!g.usado };
   const c = g.c, nome = String(d.nome || '').trim(), cro = String(d.cro || '').trim(), uf = String(d.uf || '').trim();
   if (!nome || !cro || !uf) return { ok: false, erro: 'Preencha nome, CRO e UF.' };
+  if (!ufDoDsei(uf, c.dsei)) return { ok: false, erro: 'Escolha uma UF do DSEI ' + c.dsei + '.' };
   const us = lerUsuarios(), ex = us.filter(function (x) { return normEmail(x.email) === c.email; })[0];
   if (ex && ex.status === 'ativo') return { ok: false, erro: 'Este e-mail já tem acesso. Entre com seu código ou use "Esqueci meu código".', usado: true };
-  const novo = ex || { id: Utilities.getUuid().slice(0, 8) };
+  const novo = ex || { id: Utilities.getUuid() };
   const cod = gerarCodigo(), agora = new Date().toISOString();
   Object.assign(novo, { nome: nome, cro: cro, email: c.email, uf: uf, dsei: c.dsei, polo: String(d.polo || '').trim(), perfil: c.perfil, status: 'ativo',
     codigo_hash: hashCodigo(cod), pedido_em: agora, aprovado_por: c.convidado_por + ' (convite)', aprovado_em: agora, ultimo_acesso: agora });
@@ -1327,12 +1489,14 @@ function painel(p, u) {
   // Na produção do próprio profissional não há ocultação: são os exames dele.
   if (!p.minha) Object.keys(blocos).forEach(function (k) { blocos[k] = ocultar(blocos[k]); });
 
-  const porDsei = {};
+  const porDsei = {}, ultP = idsUltimoPorPessoa(noPeriodo.filter(exameValido));
   noPeriodo.filter(function (r) { return exameCombina(r, filtros); }).forEach(function (r) { (porDsei[r.dsei] = porDsei[r.dsei] || []).push(r); });
   const comparacao = p.minha ? [] : Object.keys(porDsei).map(function (d) {
-    const a = agregarExames(porDsei[d], agrup);
+    const a = agregarExames(porDsei[d], agrup, ultP);
     if (a.n < MINIMO) return { dsei: d, n: '<5' };
-    return { dsei: d, n: a.n, alto: ocultarNumero(a.nivel.Alto), pctAlto: Math.round(a.nivel.Alto / a.n * 100),
+    // O percentual some junto quando o número (ou o que falta para o total) é de 1 a 4 pessoas: senão ele revelaria o número.
+    const alto = a.nivel.Alto, pctOk = !(alto > 0 && alto < MINIMO) && !(a.n - alto > 0 && a.n - alto < MINIMO);
+    return { dsei: d, n: a.n, alto: ocultarNumero(alto), pctAlto: pctOk ? Math.round(alto / a.n * 100) : null,
              ceod: a.ceod.n >= MINIMO ? a.ceodMedia : null, cpod: a.cpod.n >= MINIMO ? a.cpodMedia : null, procs: a.procsRealizados };
   }).sort(function (x, y) { return (typeof y.n === 'number' ? y.n : 0) - (typeof x.n === 'number' ? x.n : 0); });
 
@@ -1524,6 +1688,10 @@ function faixaEtaria(i) {
 }
 /** @param {any} e */
 function sexoDe(e) { return e.crianca && (e.crianca.sexo === "F" || e.crianca.sexo === "M") ? e.crianca.sexo : "NI"; }
+// UFs e DSEIs (o servidor também usa estas listas para validar o que chega do app).
+var UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
+var DSEI_UF = {"AC": ["Alto Rio Juruá", "Alto Rio Purus"], "AL": ["Alagoas e Sergipe"], "AM": ["Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Manaus", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Porto Velho", "Vale do Javari", "Yanomami"], "AP": ["Amapá e Norte do Pará"], "BA": ["Bahia"], "CE": ["Ceará"], "ES": ["Minas Gerais e Espírito Santo"], "GO": ["Araguaia"], "MA": ["Guamá-Tocantins", "Maranhão"], "MG": ["Minas Gerais e Espírito Santo"], "MS": ["Mato Grosso do Sul"], "MT": ["Araguaia", "Cuiabá", "Kaiapó do Mato Grosso", "Porto Velho", "Vilhena", "Xavante", "Xingu"], "PA": ["Altamira", "Amapá e Norte do Pará", "Guamá-Tocantins", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Parintins", "Rio Tapajós", "Tocantins"], "PB": ["Potiguara"], "PE": ["Pernambuco"], "PR": ["Interior Sul", "Litoral Sul"], "RJ": ["Litoral Sul"], "RN": ["Potiguara"], "RO": ["Alto Rio Purus", "Porto Velho", "Vilhena"], "RR": ["Leste de Roraima", "Yanomami"], "RS": ["Interior Sul"], "SC": ["Interior Sul", "Litoral Sul"], "SE": ["Alagoas e Sergipe"], "SP": ["Litoral Sul"], "TO": ["Araguaia", "Tocantins"]};
+var DSEIS = ["Alagoas e Sergipe", "Altamira", "Alto Rio Juruá", "Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Amapá e Norte do Pará", "Araguaia", "Bahia", "Ceará", "Cuiabá", "Guamá-Tocantins", "Interior Sul", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Leste de Roraima", "Litoral Sul", "Manaus", "Maranhão", "Mato Grosso do Sul", "Minas Gerais e Espírito Santo", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Pernambuco", "Porto Velho", "Potiguara", "Rio Tapajós", "Tocantins", "Vale do Javari", "Vilhena", "Xavante", "Xingu", "Yanomami"];
 // Listas usadas no exame (termos genéricos dos prontuários eletrônicos da atenção primária).
 var LOCAIS_ATENDIMENTO = ["UBSI", "CASAI", "Domicílio", "Escola ou creche", "Unidade móvel", "Outro"];
 var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", "Fendas ou fissuras lábio palatais", "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
@@ -1571,9 +1739,9 @@ function exameCombina(e, f, exceto) {
 // Cada bloco do painel ignora o próprio filtro, para continuar mostrando as outras opções.
 /** @param {any} regs @param {any} f @param {any} agrup */
 function montarPainel(regs, f, agrup) {
-  var validos = regs.filter(exameValido);
+  var validos = regs.filter(exameValido), ult = idsUltimoPorPessoa(validos);
   /** @param {any} exceto */
-  function ag(exceto) { return agregarExames(validos.filter(function (e) { return exameCombina(e, f, exceto); }), agrup); }
+  function ag(exceto) { return agregarExames(validos.filter(function (e) { return exameCombina(e, f, exceto); }), agrup, ult); }
   return {resumo: ag([]), risco: ag(["classe"]), tabela: ag(["faixa", "sexo", "classe"]), faixa: ag(["faixa"]), proc: ag(["proc"]), coletivo: ag(["coletivo"]), vig: ag(["vig"])};
 }
 // Nível de risco pela classe, igual para todos: A–B baixo, C–D moderado, E–F alto.
@@ -1631,7 +1799,26 @@ function montarPopulacao(linhas, dseisConhecidos) {
   return out;
 }
 /** @param {any} regs @param {any} agrup */
-function agregarExames(regs, agrup) {
+/* Situação das pessoas x produção:
+ * - Indicadores clínicos (risco, ceo-d, CPO-D, placa, gengivite, sexo, faixa etária, vigilância, prótese) contam
+ *   UMA observação por pessoa: o exame mais recente dela no recorte (como no ceo-d/CPO-D comunitário:
+ *   soma dos índices dividida pelo número de indivíduos). r.n = pessoas.
+ * - Produção (exames, exames por mês, procedimentos, coletivos, insumos, local de atendimento) conta todos os
+ *   exames. r.nExames = exames.
+ * ult: ids dos exames que são o último de cada pessoa (calculado antes dos filtros); sem ele, calcula aqui. */
+/** @param {any[]} regs */
+function idsUltimoPorPessoa(regs) {
+  /** @type {any} */ var por = {}, ids = {};
+  regs.forEach(function (e) {
+    var k = codigoIndividuoDe(e) || e.id, a = por[k], de = String(e.dataExame || ""), da = a ? String(a.dataExame || "") : "";
+    if (!a || de > da || (de === da && String(e.atualizadoEm || "") > String(a.atualizadoEm || ""))) por[k] = e;
+  });
+  Object.keys(por).forEach(function (k) { ids[por[k].id] = true; });
+  return ids;
+}
+/** @param {any} regs @param {any} agrup @param {any} [ult] */
+function agregarExames(regs, agrup, ult) {
+  ult = ult || idsUltimoPorPessoa(regs);
   var CL = ["A", "B", "C", "D", "E", "F"], FX = FAIXAS_ETARIAS;
   /** @param {any} c */
   function nivel(c) {
@@ -1644,7 +1831,7 @@ function agregarExames(regs, agrup) {
   /** @param {any} alvo @param {any} ind @param {any} perdido */
   function somar(alvo, ind, perdido) { alvo.n++; alvo.soma += Number(ind.total) || 0; alvo.c += Number(ind.c) || 0; alvo[perdido] += Number(ind[perdido]) || 0; alvo.o += Number(ind.o) || 0; }
   /** @type {any} */
-  var r = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
+  var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
     ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
     vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0}};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
@@ -1652,32 +1839,13 @@ function agregarExames(regs, agrup) {
     var res = e.resultado || {};
     var c = CL.indexOf(res.classe) >= 0 ? res.classe : null;
     if (!c) return;
-    r.n++;
-    var sx = sexoDe(e);
-    r.sexo[sx]++; r.classe[c]++; r.nivel[nivel(c)]++;
-    var f = r.faixas[faixaEtaria(e.idadeAnos)]; f.n++; f.sexo[sx]++; f.classe[c]++;
+    // produção: todos os exames
+    r.nExames++;
     var mes = String(e.dataExame || "").slice(0, 7);
     if (mes) r.meses[mes] = (r.meses[mes] || 0) + 1;
-    var idade = e.idadeAnos === "" || e.idadeAnos == null || isNaN(Number(e.idadeAnos)) ? null : Math.floor(Number(e.idadeAnos));
-    if (e.denticao !== "permanente" && res.ceod) { somar(r.ceod, res.ceod, "e"); somar(f.ceod, res.ceod, "e"); }
-    if (e.denticao !== "decidua" && res.cpod) {
-      somar(r.cpod, res.cpod, "p"); somar(f.cpod, res.cpod, "p");
-      if (idade === 12) { r.cpod12.soma += Number(res.cpod.total) || 0; r.cpod12.n++; }
-    }
-    if (e.placa) r.placa++;
-    if (e.gengivite) r.gengivite++;
-    if (e.fluorose) r.fluorose++;
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
-    (e.vigilancia || []).forEach(function (/** @type {any} */ g) { r.vigilancia[g] = (r.vigilancia[g] || 0) + 1; });
     if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
-    var pr = e.protese || {};
-    if (pr.sup || pr.inf) {
-      r.protese.avaliados++;
-      if (pr.sup === "sim") r.protese.sup++;
-      if (pr.inf === "sim") r.protese.inf++;
-      if (pr.sup === "sim" || pr.inf === "sim") r.protese.alguma++;
-    }
     Object.keys(e.dentes || {}).forEach(function (n) {
       var p = (e.dentes[n] || {}).procs || {};
       Object.keys(p).forEach(function (k) {
@@ -1687,6 +1855,29 @@ function agregarExames(regs, agrup) {
         if (p[k] === "realizado") r.procsRealizados++;
       });
     });
+    // situação das pessoas: só o último exame de cada pessoa
+    if (!ult[e.id]) return;
+    r.n++;
+    var sx = sexoDe(e);
+    r.sexo[sx]++; r.classe[c]++; r.nivel[nivel(c)]++;
+    var f = r.faixas[faixaEtaria(e.idadeAnos)]; f.n++; f.sexo[sx]++; f.classe[c]++;
+    var idade = e.idadeAnos === "" || e.idadeAnos == null || isNaN(Number(e.idadeAnos)) ? null : Math.floor(Number(e.idadeAnos));
+    if (e.denticao !== "permanente" && res.ceod) { somar(r.ceod, res.ceod, "e"); somar(f.ceod, res.ceod, "e"); }
+    if (e.denticao !== "decidua" && res.cpod) {
+      somar(r.cpod, res.cpod, "p"); somar(f.cpod, res.cpod, "p");
+      if (idade === 12) { r.cpod12.soma += Number(res.cpod.total) || 0; r.cpod12.n++; }
+    }
+    if (e.placa) r.placa++;
+    if (e.gengivite) r.gengivite++;
+    if (e.fluorose) r.fluorose++;
+    (e.vigilancia || []).forEach(function (/** @type {any} */ g) { r.vigilancia[g] = (r.vigilancia[g] || 0) + 1; });
+    var pr = e.protese || {};
+    if (pr.sup || pr.inf) {
+      r.protese.avaliados++;
+      if (pr.sup === "sim") r.protese.sup++;
+      if (pr.inf === "sim") r.protese.inf++;
+      if (pr.sup === "sim" || pr.inf === "sim") r.protese.alguma++;
+    }
   });
   /** @param {any} o */
   function media(o) { return o.n ? Math.round(o.soma / o.n * 100) / 100 : null; }
@@ -1835,14 +2026,87 @@ function mudancasDentes(a, b) {
   });
   return l;
 }
+
+/* ---------- avaliação do exame: classe de risco e índices (igual no app e no servidor) ----------
+ * O servidor refaz este cálculo a partir dos dentes ao gravar: o resultado da planilha nunca é o que o
+ * navegador mandou pronto.
+ * Índices (cada dente conta uma vez; vale a pior situação: perdido/extração indicada > cariado > obturado):
+ * - CPO-D (permanentes): C = cavidade (ativa ou crônica) ou restauração com cárie;
+ *   P = perdido por cárie, extração indicada ou coroa destruída (raiz residual);
+ *   O = restaurado sem cárie. Mancha branca não conta (só cavidade evidente é cárie).
+ * - ceo-d (decíduos): c = como no CPO-D; e = só extração indicada ou coroa destruída (raiz residual):
+ *   decíduo ausente NÃO conta, porque pode ter esfoliado; o = restaurado sem cárie.
+ */
+var DESCRICAO_CLASSE = {
+  A: "Sem lesão de cárie, sem placa, sem gengivite e sem mancha branca ativa.",
+  B: "História de dente restaurado ou perdido por cárie, sem sinais de atividade.",
+  C: "Uma ou mais cavidades em lesão crônica, sem placa, gengivite ou mancha branca ativa.",
+  D: "Placa, gengivite e/ou mancha branca ativa, sem cavidade ativa.",
+  E: "Uma ou mais cavidades em lesão ativa.",
+  F: "Presença de dor e/ou abscesso."
+};
+/** Dentes da dentição, na ordem do odontograma. @param {string} den */
+function dentesDaDenticao(den) {
+  var sup = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28], inf = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+  var supD = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65], infD = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
+  if (den === "permanente") return sup.concat(inf);
+  if (den === "decidua") return supD.concat(infD);
+  return sup.concat(supD, infD, inf);
+}
+/** @param {any} ex */
+function avaliarExame(ex) {
+  var nums = dentesDaDenticao(ex.denticao), dentes = ex.dentes || {};
+  var F = [], E = [], Dm = [], C = [], B = [];
+  var ceod = {c: 0, e: 0, o: 0, total: 0}, cpod = {c: 0, p: 0, o: 0, total: 0};
+  nums.forEach(function (n) {
+    var d = dentes[n]; if (!d) return;
+    var faces = d.faces || {}, fs = Object.keys(faces).map(function (k) { return faces[k]; });
+    var tem = function (x) { return fs.indexOf(x) >= 0; };
+    var presente = ["nao_erupc", "ausente", "ausente_carie", "a_confirmar"].indexOf(d.status) < 0;
+    var decid = Math.floor(n / 10) >= 5;
+    if (d.dor) F.push(n);
+    if (presente && (tem("ca") || tem("restc"))) E.push(n);
+    if (presente && tem("mba")) Dm.push(n);
+    if (presente && (tem("cc") || d.status === "raiz" || d.status === "extr_ind")) C.push(n);
+    if ((presente && (tem("rest") || tem("mbi"))) || d.status === "ausente_carie") B.push(n);
+    var perdido = d.status === "extr_ind" || d.status === "raiz" || (!decid && d.status === "ausente_carie");
+    var cariado = presente && (tem("ca") || tem("cc") || tem("restc"));
+    var obturado = presente && tem("rest") && !cariado;
+    var alvo = decid ? ceod : cpod;
+    if (perdido) alvo[decid ? "e" : "p"]++;
+    else if (cariado) alvo.c++;
+    else if (obturado) alvo.o++;
+  });
+  ceod.total = ceod.c + ceod.e + ceod.o; cpod.total = cpod.c + cpod.p + cpod.o;
+  var lista = function (a) { return a.join(", "); };
+  var juntar = function (a) { return a.length > 1 ? a.slice(0, -1).join(", ") + " e " + a[a.length - 1] : a.join(""); };
+  var motivos = [];
+  var vigF = (ex.vigilancia || []).filter(function (v) { return v === "Dor de dente" || v === "Abscesso dentoalveolar"; });
+  if (F.length) motivos.push("Dor ou abscesso: " + lista(F));
+  if (vigF.length) motivos.push(juntar(vigF) + " (vigilância em saúde bucal)");
+  if (E.length) motivos.push("Cavidade ativa: " + lista(E));
+  if (Dm.length) motivos.push("Mancha branca ativa: " + lista(Dm));
+  if (ex.placa) motivos.push("Placa visível");
+  if (ex.gengivite) motivos.push("Gengivite");
+  if (C.length) motivos.push("Cavidade crônica, raiz residual ou extração indicada: " + lista(C));
+  if (B.length) motivos.push("Restauração, mancha inativa ou extração por cárie: " + lista(B));
+  var classe = "A";
+  if (F.length || vigF.length) classe = "F";
+  else if (E.length) classe = "E";
+  else if (Dm.length || ex.placa || ex.gengivite) classe = "D";
+  else if (C.length) classe = "C";
+  else if (B.length) classe = "B";
+  if (!motivos.length) motivos.push("Nenhuma alteração registrada");
+  return {classe: classe, descricao: DESCRICAO_CLASSE[classe], risco: nivelDaClasse(classe), motivos: motivos, ceod: ceod, cpod: cpod};
+}
 /* ===== COMPARTILHADO FIM ===== */
 
 /* ---------- aba Dicionário: o que é cada coluna ---------- */
 const DICIONARIO = [
   ['Exames', 'id_exame', 'Identificador único do exame (gerado pelo app).', 'texto'],
-  ['Exames', 'codigo_individuo', 'Identifica a pessoa sem nome nem Cartão SUS. É o mesmo em todos os exames dela. Use esta coluna para ligar os exames de uma mesma pessoa.', 'UF-POLO-ALDEIA-CRO-sequência'],
+  ['Exames', 'codigo_individuo', 'Identifica a pessoa sem nome nem Cartão SUS. É o mesmo em todos os exames dela e nunca muda. Use esta coluna para ligar os exames de uma mesma pessoa. O prefixo (UF, polo e aldeia) mostra onde foi o PRIMEIRO cadastro, não onde a pessoa mora hoje: para o local atual, use as colunas de local do exame mais recente.', 'UF-POLO-ALDEIA-8 caracteres (desde a versão 30) · UF-POLO-ALDEIA-CRO-sequência (antes)'],
   ['Exames', 'numero_exame', 'Ordem do exame desta pessoa, pela data do exame. Exames cancelados não contam.', '1, 2, 3…'],
-  ['Exames', 'codigo_exame', 'Código gerado no momento deste exame. No 1º exame é igual ao codigo_individuo.', 'UF-POLO-ALDEIA-CRO-sequência'],
+  ['Exames', 'codigo_exame', 'Código gerado no momento deste exame. No 1º exame é igual ao codigo_individuo.', 'mesmo formato do codigo_individuo'],
   ['Exames', 'situacao_registro', 'Se o exame vale para análise. Filtre "válido" antes de calcular qualquer indicador.', 'válido · cancelado'],
   ['Exames', 'data_exame', 'Data em que o exame foi feito.', 'AAAA-MM-DD'],
   ['Exames', 'faixa_etaria', 'Faixa etária da SESAI na data do exame.', FAIXAS_ETARIAS.join(' · ')],
@@ -1866,14 +2130,14 @@ const DICIONARIO = [
   ['Exames', 'denticao', 'Dentição registrada.', 'decidua · mista · permanente'],
   ['Exames', 'classe_risco', 'Classe de risco de cárie pela atividade de doença.', 'A · B · C · D · E · F'],
   ['Exames', 'nivel_risco', 'Nível de risco pela classe, igual para todos: A e B baixo, C e D moderado, E e F alto.', 'Baixo risco · Risco moderado · Alto risco'],
-  ['Exames', 'ceod_c', 'Dentes decíduos cariados (c do ceo-d).', '0 a 20'],
-  ['Exames', 'ceod_e', 'Dentes decíduos extraídos ou com extração indicada (e do ceo-d).', '0 a 20'],
-  ['Exames', 'ceod_o', 'Dentes decíduos obturados (o do ceo-d).', '0 a 20'],
-  ['Exames', 'ceod', 'ceo-d da pessoa: c + e + o. Cada dente conta uma vez: extraído > cariado > obturado.', '0 a 20'],
-  ['Exames', 'cpod_c', 'Dentes permanentes cariados (C do CPO-D).', '0 a 32'],
-  ['Exames', 'cpod_p', 'Dentes permanentes perdidos ou com extração indicada (P do CPO-D).', '0 a 32'],
-  ['Exames', 'cpod_o', 'Dentes permanentes obturados (O do CPO-D).', '0 a 32'],
-  ['Exames', 'cpod', 'CPO-D da pessoa: C + P + O. Cada dente conta uma vez: perdido > cariado > obturado.', '0 a 32'],
+  ['Exames', 'ceod_c', 'Dentes decíduos cariados (c do ceo-d): cavidade ativa ou crônica, ou restauração com cárie. Mancha branca não conta.', '0 a 20'],
+  ['Exames', 'ceod_e', 'Dentes decíduos com extração indicada ou raiz residual (e do ceo-d). Decíduo ausente não conta, porque pode ter esfoliado.', '0 a 20'],
+  ['Exames', 'ceod_o', 'Dentes decíduos restaurados sem cárie (o do ceo-d).', '0 a 20'],
+  ['Exames', 'ceod', 'ceo-d da pessoa: c + e + o. Cada dente conta uma vez, pela pior situação: extração indicada > cariado > obturado. Calculado pelo servidor a partir dos dentes.', '0 a 20'],
+  ['Exames', 'cpod_c', 'Dentes permanentes cariados (C do CPO-D): cavidade ativa ou crônica, ou restauração com cárie. Mancha branca não conta.', '0 a 32'],
+  ['Exames', 'cpod_p', 'Dentes permanentes perdidos (P do CPO-D): extraídos por cárie, com extração indicada ou com coroa destruída (raiz residual).', '0 a 32'],
+  ['Exames', 'cpod_o', 'Dentes permanentes restaurados sem cárie (O do CPO-D).', '0 a 32'],
+  ['Exames', 'cpod', 'CPO-D da pessoa: C + P + O. Cada dente conta uma vez, pela pior situação: perdido > cariado > obturado. Calculado pelo servidor a partir dos dentes.', '0 a 32'],
   ['Exames', 'dentes_cariados', 'Total de dentes cariados (c + C). Usado no acompanhamento para ver se a pessoa melhorou.', 'número'],
   ['Exames', 'placa_visivel', 'Placa visível.', 'sim · não'],
   ['Exames', 'gengivite', 'Gengivite (sangramento gengival).', 'sim · não'],
@@ -1918,6 +2182,7 @@ const DICIONARIO = [
   ['População', 'codigo_dsei · dsei · codigo_polo_base · polo_base · codigo_aldeia · aldeia', 'Uma linha por aldeia, da planilha de população indígena da SESAI enviada pela coordenação em Administração.', 'texto'],
   ['População', 'codigo_terra_indigena · terra_indigena · codigo_municipio_ibge · municipio · uf', 'Terra Indígena e município da aldeia.', 'texto'],
   ['População', 'ano · populacao_total · F 0 a 4 … M 75 ou mais', 'Ano da população e número de pessoas por sexo (F, M) e faixa etária de 5 anos.', 'número'],
+  ['_recuperacoes', 'token_hash · usuario_id · email · criado_em · valido_ate · usado_em', 'Pedidos de "Esqueci meu código". O link vai por e-mail e vale 1 hora; o código só muda quando a pessoa confirma pelo link. O link em si não fica na planilha. Não edite.', 'texto'],
   ['_codigos_reservados', 'codigo · exame_id · dsei · usuario_id · reservado_em', 'Códigos de acompanhamento reservados pelo app antes de serem mostrados ao profissional (quando há internet). Garante que dois aparelhos nunca recebam o mesmo código. Não edite.', 'texto'],
   ['_populacao', 'dados_populacao_json', 'A mesma população em texto, para o app ler rápido. Não edite: é trocada a cada envio.', 'texto'],
   ['Convites', 'id · email · perfil · dsei', 'Convite enviado pela coordenação (referências técnicas e dentistas) ou pela referência técnica (dentistas do DSEI).', 'perfil: rt · dentista'],
