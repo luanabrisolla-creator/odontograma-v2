@@ -38,8 +38,8 @@ function exame(o) {
   o = o || {};
   const den = o.denticao || "mista", lista = den === "permanente" ? PERM : den === "decidua" ? DEC : PERM.concat(DEC);
   const dentes = {};
-  lista.forEach(n => { dentes[n] = { status: den === "mista" && n < 50 && n % 10 >= 7 ? "nao_erupc" : "presente", faces: faces(), dor: false, procs: {}, obs: "" }; });
-  Object.entries(o.mud || {}).forEach(([n, v]) => { dentes[n] = Object.assign({ status: "presente", faces: faces(), dor: false, procs: {}, obs: "" }, dentes[n], v, { faces: Object.assign(faces(), (dentes[n] || {}).faces, v.faces || {}) }); });
+  lista.forEach(n => { dentes[n] = { status: den === "mista" && n < 50 && n % 10 >= 7 ? "nao_erupc" : "presente", faces: faces(), dor: false, abscesso: false, procs: {}, obs: "" }; });
+  Object.entries(o.mud || {}).forEach(([n, v]) => { dentes[n] = Object.assign({ status: "presente", faces: faces(), dor: false, abscesso: false, procs: {}, obs: "" }, dentes[n], v, { faces: Object.assign(faces(), (dentes[n] || {}).faces, v.faces || {}) }); });
   const id = o.id || "EX-" + (++seq) + "-" + Math.random().toString(36).slice(2, 7);
   const ALFA = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
   const suf = o.sufixo || Array.from({ length: 8 }, () => ALFA[Math.floor(Math.random() * ALFA.length)]).join("");
@@ -50,7 +50,7 @@ function exame(o) {
     polo: o.polo || "Surucucu", aldeia: o.aldeia || "Saúba", codPolo: "", codAldeia: "", seq: null, croCod: "", sufixo: suf,
     codigo: o.codigo || `${o.uf || "RR"}-SUR-SAU-${suf}`,
     crianca: { nascimento: o.nasc || "2018-05-12", sexo: o.sexo || "F" }, idadeAnos: o.idade != null ? o.idade : 8.4, denticao: den,
-    localAtendimento: o.local || "UBSI", vigilancia: o.vig || ["Não identificado"], protese: { sup: "", inf: "" },
+    localAtendimento: o.local || "UBSI", vigilancia: o.vig || ["Não identificado"], protese: o.protese || { sup: "nao", inf: "nao", usoSup: "nao", usoInf: "nao", naoAvaliado: false },
     placa: !!o.placa, gengivite: !!o.gengivite, fluorose: false, gerais: o.gerais || [], insumos: o.insumos || [], observacoes: "",
     dentes, resultado: { classe: "A", risco: "Baixo risco", descricao: "", motivos: [], ceod: { c: 0, e: 0, o: 0, total: 0 }, cpod: { c: 0, p: 0, o: 0, total: 0 } },
     codigoIndividuo: o.codigo || `${o.uf || "RR"}-SUR-SAU-${suf}`, numeroExame: 1, vinculo: o.vinculo || null

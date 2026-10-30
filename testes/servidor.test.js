@@ -171,7 +171,9 @@ tenta("sem sexo (\"Não informado\")", e => { e.crianca.sexo = ""; }, /sexo/);
 tenta("sexo fora de F/M", e => { e.crianca.sexo = "NI"; }, /sexo/);
 tenta("sem local de atendimento", e => { e.localAtendimento = ""; }, /local/);
 tenta("sem vigilância", e => { e.vigilancia = []; }, /vigilância/);
-tenta("'Não identificado' junto com outro item", e => { e.vigilancia = ["Não identificado", "Dor de dente"]; }, /vigilância/);
+tenta("vigilância com item fora da lista", e => { e.vigilancia = ["Coisa inventada"]; }, /vigilância/);
+r = P(ANA, { acao: "enviarExame", registro: exame({ id: "VIGN", sufixo: "VGNVGNV2", vig: ["Não identificado", "Dor de dente", "Traumatismo dentoalveolar"] }) });
+T("vigilância: \"Não identificado\" junto com outro item e \"Dor de dente\" sem dente com dor são corrigidos pelo servidor", r.ok && jsonEx("VIGN").vigilancia.join("|") === "Traumatismo dentoalveolar", r.ok ? jsonEx("VIGN").vigilancia : r);
 tenta("placa sem resposta", e => { e.placa = null; }, /placa/);
 tenta("gengivite como texto", e => { e.gengivite = "sim"; }, /gengivite/);
 tenta("data impossível (31/02)", e => { e.dataExame = "2026-02-31"; }, /data do exame/);
@@ -182,11 +184,22 @@ tenta("dentição inválida", e => { e.denticao = "outra"; }, /dentição/);
 tenta("UF que não é do DSEI", e => { e.uf = "SP"; }, /UF/);
 tenta("odontograma incompleto (faltando dentes)", e => { delete e.dentes[36]; delete e.dentes[55]; }, /incompleto/);
 tenta("dente fora da dentição", e => { e.dentes[99] = e.dentes[11]; }, /fora da dentição/);
-tenta("dente ainda com ?", e => { e.dentes[16].status = "a_confirmar"; }, /conferir/);
+tenta("situação antiga \"a confirmar\"", e => { e.dentes[16].status = "a_confirmar"; }, /situação/);
+tenta("situação antiga \"raiz residual\"", e => { e.dentes[16].status = "raiz"; }, /situação/);
+tenta("situação antiga \"extração indicada\"", e => { e.dentes[16].status = "extr_ind"; }, /situação/);
+tenta("esfoliado em dente permanente", e => { e.dentes[16].status = "esfoliado"; }, /situação/);
+tenta("face marcada em dente que não está presente", e => { e.dentes[36].status = "ausente_carie"; e.dentes[36].faces.O = "ca"; }, /situação ou faces/);
+tenta("tratamento em dente ausente", e => { e.dentes[36].status = "ausente"; e.dentes[36].procs = { art: "indicado" }; }, /tratamento/);
+tenta("dor em dente não erupcionado", e => { e.dentes[17].status = "nao_erupc"; e.dentes[17].dor = true; }, /sinais/);
+tenta("as duas exodontias no mesmo dente", e => { e.dentes[46].procs = { exo_carie: "indicado", exodontia: "indicado" }; }, /tratamento/);
+tenta("abscesso como texto", e => { e.dentes[16].abscesso = "sim"; }, /sinais/);
+tenta("prótese com resposta faltando", e => { e.protese = { sup: "nao", inf: "sim", usoSup: "nao", usoInf: "", naoAvaliado: false }; }, /prótese/);
+tenta("prótese sem nenhuma resposta e sem \"não foi possível avaliar\"", e => { e.protese = { sup: "", inf: "", usoSup: "", usoInf: "" }; }, /prótese/);
+tenta("prótese com valor inválido", e => { e.protese = { sup: "talvez", inf: "nao", usoSup: "nao", usoInf: "nao" }; }, /prótese/);
 tenta("face com situação desconhecida", e => { e.dentes[16].faces.O = "xyz"; }, /situação/);
-tenta("dor como texto", e => { e.dentes[16].dor = "sim"; }, /dor, procedimentos/);
-tenta("procedimento inexistente", e => { e.dentes[16].procs = { inventado: "realizado" }; }, /procedimentos/);
-tenta("procedimento com valor inválido", e => { e.dentes[16].procs = { selante: "feito" }; }, /procedimentos/);
+tenta("dor como texto", e => { e.dentes[16].dor = "sim"; }, /sinais/);
+tenta("procedimento inexistente", e => { e.dentes[16].procs = { inventado: "realizado" }; }, /tratamento/);
+tenta("procedimento com valor inválido", e => { e.dentes[16].procs = { selante: "feito" }; }, /tratamento/);
 tenta("procedimento coletivo fora da lista", e => { e.gerais = ["Coisa inventada"]; }, /coletivos/);
 tenta("insumo fora da lista", e => { e.insumos = ["Bala"]; }, /insumos/);
 tenta("código de acompanhamento fora do formato", e => { e.codigo = e.codigoIndividuo = "QUALQUER-COISA"; }, /formato/);
@@ -213,15 +226,37 @@ T("coordenação titular não registra exame", !P(C, { acao: "enviarExame", regi
 
 /* ---------------------------------------------------------------- resultado calculado no servidor */
 parte("índices");
-const fr = exame({ id: "IDX1", sufixo: "NDCESAB2", mud: { 16: { status: "raiz" }, 26: { status: "extr_ind" }, 36: { status: "ausente_carie" }, 54: { status: "ausente_carie" }, 55: { status: "extr_ind" }, 64: { status: "raiz" }, 46: { faces: { O: "ca", M: "rest" } }, 75: { faces: { O: "rest", V: "mba" } } } });
+// 16, 26: exodontia devido à cárie (permanente) → C. 36: extraído por cárie → P. 46: cárie + restauração → C (uma vez).
+// 55, 64: exodontia devido à cárie (decíduo) → e. 54: decíduo extraído por cárie → não conta. 53: esfoliado → não conta.
+// 75: restaurada + mancha branca → o. 85: exodontia por outros motivos → não conta.
+const fr = exame({ id: "IDX1", sufixo: "NDCESAB2", mud: { 16: { procs: { exo_carie: "indicado" } }, 26: { procs: { exo_carie: "realizado" }, faces: { O: "ca" } }, 36: { status: "ausente_carie" },
+  46: { faces: { O: "ca", M: "rest" } }, 55: { procs: { exo_carie: "indicado" }, faces: { O: "ca" } }, 64: { procs: { exo_carie: "realizado" } }, 54: { status: "ausente_carie" }, 53: { status: "esfoliado" },
+  75: { faces: { O: "rest", V: "mba" } }, 85: { procs: { exodontia: "indicado" } } } });
 fr.resultado = { classe: "A", ceod: { c: 0, e: 0, o: 0, total: 0 }, cpod: { c: 0, p: 0, o: 0, total: 0 } };
 r = P(ANA, { acao: "enviarExame", registro: fr });
-const g = jsonEx("IDX1").resultado;
-T("o servidor ignora a classe mandada pelo navegador", r.ok && g.classe === "E", g.classe);
-T("CPO-D: raiz residual, extração indicada e extraído por cárie entram em P", g.cpod.p === 3, g.cpod);
-T("CPO-D: cárie com restauração no mesmo dente conta como C", g.cpod.c === 1, g.cpod);
-T("ceo-d: extração indicada e raiz residual entram em e; decíduo ausente não conta", g.ceod.e === 2 && g.ceod.total === 3, g.ceod);
+const g = r.ok ? jsonEx("IDX1").resultado : { ceod: {}, cpod: {} };
+T("o servidor ignora a classe mandada pelo navegador", r.ok && g.classe === "E", r.ok ? g.classe : r);
+T("CPO-D: exodontia devido à cárie (indicada ou realizada) conta como C, uma vez por dente", g.cpod.c === 3, g.cpod);
+T("CPO-D: só o extraído por cárie entra em P", g.cpod.p === 1 && g.cpod.total === 4, g.cpod);
+T("ceo-d: exodontia devido à cárie (indicada ou realizada) entra em e, uma vez por dente", g.ceod.e === 2 && g.ceod.c === 0, g.ceod);
+T("ceo-d: decíduo extraído por cárie, esfoliado e exodontia por outros motivos não contam", g.ceod.total === 3, g.ceod);
 T("ceo-d: mancha branca com restauração conta como o", g.ceod.o === 1, g.ceod);
+const dIdx = n => aba("Dentes").find(l => l[0] === "IDX1" && String(l[col("Dentes", "dente")]) === String(n)) || [];
+T("planilha Dentes: esfoliado com sigla Es", dIdx(53)[col("Dentes", "situacao")] === "Esfoliado" && dIdx(53)[col("Dentes", "sigla")] === "Es", dIdx(53));
+T("planilha Dentes: exodontia devido à cárie em procedimentos indicados", /Exodontia devido à cárie/.test(dIdx(16)[col("Dentes", "procedimentos_indicados")]), dIdx(16));
+T("planilha Dentes: face restaurada aparece como \"Restaurada sem cárie\"", dIdx(46)[col("Dentes", "face_mesial")] === "Restaurada sem cárie", dIdx(46));
+// Dor e abscesso separados; a vigilância vem dos dentes (o servidor confere).
+const fx = exame({ id: "IDX2", sufixo: "NDCESAB3", vig: ["Não identificado"], mud: { 46: { dor: true }, 36: { abscesso: true } } });
+r = P(ANA, { acao: "enviarExame", registro: fx });
+const jx = r.ok ? jsonEx("IDX2") : {};
+T("dor e abscesso no dente levam à classe F", r.ok && jx.resultado.classe === "F", r.ok ? jx.resultado : r);
+T("a vigilância gravada traz \"Dor de dente\" e \"Abscesso dentoalveolar\" vindos dos dentes, sem \"Não identificado\"", r.ok && jx.vigilancia.join("|") === "Dor de dente|Abscesso dentoalveolar", jx.vigilancia);
+const dx = n => aba("Dentes").find(l => l[0] === "IDX2" && String(l[col("Dentes", "dente")]) === String(n)) || [];
+T("planilha Dentes: colunas dor e abscesso_fistula separadas", dx(46)[col("Dentes", "dor")] === "sim" && dx(46)[col("Dentes", "abscesso_fistula")] === "não" && dx(36)[col("Dentes", "abscesso_fistula")] === "sim");
+r = P(ANA, { acao: "enviarExame", registro: exame({ id: "IDX3", sufixo: "NDCESAB4", protese: { sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: true } }) });
+T("prótese \"não foi possível avaliar\" é aceita e vai como Não avaliado", r.ok && linhaEx("IDX3")[col("Exames", "usa_protese_superior")] === "Não avaliado" && linhaEx("IDX3")[col("Exames", "protese_inferior")] === "Não avaliado", r);
+r = P(ANA, { acao: "enviarExame", registro: exame({ id: "IDX4", sufixo: "NDCESAB5", protese: { sup: "sim", inf: "nao", usoSup: "nao", usoInf: "sim", naoAvaliado: false } }) });
+T("prótese: necessidade e uso por arcada nas colunas certas", r.ok && linhaEx("IDX4")[col("Exames", "protese_superior")] === "Sim" && linhaEx("IDX4")[col("Exames", "usa_protese_superior")] === "Não" && linhaEx("IDX4")[col("Exames", "usa_protese_inferior")] === "Sim", r);
 T("divergência de classe registrada nos Acessos", aba("Acessos").some(l => l[7] === "Resultado recalculado"));
 
 /* ---------------------------------------------------------------- código de acompanhamento */
