@@ -337,6 +337,8 @@ for (let i = 0; i < 25; i++) { const j = jsonEx("RL" + i); j.resultado.cpod = { 
 const examesAntes = JSON.stringify(aba("Exames"));
 const comErro = jsonEx("OK1"); comErro.resultado.ceod = { c: 0, e: 9, o: 0, total: 9 };
 linhaEx("OK1")[aba("Exames")[0].length - 1] = JSON.stringify(comErro);
+const usoAna = () => aba("Uso").filter(l => l[2] === ANA.email)[0] || [];
+const usoAntes = usoAna().slice();
 G.est.props.FORMATO_PLANILHA = "21";
 r = P(ANA, { acao: "enviarExame", registro: exame({ id: "DURANTE", sufixo: "DURANTE2" }) });
 T("com exames na planilha, a reorganização NÃO acontece sozinha", G.est.props.FORMATO_PLANILHA === "21");
@@ -364,6 +366,8 @@ T("o relatório lista todos os exames que mudaram (26), não só uma amostra", a
 T("a resposta ao app leva no máximo 20 exemplos", r.resultado.relatorio.exemplos.length <= 20, r.resultado.relatorio.exemplos.length);
 T("Acessos registra quantos exames mudaram e o backup", aba("Acessos").some(l => l[7] === "Reorganizou a planilha" && /com resultado recalculado/.test(l[8]) && /backup antes/.test(l[8])));
 r = P(ANA, { acao: "enviarExame", registro: exame({ id: "DEPOIS", sufixo: "DEPXSAA2" }) });
+T("a aba Uso mantém as entradas e consultas já contadas", usoAntes[8] > 0 && usoAna()[8] === usoAntes[8] && usoAna()[9] === usoAntes[9], [usoAntes.slice(6, 12), usoAna().slice(6, 12)]);
+T("e refaz a contagem de exames a partir da aba Exames", usoAna()[10] >= 25, usoAna().slice(10, 12));
 T("depois de concluída, os envios voltam", r.ok, r);
 T("os outros exames continuam lá", JSON.parse(examesAntes).length <= aba("Exames").length);
 
@@ -389,6 +393,23 @@ T("pedir de novo no mesmo dia não manda outro e-mail", mailsPara("rt@teste.org"
 r = P(RT, { acao: "reativar", id: S.idDe("davi@teste.org") });
 T("a RT reativa e a pessoa volta a entrar com o código de antes", r.ok && P(DAVI, { acao: "entrar" }).ok, r);
 T("a reativação conta como nova aprovação (quem e quando)", davi()[11] === "Rita RT" && new Date(davi()[12]) >= new Date(davi()[10]), davi());
+
+/* ---------------------------------------------------------------- aviso da aba Acessos */
+parte("auditoria");
+// Duas requisições ao mesmo tempo: a outra já criou a aba Acessos entre a procura e a criação.
+(() => {
+  const real = G.ctx.planilha(); let vezes = 0;
+  const falsa = { getSheetByName: n => (vezes++ === 0 ? null : real.getSheetByName(n)), insertSheet: () => { throw new Error('Já existe uma página chamada "Acessos".'); } };
+  let abaR = null, erro = null;
+  try { abaR = G.ctx.obterAba(falsa, "Acessos", aba("Acessos")[0]); } catch (x) { erro = x; }
+  T("se outra requisição criou a aba no mesmo instante, o servidor usa essa aba em vez de falhar", !erro && !!abaR && abaR.getName() === "Acessos", erro && String(erro));
+})();
+G.est.props.AUDITORIA_FALHAS = "2"; G.est.props.AUDITORIA_ULTIMA = "2026-10-29T13:33:22.924Z · Tentativa de acesso recusada · Exception";
+T("a Administração mostra o aviso", P(C, { acao: "admin" }).auditoria.falhas === 2);
+T("coordenação que não é a titular não limpa o aviso", !P(PAULA, { acao: "limparAvisoAuditoria" }).ok && G.est.props.AUDITORIA_FALHAS === "2");
+r = P(C, { acao: "limparAvisoAuditoria" });
+T("a titular limpa o aviso", r.ok && P(C, { acao: "admin" }).auditoria.falhas === 0, r);
+T("a limpeza fica registrada em Acessos", aba("Acessos").some(l => l[7] === "Limpou aviso de auditoria" && /2 registros/.test(l[8])));
 
 /* ---------------------------------------------------------------- geral */
 parte("geral");

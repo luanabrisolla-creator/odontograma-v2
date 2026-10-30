@@ -178,7 +178,7 @@ for (let i = 0; i < 8; i++) {
   await pg.click('.painel [data-proc="exo_carie"][data-val="indicado"]'); await pg.waitForTimeout(100);
   await foto(pg, "4_painel_dente_cel");
   await pg.click('.painel .p-acoes [data-acao="fechar"]'); await pg.waitForTimeout(100);
-  T("permanente com exodontia devido à cárie conta como C no CPO-D (não P)", await pg.evaluate(() => { const r = avaliar(estado.ex); return r.cpod.c === 1 && r.cpod.p === 0; }));
+  T("permanente com exodontia devido à cárie conta como C no CPO-D (não P)", await pg.evaluate(() => { const r = avaliarExame(estado.ex); return r.cpod.c === 1 && r.cpod.p === 0; }));
   await pg.click('.dente[data-n="36"]'); await pg.waitForTimeout(100);
   await pg.click('.faces-desenho [data-face="O"]'); await pg.click('.painel [data-facecond="cc"]'); await pg.waitForTimeout(80);
   await pg.click('.painel [data-status="ausente_carie"]'); await pg.waitForTimeout(100);
