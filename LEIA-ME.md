@@ -4,7 +4,7 @@
 
 **Como instalar.** O servidor muda e a planilha muda de formato (24): colunas novas de prótese e de dor e abscesso separados. Faça na ordem:
 1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
-2. **Confira:** abra o /exec. Ele deve mostrar `"versao":30`.
+2. **Confira:** abra o /exec. Ele deve mostrar `"versao":31`.
 3. **GitHub:** **Add file > Upload files**, arrastando de uma vez `index.html`, `sw.js`, `Codigo.gs`, `compartilhado.js`, `LEIA-ME.md` e a pasta `testes` inteira.
 4. **Actions:** o envio deve ficar com ✓ verde.
 5. **Planilha:** sem exames, ela se reorganiza sozinha no primeiro uso. Com exames de teste, entre como coordenação titular e confirme em **Administração > Atualização da planilha pendente**. Exames de teste no formato antigo (com "resto radicular" ou "extração indicada" como situação do dente) não passam mais na conferência do servidor: como o piloto vai começar do zero, o mais simples é limpar as abas de exames antes.
@@ -33,6 +33,8 @@
 **Prótese (todas as idades):** por arcada, "Necessita de prótese?" e depois "Usa prótese?"; atalho "Não necessita e não usa (as duas arcadas)" e o link "Não foi possível avaliar". Colunas novas: `usa_protese_superior` e `usa_protese_inferior`.
 
 **Condições:** placa e gengivite começam sem resposta.
+
+**Horário de Brasília em tudo:** a data do exame, o "hoje", as datas e horas mostradas no app e as gravadas pelo servidor usam sempre o horário de Brasília, qualquer que seja o fuso do celular ou o configurado no projeto do Apps Script.
 
 **Planilha:** aba Dentes com `dor` e `abscesso_fistula` separados; sigla **Es** para esfoliado e **A** para ausente por outro motivo; "Restaurada sem cárie" no lugar de "Restaurada".
 

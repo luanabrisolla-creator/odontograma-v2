@@ -51,8 +51,10 @@ const CAB_USO = ['usuario_id', 'nome', 'email', 'perfil', 'dsei', 'ultimo_acesso
   'consultas_equipe', 'exames_validos', 'exames_cancelados', 'ultimo_exame'];
 const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Versão do formato das abas. Quando muda, a planilha é reorganizada uma vez (com backup antes).
+// Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
+const FUSO = 'America/Sao_Paulo';
 const FORMATO = '24';
-const VERSAO = 30;
+const VERSAO = 31;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -121,7 +123,7 @@ function fazerBackup(motivo) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const pastas = DriveApp.getFoldersByName(PASTA_BACKUP);
   const pasta = pastas.hasNext() ? pastas.next() : DriveApp.createFolder(PASTA_BACKUP);
-  const quando = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH-mm');
+  const quando = Utilities.formatDate(new Date(), FUSO, 'yyyy-MM-dd HH-mm');
   try { pasta.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); } catch (x) {}
   try { pasta.setDescription('Cópias automáticas do Odontograma. Contêm dados de saúde: não compartilhe esta pasta.'); } catch (x) {}
   // A cópia de antes da reorganização tem outro nome: não entra no rodízio e não vai para a lixeira.
@@ -299,9 +301,9 @@ function reescreverAba(ss, nome, cab, linhas, posicao) {
   return nova;
 }
 /** @param {any} d */
-function fmtDia(d) { return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd'); }
+function fmtDia(d) { return Utilities.formatDate(d, FUSO, 'yyyy-MM-dd'); }
 /** @param {any} d */
-function fmtHora(d) { return Utilities.formatDate(d, Session.getScriptTimeZone(), 'HH:mm'); }
+function fmtHora(d) { return Utilities.formatDate(d, FUSO, 'HH:mm'); }
 /** @param {any} u */
 function perfilTexto(u) { return u.id === 'coord' ? 'coordenação titular' : u.perfil === 'coord' && u.dsei ? 'coordenação e referência técnica' : (NOME_PERFIL[u.perfil] || ''); }
 // Junta todas as abas "Acessos" (formato antigo e novo): eventos importantes ficam, entradas viram contadores na aba Uso.
@@ -2428,7 +2430,7 @@ function obterAba(planilha, nome, cabecalho) {
     const compativel = atual.every(function (c, i) { return c === '' || c === cabecalho[i]; });
     if (!compativel) {
       // Formato antigo (com nome e Cartão SUS): a aba é renomeada e uma nova é criada.
-      aba.setName(nome + ' - formato antigo ' + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH-mm'));
+      aba.setName(nome + ' - formato antigo ' + Utilities.formatDate(new Date(), FUSO, 'yyyy-MM-dd HH-mm'));
       aba = null;
     }
   }

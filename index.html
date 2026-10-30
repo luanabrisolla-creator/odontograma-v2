@@ -1350,7 +1350,10 @@ const siglaHtml = d => { const t = siglaDente(d); return t ? `<span class="sg ${
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const hoje = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+// Datas e horas sempre no horário de Brasília, qualquer que seja o fuso do aparelho (o servidor usa o mesmo).
+const FUSO = "America/Sao_Paulo";
+const fmtDiaBR = new Intl.DateTimeFormat("en-CA", {timeZone: FUSO, year: "numeric", month: "2-digit", day: "2-digit"});
+const hoje = () => fmtDiaBR.format(new Date());
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const clone = o => JSON.parse(JSON.stringify(o));
 const quad = n => Math.floor(n / 10);
@@ -1358,7 +1361,8 @@ const ehDecid = n => quad(n) >= 5;
 const ehSup = n => [1,2,5,6].includes(quad(n));
 const ladoDireitoPac = n => [1,4,5,8].includes(quad(n));
 const ehAnterior = n => (n % 10) <= 3;
-const fmtData = iso => iso ? iso.slice(0,10).split("-").reverse().join("/") : "";
+// Data no formato dd/mm/aaaa. Data e hora completas (ISO) são convertidas para o dia em Brasília.
+const fmtData = iso => { if (!iso) return ""; const t = String(iso), dia = t.length > 10 && t.includes("T") ? isoDia(t) : t.slice(0, 10); return dia.split("-").reverse().join("/"); };
 
 function nomeDente(n) {
   const p = n % 10, d = ehDecid(n);
@@ -3016,8 +3020,8 @@ const COR_CLASSE = {A:"#2E8B57", B:"#5E9C35", C:"#D7A406", D:"#E07A1F", E:"#D726
 const ehNum = v => typeof v === "number";
 const fmtN = v => v == null ? "–" : ehNum(v) ? v.toLocaleString("pt-BR", {maximumFractionDigits: 2}) : String(v);
 const pctDe = (v, t) => ehNum(v) && ehNum(t) && t ? Math.round(v / t * 100) + "%" : v === "<5" ? "<5" : "–";
-const fmtDataHora = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("pt-BR") + " às " + d.toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit"}); };
-function isoDia(d) { d = new Date(d); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 10); }
+const fmtDataHora = iso => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("pt-BR", {timeZone: FUSO}) + " às " + d.toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit", timeZone: FUSO}); };
+function isoDia(d) { return fmtDiaBR.format(new Date(d)); }
 function intervalo(v) {
   const h = hoje();
   if (v === "tudo") return {de: "", ate: ""};
@@ -3706,7 +3710,7 @@ function acessoPerdido(msg) {
   renderAbas(); irAba("acesso");
 }
 // Esta versão do app precisa do Codigo.gs a partir desta versão (mostrada no /exec como "versao").
-const SERVIDOR_MIN = 30;
+const SERVIDOR_MIN = 31;
 // App e servidor têm numerações próprias: o aviso só aparece se o servidor for MAIS ANTIGO que o mínimo
 // de que este app precisa (servidor igual ou mais novo é compatível). Servidor que não informa a versão é antigo.
 function avisarServidor(v) {
