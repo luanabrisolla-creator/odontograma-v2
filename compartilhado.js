@@ -23,11 +23,32 @@ var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor
 var VIG_FLUOROSE = "Fluorose dentária moderada ou severa", VIG_NENHUM = "Não identificado";
 /** @type {any} */
 var NOMES_PROTESE = {"": "Não avaliado", nao: "Não", sim: "Sim"};
+// Situação do dente (desde a versão 35). Só o dente presente tem faces, sinais e tratamento.
+// Esfoliado só existe para decíduo; no permanente, ausente é sempre "por outro motivo".
+var STATUS_DENTE = ["presente", "nao_erupc", "esfoliado", "ausente", "ausente_carie"];
+/** Exodontia devido à cárie indicada ou realizada neste exame. @param {any} d */
+function exoCarie(d) { var p = (d && d.procs) || {}; return p.exo_carie === "indicado" || p.exo_carie === "realizado"; }
+// Itens da vigilância que vêm do odontograma (não são perguntados de novo).
+/** @param {any} ex */
+function vigilanciaDosDentes(ex) {
+  var ds = ex.dentes || {}, l = [], nums = dentesDaDenticao(ex.denticao);
+  if (nums.some(function (n) { return ds[n] && ds[n].status === "presente" && ds[n].dor; })) l.push("Dor de dente");
+  if (nums.some(function (n) { return ds[n] && ds[n].status === "presente" && ds[n].abscesso; })) l.push("Abscesso dentoalveolar");
+  return l;
+}
+// Vigilância final do exame: os itens do odontograma + os marcados pelo profissional. Sem nenhum: "Não identificado".
+/** @param {any} ex */
+function completarVigilancia(ex) {
+  var der = vigilanciaDosDentes(ex), outros = (Array.isArray(ex.vigilancia) ? ex.vigilancia : []).filter(function (v) {
+    return v !== VIG_NENHUM && v !== "Dor de dente" && v !== "Abscesso dentoalveolar"; });
+  var l = der.concat(outros);
+  return l.length ? l : [VIG_NENHUM];
+}
 // Sigla do dente, como nos odontogramas dos prontuários eletrônicos.
 /** @param {any} d */
 function siglaDente(d) {
   if (!d) return "";
-  /** @type {any} */ var S = {nao_erupc: "NE", ausente: "A", ausente_carie: "E", extr_ind: "Ei", raiz: "RR", a_confirmar: "?"};
+  /** @type {any} */ var S = {nao_erupc: "NE", esfoliado: "Es", ausente: "A", ausente_carie: "E"};
   if (S[d.status]) return S[d.status];
   var fs = d.faces || {}, vs = Object.keys(fs).map(function (k) { return fs[k]; });
   /** @param {any} v */
@@ -213,20 +234,19 @@ function agregarExames(regs, agrup, ult) {
 }
 
 /* ---------- linhas da planilha (abas Exames e Dentes) ---------- */
-var NOMES_STATUS = {presente: "Presente", nao_erupc: "Não erupcionado", ausente: "Ausente (esfoliado ou outro motivo)", ausente_carie: "Extraído por cárie",
-  extr_ind: "Extração indicada", raiz: "Raiz residual", a_confirmar: "A confirmar na boca"};
-var NOMES_FACE = {"": "Hígida", ca: "Cárie ativa (cavidade)", cc: "Cárie crônica (cavidade)", mba: "Mancha branca ativa", mbi: "Mancha branca inativa",
-  rest: "Restaurada", restc: "Restaurada com cárie", sel: "Selante"};
-var NOMES_PROC = {selante: "Selante", art: "ART (restauração atraumática)", civ: "Restauração em ionômero de vidro", resina: "Restauração em resina",
+var NOMES_STATUS = {presente: "Presente", nao_erupc: "Não erupcionado", esfoliado: "Esfoliado", ausente: "Ausente por outro motivo", ausente_carie: "Extraído por cárie"};
+var NOMES_FACE = {"": "Hígida", ca: "Cárie ativa", cc: "Cárie crônica", mba: "Mancha branca ativa", mbi: "Mancha branca inativa",
+  rest: "Restaurada sem cárie", restc: "Restaurada com cárie", sel: "Selante"};
+var NOMES_PROC = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia por outros motivos", selante: "Selante", art: "ART (restauração atraumática)", civ: "Restauração em ionômero de vidro", resina: "Restauração em resina",
   amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado", cdf: "Cariostático (diamino fluoreto de prata)", selprov: "Selamento provisório / adequação do meio",
-  pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço", exodontia: "Exodontia"};
+  pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço"};
 var CAB_EXAME = ["id_exame", "codigo_individuo", "numero_exame", "codigo_exame", "situacao_registro", "data_exame", "faixa_etaria", "idade_anos", "sexo", "nascimento",
   "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "codigo_municipio_ibge", "terra_indigena", "codigo_terra_indigena", "codigo_polo_base", "codigo_aldeia", "aldeia_fora_da_lista", "codigo_confere_local", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
   "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod", "dentes_cariados", "placa_visivel", "gengivite", "fluorose_moderada_severa",
-  "vigilancia_saude_bucal", "protese_superior", "protese_inferior", "dentes_com_dor_abscesso", "procedimentos_gerais", "insumos_fornecidos", "observacoes", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
+  "vigilancia_saude_bucal", "protese_superior", "protese_inferior", "usa_protese_superior", "usa_protese_inferior", "dentes_com_dor_abscesso", "procedimentos_gerais", "insumos_fornecidos", "observacoes", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
   "motivo_cancelamento", "observacao_cancelamento", "cancelado_em", "cancelado_por", "criado_em", "atualizado_em", "usuario_id", "dados_completos_json"];
 var CAB_DENTE = ["id_exame", "codigo_individuo", "numero_exame", "situacao_registro", "data_exame", "dsei", "dente", "tipo", "situacao", "sigla",
-  "face_oclusal_incisal", "face_vestibular", "face_lingual_palatina", "face_mesial", "face_distal", "dor_abscesso", "procedimentos_indicados", "procedimentos_realizados", "observacao"];
+  "face_oclusal_incisal", "face_vestibular", "face_lingual_palatina", "face_mesial", "face_distal", "dor", "abscesso_fistula", "procedimentos_indicados", "procedimentos_realizados", "observacao"];
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
 /** @param {any} iso */
@@ -236,7 +256,7 @@ function codigoIndividuoDe(e) { return e.codigoIndividuo || e.codigo || ""; }
 /** @param {any} e */
 function cariadosDe(e) { var r = e.resultado || {}; return (Number((r.ceod || {}).c) || 0) + (Number((r.cpod || {}).c) || 0); }
 /** @param {any} e */
-function dentesComDor(e) { return Object.keys(e.dentes || {}).filter(function (n) { return (e.dentes[n] || {}).dor; }); }
+function dentesComDor(e) { return Object.keys(e.dentes || {}).filter(function (n) { var d = e.dentes[n] || {}; return d.dor || d.abscesso; }); }
 /** @param {any} e */
 function registroParaJson(e) {
   /** @type {any} */ var j = {};
@@ -263,6 +283,7 @@ function linhaExame(e) {
     (e.profissional || {}).nome || "", (e.profissional || {}).cro || "", e.denticao || "", r.classe || "", nivelDaClasse(r.classe) || r.risco || "",
     ce.c, ce.e, ce.o, ce.total, cp.c, cp.p, cp.o, cp.total, cariadosDe(e), sn(e.placa), sn(e.gengivite), sn(e.fluorose),
     (e.vigilancia || []).join("; "), e.protese ? NOMES_PROTESE[e.protese.sup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.inf || ""] : "",
+    e.protese ? NOMES_PROTESE[e.protese.usoSup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.usoInf || ""] : "",
     dentesComDor(e).join(" "), (e.gerais || []).join("; "), (e.insumos || []).join("; "), e.observacoes || "",
     v.anteriorId ? (v.conferidos && v.conferidos.length ? "compatível, com mudança conferida" : "compatível") : "1º exame",
     (v.conferidos || []).join(" · "), v.anteriorId || "",
@@ -275,11 +296,11 @@ function linhasDentes(e) {
     var d = e.dentes[n] || {}, p = d.procs || {}, fs = d.faces || {};
     /** @param {any} v */
     function proc(v) { return Object.keys(p).filter(function (k) { return p[k] === v; }).map(function (k) { return NOMES_PROC[k] || k; }).join("; "); }
-    var semFaces = ["nao_erupc", "ausente", "ausente_carie", "raiz", "a_confirmar"].indexOf(d.status) >= 0;
+    var semFaces = d.status !== "presente";
     /** @param {any} k */
     function f(k) { return semFaces ? "" : (NOMES_FACE[fs[k] || ""] || ""); }
     return [e.id, cod, num, sit, e.dataExame || "", e.dsei || "", n, decidDe(n) ? "decíduo" : "permanente", NOMES_STATUS[d.status] || d.status || "", siglaDente(d),
-      f("O"), f("V"), f("L"), f("M"), f("D"), d.dor ? "sim" : "não", proc("indicado"), proc("realizado"), d.obs || ""];
+      f("O"), f("V"), f("L"), f("M"), f("D"), d.dor ? "sim" : "não", d.abscesso ? "sim" : "não", proc("indicado"), proc("realizado"), d.obs || ""];
   });
 }
 
@@ -290,28 +311,22 @@ function linhasDentes(e) {
 function conferirVinculo(a, b) {
   var antes = a, depois = b;
   if (String(b.dataExame || "") < String(a.dataExame || "")) { antes = b; depois = a; }
-  var PRES = ["presente", "extr_ind", "raiz"], AUS = ["ausente", "ausente_carie"], COM_FACES = ["presente", "extr_ind"];
+  var PRES = ["presente"], AUS = ["esfoliado", "ausente", "ausente_carie"], COM_FACES = ["presente"];
   var FACES = ["O", "V", "L", "M", "D"], NOME_F = {O: "oclusal/incisal", V: "vestibular", L: "lingual/palatina", M: "mesial", D: "distal"};
   var da1 = dataBR(antes.dataExame), da2 = dataBR(depois.dataExame);
   /** @type {any[]} */ var alertas = [];
   var nums = Object.keys(antes.dentes || {}).filter(function (n) { return (depois.dentes || {})[n]; }).map(Number).sort(function (x, y) { return x - y; });
   nums.forEach(function (n) {
     var x = antes.dentes[n] || {}, y = depois.dentes[n] || {}, fx = x.faces || {}, fy = y.faces || {};
-    if (x.status === "a_confirmar" || y.status === "a_confirmar") return;
     var tipo = decidDe(n) ? "decíduo" : "permanente";
     if (AUS.indexOf(x.status) >= 0 && PRES.indexOf(y.status) >= 0) {
-      alertas.push({dente: n, nivel: "impossivel", chave: n + ":volta", texto: (x.status === "ausente_carie" ? "extraído" : "ausente") + " no exame de " + da1 + " e " + (y.status === "raiz" ? "com raiz residual" : "presente") + " no exame de " + da2 + ".",
+      alertas.push({dente: n, nivel: "impossivel", chave: n + ":volta", texto: (x.status === "ausente_carie" ? "extraído" : x.status === "esfoliado" ? "esfoliado" : "ausente") + " no exame de " + da1 + " e presente no exame de " + da2 + ".",
         motivo: "Um dente " + tipo + " que " + (decidDe(n) ? "esfoliou ou foi extraído" : "foi perdido") + " não volta."});
       return;
     }
     if (PRES.indexOf(x.status) >= 0 && y.status === "nao_erupc") {
       alertas.push({dente: n, nivel: "impossivel", chave: n + ":desnasceu", texto: "presente no exame de " + da1 + " e não erupcionado no exame de " + da2 + ".",
         motivo: "Um dente que já erupcionou não volta a ficar sem erupcionar."});
-      return;
-    }
-    if (x.status === "raiz" && y.status === "presente" && FACES.every(function (k) { return !fy[k]; })) {
-      alertas.push({dente: n, nivel: "confira", chave: n + ":raiz", texto: "raiz residual no exame de " + da1 + " e coroa hígida no exame de " + da2 + ".",
-        motivo: "Raiz residual não vira coroa hígida."});
       return;
     }
     if (COM_FACES.indexOf(x.status) >= 0 && COM_FACES.indexOf(y.status) >= 0) {
@@ -333,16 +348,16 @@ function estadoDente(d) {
   if (!d) return "";
   var fs = d.faces || {}, vs = Object.keys(fs).map(function (k) { return fs[k]; });
   if (d.status === "nao_erupc") return "nao_erupc";
+  if (d.status === "esfoliado") return "esfoliado";
   if (d.status === "ausente") return "ausente";
   if (d.status === "ausente_carie") return "extraido";
-  if (d.status === "extr_ind") return "extr_ind";
-  if (d.status === "raiz") return "raiz";
-  if (d.status === "a_confirmar") return "";
+  if (d.status !== "presente") return "";
+  if (exoCarie(d)) return "exo_carie";
   if (vs.some(function (v) { return v === "ca" || v === "cc" || v === "restc"; })) return "cariado";
   if (vs.indexOf("rest") >= 0) return "obturado";
   return "higido";
 }
-var NOMES_ESTADO = {nao_erupc: "não erupcionado", ausente: "ausente", extraido: "extraído", extr_ind: "com extração indicada", raiz: "raiz residual",
+var NOMES_ESTADO = {nao_erupc: "não erupcionado", esfoliado: "esfoliado", ausente: "ausente", extraido: "extraído", exo_carie: "com exodontia devido à cárie",
   cariado: "cariado", obturado: "obturado", higido: "hígido"};
 // O que mudou em cada dente entre o primeiro e o último exame de uma pessoa.
 /** @param {any} a @param {any} b */
@@ -354,9 +369,9 @@ function mudancasDentes(a, b) {
     if (!x || !y || x === y) return;
     var tipo = "outro";
     if (y === "cariado" && (x === "higido" || x === "nao_erupc" || x === "obturado")) tipo = "carie_nova";
-    else if ((x === "cariado" || x === "raiz") && y === "obturado") tipo = "tratado";
-    else if (y === "extraido" || (y === "ausente" && (x === "cariado" || x === "raiz" || x === "extr_ind")) ) tipo = "extraido";
-    else if (y === "ausente" && decidDe(n)) tipo = "esfoliou";
+    else if (x === "cariado" && y === "obturado") tipo = "tratado";
+    else if (y === "extraido" || (y === "ausente" && (x === "cariado" || x === "exo_carie"))) tipo = "extraido";
+    else if (y === "esfoliado") tipo = "esfoliou";
     else if (x === "nao_erupc") tipo = "erupcionou";
     l.push({dente: n, de: x, para: y, tipo: tipo});
   });
@@ -366,12 +381,12 @@ function mudancasDentes(a, b) {
 /* ---------- avaliação do exame: classe de risco e índices (igual no app e no servidor) ----------
  * O servidor refaz este cálculo a partir dos dentes ao gravar: o resultado da planilha nunca é o que o
  * navegador mandou pronto.
- * Índices (cada dente conta uma vez; vale a pior situação: perdido/extração indicada > cariado > obturado):
- * - CPO-D (permanentes): C = cavidade (ativa ou crônica) ou restauração com cárie;
- *   P = perdido por cárie, extração indicada ou coroa destruída (raiz residual);
- *   O = restaurado sem cárie. Mancha branca não conta (só cavidade evidente é cárie).
- * - ceo-d (decíduos): c = como no CPO-D; e = só extração indicada ou coroa destruída (raiz residual):
- *   decíduo ausente NÃO conta, porque pode ter esfoliado; o = restaurado sem cárie.
+ * Índices (cada dente conta uma vez; vale a pior situação: e/P > cariado > obturado):
+ * - CPO-D (permanentes): C = cavidade (ativa ou crônica), restauração com cárie ou exodontia devido à cárie
+ *   (indicada ou realizada no exame); P = extraído por cárie (já ausente); O = restaurado sem cárie.
+ *   Mancha branca não conta (só cavidade evidente é cárie).
+ * - ceo-d (decíduos): c = como no CPO-D, sem a exodontia; e = exodontia devido à cárie (indicada ou realizada);
+ *   decíduo extraído por cárie, esfoliado ou ausente NÃO conta; o = restaurado sem cárie.
  */
 var DESCRICAO_CLASSE = {
   A: "Sem lesão de cárie, sem placa, sem gengivite e sem mancha branca ativa.",
@@ -398,15 +413,15 @@ function avaliarExame(ex) {
     var d = dentes[n]; if (!d) return;
     var faces = d.faces || {}, fs = Object.keys(faces).map(function (k) { return faces[k]; });
     var tem = function (x) { return fs.indexOf(x) >= 0; };
-    var presente = ["nao_erupc", "ausente", "ausente_carie", "a_confirmar"].indexOf(d.status) < 0;
+    var presente = d.status === "presente", exo = presente && exoCarie(d);
     var decid = Math.floor(n / 10) >= 5;
-    if (d.dor) F.push(n);
+    if (presente && (d.dor || d.abscesso)) F.push(n);
     if (presente && (tem("ca") || tem("restc"))) E.push(n);
     if (presente && tem("mba")) Dm.push(n);
-    if (presente && (tem("cc") || d.status === "raiz" || d.status === "extr_ind")) C.push(n);
+    if (presente && (tem("cc") || exo)) C.push(n);
     if ((presente && (tem("rest") || tem("mbi"))) || d.status === "ausente_carie") B.push(n);
-    var perdido = d.status === "extr_ind" || d.status === "raiz" || (!decid && d.status === "ausente_carie");
-    var cariado = presente && (tem("ca") || tem("cc") || tem("restc"));
+    var perdido = decid ? exo : d.status === "ausente_carie";
+    var cariado = presente && (tem("ca") || tem("cc") || tem("restc") || (!decid && exo));
     var obturado = presente && tem("rest") && !cariado;
     var alvo = decid ? ceod : cpod;
     if (perdido) alvo[decid ? "e" : "p"]++;
@@ -419,12 +434,12 @@ function avaliarExame(ex) {
   var motivos = [];
   var vigF = (ex.vigilancia || []).filter(function (v) { return v === "Dor de dente" || v === "Abscesso dentoalveolar"; });
   if (F.length) motivos.push("Dor ou abscesso: " + lista(F));
-  if (vigF.length) motivos.push(juntar(vigF) + " (vigilância em saúde bucal)");
+  if (vigF.length && !F.length) motivos.push(juntar(vigF) + " (vigilância em saúde bucal)");
   if (E.length) motivos.push("Cavidade ativa: " + lista(E));
   if (Dm.length) motivos.push("Mancha branca ativa: " + lista(Dm));
   if (ex.placa) motivos.push("Placa visível");
   if (ex.gengivite) motivos.push("Gengivite");
-  if (C.length) motivos.push("Cavidade crônica, raiz residual ou extração indicada: " + lista(C));
+  if (C.length) motivos.push("Cavidade crônica ou exodontia devido à cárie: " + lista(C));
   if (B.length) motivos.push("Restauração, mancha inativa ou extração por cárie: " + lista(B));
   var classe = "A";
   if (F.length || vigF.length) classe = "F";

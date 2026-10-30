@@ -1,5 +1,43 @@
 # Odontograma: guia de instalação
 
+## Versão 35: exame em etapas e odontograma novo (inclui tudo da 34)
+
+**Como instalar.** O servidor muda e a planilha muda de formato (24): colunas novas de prótese e de dor e abscesso separados. Faça na ordem:
+1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
+2. **Confira:** abra o /exec. Ele deve mostrar `"versao":30`.
+3. **GitHub:** **Add file > Upload files**, arrastando de uma vez `index.html`, `sw.js`, `Codigo.gs`, `compartilhado.js`, `LEIA-ME.md` e a pasta `testes` inteira.
+4. **Actions:** o envio deve ficar com ✓ verde.
+5. **Planilha:** sem exames, ela se reorganiza sozinha no primeiro uso. Com exames de teste, entre como coordenação titular e confirme em **Administração > Atualização da planilha pendente**. Exames de teste no formato antigo (com "resto radicular" ou "extração indicada" como situação do dente) não passam mais na conferência do servidor: como o piloto vai começar do zero, o mais simples é limpar as abas de exames antes.
+6. **No celular:** feche e abra o app com internet ("app versão 35" em Conta).
+
+**Exame em etapas:** Local → Indivíduo → Odontograma → Vigilância e prótese → Condições → Revisão.
+- Só a etapa atual aparece; as seguintes ficam bloqueadas até a anterior estar completa. O botão de baixo é "Continuar" e, na Revisão, "Salvar exame".
+- A Revisão mostra o resultado e um resumo de cada etapa, com "Editar".
+- Polo, aldeia e local começam vazios. No mesmo dia, o app pergunta "Mesmo local do exame anterior de hoje?".
+
+**Odontograma:**
+- Sem a barra de marcações que corria para o lado e sem "Aplicar a vários dentes". Tocar no dente abre o painel do dente.
+- Dente sem marcação é presente e hígido. Os que a idade garante vêm como não erupcionado ou esfoliado; os que a idade deixa em dúvida têm contorno amarelo pontilhado e não precisam ser tocados.
+- Legenda em três grupos (Dente, Faces, Marcas), aberta por padrão; o aparelho lembra se o profissional a fechar.
+- Painel do dente: situação do dente → desenho (toque na face) → condição da face → sinais → tratamento.
+  - Situação: Presente, Não erupcionado (NE), Esfoliado (só decíduo), Ausente por outro motivo (A), Extraído por cárie (E). Só o dente presente tem faces, sinais e tratamento; mudar a situação de um dente com marcações pede confirmação e apaga as marcações.
+  - Faces: Hígida, Cárie ativa, Cárie crônica, Mancha branca ativa, Mancha branca inativa, Restaurada sem cárie, Restaurada com cárie, Selante.
+  - Sinais: Dor e Abscesso ou fístula, separados.
+  - Tratamento: cada procedimento só com Indicado ou Realizado, nada marcado, um de cada vez. "Exodontia devido à cárie" vem primeiro; "Exodontia por outros motivos" é separada e não entra nos índices. Primeiro aparecem os compatíveis com o que foi marcado; os demais em "Outros procedimentos".
+- Saíram: resto radicular, extração indicada como situação e a confirmação obrigatória dos dentes pela idade.
+
+**Índices:** exodontia devido à cárie (indicada ou realizada) conta como **e** no decíduo e como **C** no permanente; extraído por cárie conta como **P** no permanente e não conta no decíduo. Cada dente conta uma vez.
+
+**Vigilância:** dor de dente e abscesso vêm do odontograma, travados. Para o resto, uma pergunta Não/Sim; com Sim, marca-se pelo menos uma condição. O servidor confere a dor e o abscesso pelos dentes.
+
+**Prótese (todas as idades):** por arcada, "Necessita de prótese?" e depois "Usa prótese?"; atalho "Não necessita e não usa (as duas arcadas)" e o link "Não foi possível avaliar". Colunas novas: `usa_protese_superior` e `usa_protese_inferior`.
+
+**Condições:** placa e gengivite começam sem resposta.
+
+**Planilha:** aba Dentes com `dor` e `abscesso_fistula` separados; sigla **Es** para esfoliado e **A** para ausente por outro motivo; "Restaurada sem cárie" no lugar de "Restaurada".
+
+**Testes:** 168 verificações do servidor e 88 no navegador.
+
 ## Versão 34: correções curtas antes do piloto (inclui tudo da 33)
 
 **Como instalar.** O servidor muda e a planilha ganha uma coluna nova (formato 23). Faça na ordem:
