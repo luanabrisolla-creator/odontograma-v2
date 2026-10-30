@@ -31,7 +31,7 @@ ok(!faltando.length, `O app chama ações que o Codigo.gs não tem: ${faltando.j
 const versaoServidor = Number((gs.match(/const VERSAO = (\d+);/) || [])[1]);
 const minimo = Number((html.match(/const SERVIDOR_MIN = (\d+);/) || [])[1]);
 ok(versaoServidor >= minimo, `O index.html precisa do servidor versão ${minimo}, mas o Codigo.gs está na versão ${versaoServidor}.`);
-const vApp = (html.match(/versaoApp: (\d+)/) || [])[1], vCache = (sw.match(/odontograma-v(\d+)/) || [])[1];
+const vApp = (html.match(/const VERSAO_APP = (\d+);/) || [])[1], vCache = (sw.match(/odontograma-v(\d+)/) || [])[1];
 ok(vApp && vApp === vCache, `Versão do app (${vApp}) e do sw.js (${vCache}) diferentes: troque o número no sw.js para o celular receber a versão nova.`);
 
 // 4. Arquivos que o app e o modo sem internet usam
