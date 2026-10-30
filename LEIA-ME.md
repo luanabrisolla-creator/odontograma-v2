@@ -1,658 +1,453 @@
-# Odontograma: guia de instalação
-
-## Versão 35: exame em etapas e odontograma novo (inclui tudo da 34)
-
-**Como instalar.** O servidor muda e a planilha muda de formato (24): colunas novas de prótese e de dor e abscesso separados. Faça na ordem:
-1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
-2. **Confira:** abra o /exec. Ele deve mostrar `"versao":31`.
-3. **GitHub:** **Add file > Upload files**, arrastando de uma vez `index.html`, `sw.js`, `Codigo.gs`, `compartilhado.js`, `LEIA-ME.md` e a pasta `testes` inteira.
-4. **Actions:** o envio deve ficar com ✓ verde.
-5. **Planilha:** sem exames, ela se reorganiza sozinha no primeiro uso. Com exames de teste, entre como coordenação titular e confirme em **Administração > Atualização da planilha pendente**. Exames de teste no formato antigo (com "resto radicular" ou "extração indicada" como situação do dente) não passam mais na conferência do servidor: como o piloto vai começar do zero, o mais simples é limpar as abas de exames antes.
-6. **No celular:** feche e abra o app com internet ("app versão 35" em Conta).
-
-**Exame em etapas:** Local → Indivíduo → Odontograma → Vigilância e prótese → Condições → Revisão.
-- Só a etapa atual aparece; as seguintes ficam bloqueadas até a anterior estar completa. O botão de baixo é "Continuar" e, na Revisão, "Salvar exame".
-- A Revisão mostra o resultado e um resumo de cada etapa, com "Editar".
-- Polo, aldeia e local começam vazios. No mesmo dia, o app pergunta "Mesmo local do exame anterior de hoje?".
-
-**Odontograma:**
-- Sem a barra de marcações que corria para o lado e sem "Aplicar a vários dentes". Tocar no dente abre o painel do dente.
-- Dente sem marcação é presente e hígido. Os que a idade garante vêm como não erupcionado ou esfoliado; os que a idade deixa em dúvida têm contorno amarelo pontilhado e não precisam ser tocados.
-- Legenda em três grupos (Dente, Faces, Marcas), aberta por padrão; o aparelho lembra se o profissional a fechar.
-- Painel do dente: situação do dente → desenho (toque na face) → condição da face → sinais → tratamento.
-  - Situação: Presente, Não erupcionado (NE), Esfoliado (só decíduo), Ausente por outro motivo (A), Extraído por cárie (E). Só o dente presente tem faces, sinais e tratamento; mudar a situação de um dente com marcações pede confirmação e apaga as marcações.
-  - Faces: Hígida, Cárie ativa, Cárie crônica, Mancha branca ativa, Mancha branca inativa, Restaurada sem cárie, Restaurada com cárie, Selante.
-  - Sinais: Dor e Abscesso ou fístula, separados.
-  - Tratamento: cada procedimento só com Indicado ou Realizado, nada marcado, um de cada vez. "Exodontia devido à cárie" vem primeiro; "Exodontia por outros motivos" é separada e não entra nos índices. Primeiro aparecem os compatíveis com o que foi marcado; os demais em "Outros procedimentos".
-- Saíram: resto radicular, extração indicada como situação e a confirmação obrigatória dos dentes pela idade.
-
-**Índices:** exodontia devido à cárie (indicada ou realizada) conta como **e** no decíduo e como **C** no permanente; extraído por cárie conta como **P** no permanente e não conta no decíduo. Cada dente conta uma vez.
-
-**Vigilância:** dor de dente e abscesso vêm do odontograma, travados. Para o resto, uma pergunta Não/Sim; com Sim, marca-se pelo menos uma condição. O servidor confere a dor e o abscesso pelos dentes.
-
-**Prótese (todas as idades):** por arcada, "Necessita de prótese?" e depois "Usa prótese?"; atalho "Não necessita e não usa (as duas arcadas)" e o link "Não foi possível avaliar". Colunas novas: `usa_protese_superior` e `usa_protese_inferior`.
-
-**Condições:** placa e gengivite começam sem resposta.
-
-**Horário de Brasília em tudo:** a data do exame, o "hoje", as datas e horas mostradas no app e as gravadas pelo servidor usam sempre o horário de Brasília, qualquer que seja o fuso do celular ou o configurado no projeto do Apps Script.
-
-**Planilha:** aba Dentes com `dor` e `abscesso_fistula` separados; sigla **Es** para esfoliado e **A** para ausente por outro motivo; "Restaurada sem cárie" no lugar de "Restaurada".
-
-**Testes:** 168 verificações do servidor e 88 no navegador.
-
-## Versão 34: correções curtas antes do piloto (inclui tudo da 33)
-
-**Como instalar.** O servidor muda e a planilha ganha uma coluna nova (formato 23). Faça na ordem:
-1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
-2. **Confira:** abra o /exec. Ele deve mostrar `"versao":29`.
-3. **GitHub:** clique em **Add file > Upload files** e arraste, de uma vez:
-   - os arquivos `index.html`, `sw.js`, `Codigo.gs`, `compartilhado.js` e `LEIA-ME.md`;
-   - a pasta `testes` inteira.
-4. **Confira a aba Actions:** o envio deve ficar com ✓ verde.
-5. **Planilha:**
-   - se ela ainda não tem exames, é reorganizada sozinha no primeiro uso, com backup antes;
-   - se já tem exames de teste, entre como coordenação titular, vá em **Administração > Atualização da planilha pendente**, toque em "Ver o que vai mudar" e depois em "Fazer backup e atualizar". Enquanto isso não for feito, os exames novos esperam guardados nos aparelhos.
-6. **No celular:** feche e abra o app com internet (deve aparecer "app versão 34" em Conta).
-
-**Exame salvo de verdade:**
-- Se o aparelho estiver sem espaço e não conseguir guardar o exame, o app **não** diz mais "salvo" e não limpa a tela. O exame continua aberto, o botão vira "Tentar guardar de novo" e o app tenta enviá-lo na hora.
-- Enquanto houver exame que só está na memória, "Começar novo exame" e abrir outro exame ficam bloqueados. Sair da conta pede uma confirmação a mais.
-- Assim que o exame é enviado (ou o aparelho consegue guardá-lo), a tela é liberada sozinha para o próximo.
-
-**Código de acompanhamento:**
-- O polo e a aldeia do código têm de 1 a 3 letras ou números. Nome sem nenhuma letra ou número vira "X".
-- O formato antigo, com CRO, saiu (não há exames nele).
-- **Coluna nova `codigo_confere_local`** na aba Exames: "sim" quando o começo do código (UF-polo-aldeia) bate com o local do exame, "não" quando não bate. "Não" é esperado quando a pessoa foi examinada em outra aldeia ou quando o local foi corrigido depois de o código ser mostrado (o código nunca muda). Serve para conferência.
-- **Código em mais de um DSEI:** isso não deveria acontecer, mas, se acontecer, cirurgiões-dentistas e RTs deixam de ver e de juntar exames a esse código, fica registrado em Acessos (Segurança) e a coordenação recebe um e-mail (no máximo um a cada 6 horas por código). A coordenação continua vendo para corrigir.
-- Um exame já gravado num DSEI não pode ser reenviado como de outro DSEI.
-
-**Acesso desativado que pede de novo:** vira um **pedido de reativação**. O cadastro não muda (o DSEI e o perfil continuam os de antes), quem desativou recebe um e-mail e vê "pediu reativação" ao lado do nome em Equipe ou Administração. Para aceitar, basta tocar em "Reativar". Mudança de DSEI ou de perfil continua sendo feita pela coordenação.
-
-**Relatório da reorganização completo:** a aba "Relatório da reorganização" lista todos os exames que mudaram, sem o limite de 5000.
-
-**Local do atendimento:** a caixa "Não achou na lista? Procure pelo nome" saiu. O campo para digitar o nome só aparece quando se escolhe "Outro polo (não está na lista)" ou "Outra aldeia (não está na lista)".
-
-**Testes:** 147 verificações do servidor e 42 no navegador, incluindo cada correção desta versão.
-
-## Versão 33: correções da auditoria antes do uso real (inclui tudo da 32)
-
-**Como instalar.** O servidor muda, mas a planilha não precisa ser reorganizada (o formato continua o 22). Faça na ordem:
-1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
-2. **Confira:** abra o /exec. Ele deve mostrar `"versao":28`.
-3. **GitHub:** clique em **Add file > Upload files** e arraste, de uma vez:
-   - os arquivos `index.html`, `sw.js`, `Codigo.gs`, `LEIA-ME.md`, `compartilhado.js` e `montar.py`;
-   - as pastas `testes` e `ferramentas` inteiras (o GitHub mantém as pastas quando você arrasta a pasta).
-
-   Depois, abra `.github/workflows/verificar.yml` no GitHub, toque no lápis, apague tudo, cole o conteúdo do `verificar.yml` novo e salve.
-4. **Confira a aba Actions:** o envio deve ficar com ✓ verde. Agora o GitHub roda, a cada envio:
-   - a conferência de que app, servidor e modo sem internet combinam;
-   - os testes do servidor (cerca de 120 verificações);
-   - a abertura do app no navegador;
-   - os testes dos fluxos principais no navegador.
-5. **Senha da coordenação:** se a Administração mostrar o aviso de senha curta, troque `CHAVE_COORDENACAO` em Propriedades do script por uma senha de 12 caracteres ou mais e publique de novo pelo lápis.
-6. **Teste:**
-   - um exame sem escolher o sexo (tem que ser barrado);
-   - "Esqueci meu código" (o link do e-mail deve começar com `https://luanabrisolla-creator.github.io/odontograma-v2/`);
-   - um convite.
-
-**Segurança:**
-- **Endereço fixo nos e-mails.** Todo link enviado por e-mail (recuperação de código, convite, aprovação, aviso de pedido de acesso) usa o endereço oficial do app, definido no servidor. O endereço que o navegador manda é ignorado. Isso fecha a falha que permitia mandar, por um e-mail legítimo do sistema, um link para um site falso e roubar a conta. Se um dia o app mudar de endereço, crie `URL_APP` em Propriedades do script.
-- **Planilha protegida contra fórmulas na aba Usuarios.** Um nome, CRO ou polo começado por `=`, `+`, `-` ou `@` é gravado como texto.
-- **Login:**
-  - o profissional com o código certo sempre entra, mesmo que alguém tenha errado o código dele 20 vezes;
-  - para a coordenação titular, cuja senha é escolhida por pessoa, o bloqueio de 15 minutos continua;
-  - a Administração avisa se essa senha tem menos de 12 caracteres;
-  - tentativas durante o bloqueio não enchem mais a aba Acessos.
-- **Login sem regravar o cadastro.** O registro do último acesso grava só aquela célula, e não a linha inteira. Assim ele não desfaz uma desativação ou um código novo feitos no mesmo instante.
-
-**Exame:**
-- **Sexo obrigatório.** A opção "Não informado" saiu, e o app e o servidor exigem Feminino ou Masculino.
-- **O servidor confere o exame inteiro:**
-  - todos os dentes da dentição;
-  - dor, procedimentos (só os da lista, indicado ou realizado), procedimentos coletivos, insumos e observações;
-  - datas que existem de verdade (31/02 é recusado) e nunca depois de hoje;
-  - o formato do código de acompanhamento e a UF do DSEI, também no envio.
-- **Raiz residual no decíduo** continua contando como "e" no ceo-d, como você confirmou.
-
-**Celular:**
-- **Nenhum exame some quando o aparelho enche.** Se o navegador recusar a gravação, o app libera espaço sozinho: apaga o cache do Painel e os exames já enviados, que estão na nuvem. Se ainda assim não couber, o exame fica na memória e aparece um aviso vermelho no topo de todas as telas pedindo para enviar antes de fechar o app.
-- **Faxina automática:** exames enviados há mais de 30 dias saem do aparelho. Eles continuam na nuvem, em Meus exames > Na nuvem.
-- **Cache do Painel menor:** 5 consultas guardadas, em vez de 20.
-
-**Planilha:**
-- **Reorganizações futuras só com a sua confirmação.** Quando um código novo mudar o formato da planilha, e ela já tiver exames, nada acontece sozinho:
-  - a Administração mostra "Atualização da planilha pendente";
-  - em "Ver o que vai mudar", aparece quantos exames mudam de classe, de ceo-d ou de CPO-D;
-  - só então o botão faz o backup e atualiza;
-  - se o backup falhar, nada é alterado;
-  - a lista completa do antes e depois fica na aba "Relatório da reorganização", e o resumo fica nos Acessos;
-  - enquanto estiver pendente, os profissionais conseguem consultar, e os exames novos esperam guardados nos aparelhos.
-- Planilha vazia (instalação nova) continua sendo organizada sozinha, sempre com backup antes.
-
-**Testes no repositório:**
-- **Pasta `testes`:** tem um simulador do Apps Script e um cenário montado do zero pelos fluxos do próprio app (pedido de acesso, aprovação, convite). Não usa nenhum dado real nem senha real.
-- **`servidor.test.js`:** testa o servidor. Roda com `node testes/servidor.test.js`.
-- **`navegador.test.js`:** testa o app num navegador de verdade.
-- Os dois rodam no GitHub a cada envio.
-
-## Versão 32: aviso de servidor corrigido e situação do servidor na Administração (inclui tudo da 31)
-
-**Como instalar:** só o GitHub. Envie o `index.html` e o `sw.js`. O servidor continua na versão 27 e o Apps Script não muda.
-
-- **Aviso vermelho "o servidor está na versão 26":** o app guardava a versão do servidor do momento do login e só conferia de novo no dia seguinte. Quem entrou antes de o servidor ser atualizado continuava vendo o aviso. Agora o app pergunta a versão ao servidor toda vez que abre (com internet), e o aviso some assim que o servidor é atualizado. Sem internet, o aviso não aparece.
-- **"Situação do servidor"** saiu da tela de entrada (aparecia depois de um erro ao entrar). Agora fica só para a coordenação, no fim da aba Administração.
-
-## Versão 31: índices pela regra do material, painel por pessoa, servidor como fonte do resultado e segurança (inclui tudo da 30)
-
-**Como instalar.** O servidor muda. Faça tudo no mesmo dia e nesta ordem, sem misturar arquivos novos e antigos no GitHub:
-1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
-2. **Confira:** abra o endereço /exec. Ele deve mostrar `"versao":27`.
-3. **Primeiro uso:** a planilha é reorganizada sozinha (formato 22), com backup antes. Nessa reorganização, o servidor **refaz a classe de risco e o ceo-d/CPO-D de todos os exames já gravados** pela regra nova. Por isso, os números antigos de ceo-d e CPO-D na planilha podem mudar (veja "Índices" abaixo). A classe de risco segue a mesma regra de antes; ela só muda em exames muito antigos que tinham sido calculados por uma regra anterior do app.
-4. **GitHub, tudo no mesmo envio:** `index.html`, `sw.js`, `manifest.webmanifest`, `icon.svg`, `icon-192.png`, `icon-512.png`, `mapa-ti.json`, `paisagem.webp` e `Codigo.gs`.
-5. **Verificação automática.** O GitHub só roda o que está dentro da pasta `.github/workflows`. Hoje o `verificar.yml` está solto na raiz, por isso não roda. Para corrigir:
-   - no GitHub, toque em **Add file > Create new file**;
-   - no nome do arquivo, digite `.github/workflows/verificar.yml` (as barras criam as pastas sozinhas);
-   - cole o conteúdo do `verificar.yml` do pacote e salve (Commit changes);
-   - do mesmo jeito, crie `ferramentas/verificar.js` e `ferramentas/abrir-app.js`;
-   - depois apague o `verificar.yml` e o `verificar.js` da raiz, e o `.github/workflows/main.yml` vazio.
-
-   A partir daí, a aba **Actions** mostra, a cada envio, um ✓ verde ou um ✗ vermelho. Há duas conferências: se app, servidor e modo sem internet combinam, e se o app abre sem erro num navegador de verdade (celular e computador).
-6. **Teste antes de usar com dados reais:**
-   - "Esqueci meu código" do começo ao fim;
-   - pessoa nova com e sem internet;
-   - busca sem código de uma pessoa que mudou de aldeia;
-   - o Painel com a tabela por faixa etária;
-   - a Administração.
-
-**Índices (ceo-d e CPO-D), pela regra do seu material de ensino:**
-- **CPO-D (permanentes):**
-  - C = cavidade ativa ou crônica, ou restauração com cárie. Cárie e restauração no mesmo dente contam como cariado.
-  - P = extraído por cárie, extração indicada ou coroa destruída (raiz residual). **Mudou:** a raiz residual contava como C.
-  - O = restaurado sem cárie. Mancha branca e restauração no mesmo dente contam como restaurado.
-  - Mancha branca não conta (só há cárie com cavitação).
-- **ceo-d (decíduos):**
-  - c = como no CPO-D.
-  - e = extração indicada ou raiz residual. **Mudou:** o decíduo ausente por cárie não conta mais, porque pode ter esfoliado ("os extraídos não contamos").
-  - o = restaurado sem cárie.
-- Cada dente conta uma vez, pela pior situação: perdido ou extração indicada > cariado > obturado.
-- **O servidor recalcula** a classe de risco e os índices a partir dos dentes a cada exame recebido. O que o navegador manda pronto é ignorado. Se um app antigo mandar uma classe diferente da calculada, isso fica nos Acessos como "Resultado recalculado".
-
-**Painel por pessoa:**
-- Risco, ceo-d, CPO-D, placa, gengivite, vigilância, prótese, idade e sexo contam **cada pessoa uma vez, pelo exame mais recente dela no período**. O ceo-d e o CPO-D médios são a soma dos índices dividida pelo número de pessoas (o "índice comunitário").
-- Exames, exames por mês, procedimentos, insumos e locais de atendimento continuam contando **todos os exames**. Há um número novo, "exames realizados", ao lado de "pessoas examinadas".
-- **Nova tabela "Índices médios por faixa etária"**, no bloco Cárie por faixa etária: ceo-d e CPO-D médios de cada faixa, com os componentes (c · e · o e C · P · O) e o número de pessoas.
-- Na comparação entre DSEIs, o percentual de alto risco some quando revelaria um grupo de 1 a 4 pessoas.
-- O Painel continua mostrando dados agregados de todos os DSEIs para todos os perfis, como você decidiu na versão 30.
-
-**Servidor confere o que chega do app:**
-- O exame só é gravado com todos os campos certos:
-  - datas válidas (exame não pode estar no futuro; nascimento não pode ser depois do exame);
-  - sexo, dentição, local de atendimento e vigilância da lista ("Não identificado" sozinho);
-  - placa e gengivite respondidas;
-  - UF do DSEI, polo e aldeia preenchidos;
-  - dentes da dentição escolhida, com situações e faces válidas;
-  - nenhum dente com ? para conferir.
-- Se faltar algo, o exame não é gravado e o app mostra o que corrigir.
-- DSEI e UF também são conferidos no pedido de acesso, no convite, na coordenação + RT e nas ações do Dia B.
-- O código de acompanhamento só é reservado no formato certo e com a UF do DSEI de quem reserva.
-
-**Segurança:**
-- **"Esqueci meu código" em duas etapas.** O pedido manda por e-mail um link válido por 1 hora, e **o código atual continua valendo**. Só quando a pessoa abre o link e toca em "Gerar meu novo código" o código muda. O código novo aparece na tela e também vai por e-mail. Assim, quem só sabe o e-mail de alguém não consegue derrubar o acesso da pessoa, e uma falha no e-mail não deixa ninguém sem código. Limite: 3 pedidos por hora por e-mail.
-- **Limite de tentativas:** depois de 20 tentativas erradas de entrar em 15 minutos, aquele e-mail fica bloqueado por 15 minutos. Pedidos de acesso: no máximo 5 por hora por e-mail.
-- **Coordenação + RT:** na gestão (Painel, histórico, Administração), continua vendo vários DSEIs. No clínico (registrar exame, buscar pessoa, reservar código), fica no DSEI de RT, como qualquer RT. O campo DSEI do exame fica travado para ela também.
-- **Código de outro DSEI:** para CD e RT, a busca diz só "não encontramos no seu DSEI", sem dizer qual é o outro DSEI. A coordenação continua vendo.
-- **Exames antigos sem dono no aparelho:** não são mais atribuídos sozinhos a quem entrar. Em Meus exames aparece um aviso com o botão "São meus", para a pessoa assumir.
-- **Identificadores completos:** usuários, convites e ações novos usam o identificador completo (36 caracteres), em vez de 8.
-- **Auditoria:** se um registro na aba Acessos falhar, o atendimento continua, mas a falha é contada e aparece em vermelho para a coordenação na Administração.
-
-**Outras melhorias:**
-- **Busca de aldeia mais clara:** o campo de busca fica logo abaixo do campo Aldeia. Depois de escolher, a aldeia continua escrita na busca, com fundo verde; o campo Aldeia pisca em verde; e aparece a linha "✓ Aldeia escolhida".
-- **Pessoa que mudou de aldeia:** na busca sem código, se ninguém com o mesmo nascimento e sexo foi examinado na aldeia, o app procura nas outras aldeias do mesmo DSEI. Os resultados aparecem com o aviso "Último exame em outra aldeia". Nada é ligado sozinho.
-- **Prefixo do código:** UF, polo e aldeia no código mostram o **local do primeiro cadastro**, não onde a pessoa mora hoje. Isso está escrito no Dicionário da planilha.
-
-**Ficou para a próxima rodada:**
-- **Sessão temporária no lugar do código guardado no aparelho, bloqueio por inatividade e dados offline protegidos.** Exige mudar o login e o armazenamento; para o piloto, o risco é aceitável.
-- **Desempenho com dezenas de milhares de exames:** índices auxiliares e, no futuro, um banco de dados no lugar da planilha.
-
-## Versão 30: código de acompanhamento novo, campos obrigatórios e correções da revisão (inclui tudo da 29)
-
-**Como instalar.** Desta vez o servidor muda. Faça tudo de uma vez e nesta ordem, sem misturar arquivos novos com os antigos do GitHub:
-1. **Apps Script:** cole o `Codigo.gs` inteiro e publique **pelo lápis** (Gerenciar implantações > lápis > Nova versão > Implantar).
-2. **Confira:** abra o endereço /exec. Ele deve mostrar `"versao":26`. Só passe para o passo 3 depois disso. O servidor novo continua aceitando o app antigo, então os celulares não param enquanto o GitHub não é atualizado.
-3. **GitHub, tudo no mesmo envio:** `index.html`, `sw.js`, `manifest.webmanifest`, `icon.svg`, `icon-192.png`, `icon-512.png`, `mapa-ti.json`, `paisagem.webp` e o `Codigo.gs` (o do GitHub estava na versão 18; ele não tem senha, então pode ir).
-4. **Verificação automática (opcional, recomendado):** no mesmo envio, mande a pasta `.github/workflows` com o `verificar.yml` e a pasta `ferramentas` com o `verificar.js`, e apague o arquivo vazio `.github/workflows/main.yml`. A cada envio, a aba **Actions** do GitHub mostra um ✓ verde ou um ✗ vermelho com o problema explicado.
-5. **Teste antes de usar com dados reais:**
-   - entrar como dentista, como RT e como coordenação;
-   - pessoa nova com internet e pessoa nova sem internet (modo avião);
-   - reavaliação pelo código e exame em outro aparelho;
-   - tentar salvar sem local, sem vigilância e sem placa ou gengivite;
-   - exame feito sem internet sendo enviado quando a internet volta;
-   - instalar o app no celular e abrir sem internet;
-   - ação do Dia B.
-
-**O que mudou:**
-- **Código de acompanhamento sem CRO.** Pessoas novas recebem um código como `RR-SUR-HAK-42E64K9P`: UF, 3 letras do polo, 3 letras da aldeia e 8 caracteres sorteados.
-  - O sorteio não usa letras e números que se confundem (O/0, I/1, L). São 31 caracteres possíveis em cada posição, o que dá mais de 850 bilhões de combinações para cada aldeia.
-  - **Com internet:** antes de mostrar o código, o app pede ao servidor que o **reserve**. A reserva é feita com trava, então dois aparelhos nunca recebem o mesmo código. Se o código sorteado já existir, o app sorteia outro antes de mostrar. As reservas ficam na aba `_codigos_reservados`.
-  - **Sem internet:** o código é sorteado no aparelho e vale como definitivo.
-  - Depois de mostrado, o código nunca muda, nem se a aldeia for corrigida.
-  - Os códigos antigos (com o CRO) continuam valendo e são encontrados normalmente.
-- **O servidor não acrescenta mais “-2”.** A conferência no envio ficou só como proteção extrema. Ela só pode disparar se dois aparelhos sem internet sortearem os mesmos 8 caracteres na mesma aldeia, algo praticamente impossível. Nesse caso, o exame não é juntado ao de outra pessoa: ele é recusado com um aviso, e o caso fica nos Acessos como “Código repetido”.
-- **O código mostrado é imutável em toda a tela.** Depois de gerado, o app sempre mostra o mesmo código, mesmo que a UF, o polo ou a aldeia sejam corrigidos. Se a pessoa for vinculada por engano e depois voltar a ser "pessoa nova", volta o mesmo código, e não um recalculado. Um código mostrado sem internet também nunca é trocado quando a internet volta.
-- **Cada cirurgião-dentista e cada RT atua só no DSEI do próprio cadastro.** A regra vale no app e é conferida de novo no servidor, então um valor alterado no navegador não passa.
-  - **No exame:** o DSEI vem do cadastro e o campo fica travado ("Do seu cadastro. Para mudar de DSEI, fale com a coordenação."). A UF é escolhida entre as do DSEI.
-  - **No envio:** o servidor recusa qualquer exame de CD ou RT marcado com outro DSEI (ou sem DSEI), inclusive na edição de um exame já enviado. Nada é gravado e a tentativa fica nos Acessos como "Tentativa de acesso recusada".
-  - **Nas buscas:** a busca por código, a busca por dados e a reserva de código usam sempre o DSEI do cadastro. Se o app pedir outro DSEI, a busca volta vazia com um aviso.
-  - **Lista de aldeias do exame, Equipe, convites e ações do Dia B:** também só do DSEI do cadastro.
-  - **Exceção, de propósito: o Painel.** Ele mostra dados agregados, sem identificar ninguém, e números de 1 a 4 aparecem como "<5". Por isso todos os perfis veem a visão Geral, qualquer DSEI e a comparação entre DSEIs, além da Minha produção. Fica restrita só a lista de aldeias sem exame (para busca ativa): a RT vê a do próprio DSEI e a coordenação a de qualquer um.
-  - **Coordenação:** é o único perfil que trabalha com vários DSEIs, conforme as permissões de gestão. Isso inclui a coordenação que também é RT.
-  - **Para mudar alguém de DSEI:** a coordenação desativa o acesso atual e a pessoa faz um novo pedido de acesso com o DSEI novo. Não existe ainda um botão "mudar DSEI". Os exames que ela fez no DSEI antigo continuam na planilha, mas ela não consegue mais editá-los.
-- **Continuidade do cuidado:** o histórico de uma pessoa pode ser visto pela coordenação e pela RT e pelos cirurgiões-dentistas do DSEI da pessoa, inclusive os exames feitos por outros profissionais do DSEI. Quem é de outro DSEI não vê. Cada consulta ao histórico feita por quem não fez todos os exames fica registrada na aba Acessos ("Viu o acompanhamento de uma pessoa").
-- **Campos obrigatórios:** o exame só é salvo com o local de atendimento, a vigilância em saúde bucal (ou “Não identificado”), a placa visível e a gengivite respondidos (Sim ou Não). Placa e gengivite começam sem resposta, em vez de “Não”. A etapa Condições só fica ✓ com as três respostas.
-- **Aviso de servidor desatualizado:** o app compara com a **versão mínima** de que precisa (26), não exige número igual. Servidor 26, 27 ou mais novo é compatível. Servidor mais antigo, ou que nem informa a versão, mostra uma faixa vermelha no topo: a coordenação vê o que fazer e os dentistas veem um aviso simples. Minha conta mostra as duas versões (app 30 · servidor 26).
-- **Modo sem internet consertado:** o `sw.js` tentava guardar o `icon.svg`, que não estava no GitHub, e por isso a instalação para uso offline falhava. Agora ele guarda primeiro o essencial (o app) e os outros arquivos sem travar se algum faltar.
-- **Nome do app:** “Odontograma · Saúde Bucal Indígena”, no ícone do celular e nos e-mails.
-
-## Versão 29: DSEI → polo base → aldeia em todo o app e Equipes só para acompanhar (inclui tudo da 28)
-
-**Como instalar:** cole o `Codigo.gs` no Apps Script e publique **pelo lápis**: a única mudança no servidor é mandar o polo junto na lista de reavaliação, e o /exec continua mostrando `"versao":25`. No GitHub, troque o `index.html` e o `sw.js`. Se a 27 e a 28 ainda não foram instaladas, envie também o `mapa-ti.json` e o `paisagem.webp`.
-
-- **Ordem do local:** no exame, o DSEI vem primeiro. A UF é escolhida entre as do DSEI, e quando a aldeia vem da lista ela é preenchida sozinha. Depois vêm o polo base e a aldeia.
-- **Polo antes da aldeia em todas as telas:**
-  - no cabeçalho do exame ("Polo Surucucu · Kataroa · UBSI · data");
-  - em Meus exames ("Surucucu › Kataroa");
-  - na linha do tempo da pessoa e na lista de reavaliação;
-  - no exame aberto para leitura;
-  - na lista de aldeias sem exame do Painel.
-- **Equipes da coordenação** passou a ser só para acompanhar: profissionais, exames do mês, último envio e exames do DSEI. Convites, pedidos de acesso, código novo e desativação ficam só na **Administração**, e um aviso leva até ela.
-- **A RT continua convidando dentistas e aprovando pedidos na aba Equipe**, porque ela não tem a aba Administração.
-
-## Versão 28: cores da Saúde Indígena, polo antes da aldeia e ilustração na entrada (inclui tudo da 27)
-
-**Como instalar:** no GitHub, troque o `index.html` e o `sw.js` e **envie o arquivo novo `paisagem.webp`**, na mesma pasta. Se a versão 27 ainda não foi instalada, siga também os passos dela (o `Codigo.gs` e o `mapa-ti.json` estão neste pacote). O Apps Script continua na versão 25.
-
-- **Ordem do local:** DSEI, depois polo base, depois aldeia. A busca de aldeia aparece só depois de escolher o polo e procura só nas aldeias desse polo (quando o polo tem mais de 8 aldeias).
-- **Cores da Saúde Indígena** (vermelho, amarelo, verde e azul), mais fortes:
-  - uma faixa colorida no alto;
-  - os quatro blocos da página inicial, um em cada cor;
-  - as etapas do exame, cada uma com a sua cor, e o mesmo tom na borda de cada parte do formulário;
-  - o nível de risco colorido na barra de baixo (verde, amarelo e vermelho);
-  - "Na nuvem", "A enviar" e "Erro" em verde, amarelo e vermelho;
-  - os botões de escolha (Não ou Sim, Mista, Indicado ou Realizado) ficam preenchidos quando marcados;
-  - o item atual do menu lateral fica azul cheio.
-- **Tela de entrada:** a ilustração da aldeia ocupa o fundo inteiro. No celular, ela fica parada atrás e o conteúdo rola por cima.
-
-## Versão 27: população da SESAI, listas de aldeias, cobertura e mapa (inclui tudo da 25 e da 26)
-
-**Como instalar:**
-1. Cole o `Codigo.gs` no Apps Script e publique **pelo lápis** (Gerenciar implantações > lápis > Versão: Nova versão > Implantar). O endereço continua o mesmo, e o /exec deve mostrar `"versao":25`. No primeiro uso, a planilha é reorganizada sozinha, com backup antes, porque a aba Exames ganha colunas novas.
-2. No GitHub, troque o `index.html` e o `sw.js` e **envie o arquivo novo `mapa-ti.json`**, na mesma pasta.
-3. Entre como coordenação, vá em **Administração > População e aldeias da SESAI** e envie a planilha baixada do [painel da população indígena da SESAI](https://infoms.saude.gov.br/extensions/sesai_pop_indigena/sesai_pop_indigena.html). Repita uma vez por ano, quando a SESAI atualizar a população.
-
-**O que muda:**
-- **Risco em três níveis para todos:** A e B baixo, C e D moderado, E e F alto. A escolha de agrupamento saiu de Minha conta. A coluna `nivel_risco` da planilha é recalculada pela classe, inclusive nos exames antigos.
-- **Polo e aldeia da lista oficial:** depois do envio da planilha, o exame mostra os polos do DSEI e as aldeias do polo, com uma busca por nome. O exame guarda os códigos da aldeia, do polo, da Terra Indígena e do município (IBGE). A UF vem da aldeia.
-- **Aldeia ou polo fora da lista:** as opções "Outra aldeia" e "Outro polo" abrem um campo para digitar. Na planilha, a coluna `aldeia_fora_da_lista` marca esses exames.
-- **UFs que faltavam:** GO, RJ, RS, SP, RN e ES entraram na lista, com os DSEIs de cada uma.
-- **Cobertura no Painel:** mostra a porcentagem da população examinada no período, uma pirâmide etária com faixas de 5 anos (as da planilha da SESAI), a tabela por DSEI (visão geral) ou por polo (visão por DSEI) e, só para a RT e a coordenação, as aldeias sem nenhum exame, para busca ativa. Cada pessoa conta uma vez no período, e números de 1 a 4 aparecem como "<5".
-- **Mapa por Terra Indígena:** cada Terra Indígena é pintada conforme a cobertura. Tocar numa delas mostra a população e as pessoas examinadas. Os contornos são da FUNAI (junho de 2025), via geobr/IPEA. Quem vive fora de Terra Indígena entra nos números, mas não no mapa.
-- **Na planilha:** a aba nova **População** tem uma linha por aldeia, com a população por sexo e faixa etária. A aba **_populacao** guarda o mesmo conteúdo em texto para o app; não edite essa aba.
-- Exames antigos, feitos antes da lista, são ligados às aldeias pelo nome, no mesmo DSEI.
-
-## Versão 26: convites (inclui tudo da 25)
-
-**Como instalar:** cole o `Codigo.gs` no Apps Script e publique **pelo lápis** (Gerenciar implantações > lápis > Versão: Nova versão > Implantar). O endereço /exec continua o mesmo e deve mostrar `"versao":24`. No GitHub, troque o `index.html` e o `sw.js`.
-
-- **Quem convida:** a coordenação convida referências técnicas e cirurgiões-dentistas de qualquer DSEI, na aba **Administração**, ou na aba **Equipes** para o DSEI escolhido. A referência técnica convida cirurgiões-dentistas do próprio DSEI, na aba **Equipe**.
-- **Um ou vários de uma vez:** basta colar os e-mails, um por linha ou separados por vírgula (até 50). O app mostra o resultado de cada e-mail: convite enviado, já tem acesso, já pediu acesso (aí é só aprovar o pedido), acesso desativado (reative em vez de convidar) ou e-mail inválido.
-- **O que a pessoa recebe:** um e-mail com um link pessoal, válido por 30 dias. Ao abrir o link, a pessoa vê quem a convidou, o perfil e o DSEI, completa nome, CRO, UF e polo base (este é opcional) e já entra no app, **sem esperar aprovação**. O código de acesso aparece na tela e também chega por e-mail, para ela entrar em outros aparelhos.
-- **Quem convidou é avisado** por e-mail quando o convite é aceito.
-- **Convites enviados:** a lista mostra os convites em aberto e os já aceitos. Dá para **reenviar**, o que gera um link novo, invalida o anterior e renova o prazo, ou **cancelar**. Convites vencidos podem ser enviados de novo.
-- **Se o e-mail não sair**, por exemplo porque acabou a cota diária do Google, o app mostra o botão **Copiar link**, e o convite pode ser enviado por WhatsApp. O link é pessoal: envie só para a pessoa convidada.
-- **Na planilha**, a aba nova **Convites** guarda o e-mail, o perfil, o DSEI, a situação e quem convidou. O link em si não fica guardado, só um resumo dele que não permite recriá-lo. Os convites também ficam registrados na aba Acessos.
-- O pedido de acesso pela tela de entrada continua funcionando para quem não recebeu convite. O "Link do app" segue na Administração para isso.
-
-## Versão 25: confirmar dente na boca e dica do dente (inclui tudo da 24)
-
-**Como instalar:** só o GitHub: troque o `index.html` e o `sw.js`. O servidor continua na versão 23, sem mudança no Apps Script.
-
-- **Dentes a confirmar na boca:** a faixa acima do odontograma diz quantos dentes faltam e tem um botão para cada um. No odontograma, esses dentes ficam em amarelo, com um selo laranja "!".
-- Ao abrir um dente a confirmar, a pergunta "O dente está na boca?" vem com dois cartões grandes (por exemplo, Presente e Não erupcionado). Depois de escolher, aparece a confirmação em verde e o app passa para o próximo dente.
-- **Dica do dente no computador:** ao passar o mouse sobre um dente, aparece um cartão com o nome do dente, as faces marcadas (por exemplo, "Cariado, lesão ativa: O, D"), dor, procedimentos indicados ou realizados, observação e o aviso do exame anterior, com o botão "Editar dente". No celular, tocar no dente continua abrindo os detalhes.
-- O sinal de dor no dente passou a ser vermelho, para não se confundir com o selo laranja de confirmar.
-
-## Versão 24: aviso de ação do Dia B em andamento (inclui tudo da 23)
-
-**Como instalar:** só o GitHub: troque o `index.html` e o `sw.js`. O servidor continua na versão 23, sem mudança no Apps Script.
-
-- Quando há uma ação do Dia B em andamento no DSEI da pessoa, aparece um **aviso ao entrar no app**, uma vez por dia para cada ação, com as aldeias, o período, quantos exames dela já entraram e os botões "Começar exame" e "Ver a ação".
-- Enquanto a ação durar, a página inicial mostra uma **faixa laranja** no alto com a ação.
-- A coordenação vê a faixa, mas não recebe o aviso, porque acompanha todas as ações ao mesmo tempo.
-
-## Versão 23: ajustes (inclui tudo da 22)
-
-**Como instalar:** cole o `Codigo.gs` no Apps Script e publique **pelo lápis** (Gerenciar implantações > lápis > Versão: Nova versão > Implantar). O /exec deve mostrar `"versao":23`. No GitHub, troque o `index.html` e o `sw.js`.
-
-- **Nome da coordenação titular:** em **Minha conta**, a titular digita o próprio nome. Ele aparece na página inicial ("Olá, …") e nos registros da aba Acessos, e fica guardado nas Propriedades do script como `NOME_COORDENACAO`.
-- **Local de atendimento** sem "Polo base", que já é informado no campo de cima. Ficam: UBSI, CASAI, Domicílio, Escola ou creche, Unidade móvel e Outro.
-- **Aplicar a vários dentes** sem a opção "Tirar". Ficam Indicado e Realizado.
-- **Erupcionar e esfoliar** no lugar de "nascer" e "cair" nos avisos do odontograma.
-- **Ilustração nova** em alta resolução na tela de entrada e na página inicial.
-
-## Versão 22: página inicial e Ações do Dia B (inclui tudo da 21)
-
-**Como instalar**
-1. **Apps Script:** cole o `Codigo.gs` novo e salve. Publique **pelo lápis** da implantação que termina em `...H4djW_f4r3Ig/exec`: **Gerenciar implantações > lápis > Versão: Nova versão > Implantar**. Não use "Nova implantação": assim o endereço continua o mesmo. O /exec deve mostrar `"versao":22`.
-2. **GitHub:** troque o `index.html` e o `sw.js`.
-3. Feche e abra o app (no computador, **Ctrl+Shift+R**).
-
-A planilha não é reorganizada desta vez. Ela ganha a aba **Acoes** quando a coordenação criar a primeira ação.
-
-**O que muda no app**
-- **Página inicial**, que abre depois de entrar: saudação com a ilustração, quatro botões coloridos, números principais, últimos exames, ações em andamento e pendências.
-  - Para quem faz exames: Novo exame, Acompanhar pessoa (abre o exame já em "Tenho o código"), Ações do Dia B e Painel. Os números são da sua produção.
-  - Para a coordenação: Nova ação do Dia B, Gestão de acessos, Equipes e Painel. Os números são de todos os DSEIs.
-- **Pendências:** exames aguardando envio, exame começado e não salvo e **pessoas para reavaliação** (último exame há 6 meses ou mais). Na lista de reavaliação, "Novo exame" já abre o exame com o código da pessoa.
-- **No computador**, o menu fica numa coluna à esquerda, com o seu nome no alto à direita.
-- **Fonte Inter** no app inteiro.
-- **Ações do Dia B:**
-  - Só a coordenação cria uma ação: nome, DSEI, aldeias (ou todas as aldeias do DSEI) e período.
-  - Não há meta. O app conta sozinho as pessoas examinadas, os exames e as pessoas em alto risco.
-  - Os exames entram na ação sozinhos, pelo DSEI, pela aldeia (sem diferenciar acentos e maiúsculas) e pela data.
-  - Dentistas e RTs veem as ações do seu DSEI e quantos exames deles entraram em cada uma.
-  - A coordenação pode cancelar uma ação. Os exames continuam valendo; só a ação deixa de aparecer.
-
-## Versão 21: tela de entrada nova, azul como cor principal e servidor novo (inclui tudo da 20)
-
-**Como instalar**
-1. **Apps Script:** o servidor passa a ser a implantação que termina em `...H4djW_f4r3Ig/exec`. Confira se o projeto dessa implantação está com o `Codigo.gs` da versão 20 (o servidor não mudou na 21). Se não estiver, cole o `Codigo.gs` e publique **nessa implantação**: **Gerenciar implantações > lápis > Versão: Nova versão > Implantar**. O /exec deve mostrar `"versao":20`.
-2. **GitHub:** troque o `index.html` e o `sw.js`.
-3. Feche e abra o app (no computador, **Ctrl+Shift+R**).
-
-**Atenção ao endereço novo.** Ao abrir a versão 21, todos os aparelhos passam a usar o servidor `...H4djW_f4r3Ig/exec`. Ele precisa ser do mesmo projeto do Apps Script, ligado à mesma planilha, com as mesmas Propriedades do script. Se for de outro projeto, as pessoas não conseguem entrar com o código que já têm. Depois de conferir, deixe ativa só essa implantação e arquive as outras.
-
-**O que muda no app**
-- **Tela de entrada nova:** à esquerda, ODONTOGRAMA, o texto sobre o Dia B, os três destaques e a ilustração. À direita, "Já tenho acesso" e "Ainda não tenho acesso". O app abre direto em Entrar.
-- **Código de acesso escondido**, com o olho para mostrar.
-- **No celular**, o cartão de entrada aparece logo abaixo do título e da ilustração. O texto e os destaques ficam depois.
-- **Azul como cor principal** do app inteiro, com títulos em azul-marinho e a fonte Montserrat nos títulos. As cores das classes de risco (A a F) e do odontograma não mudam.
-- No topo do app, o subtítulo passa a ser "Dia B · Saúde Indígena".
-
-## Versão 20: visual novo e campos dos prontuários eletrônicos (inclui tudo da 17, 18 e 19)
-
-**Como instalar**
-1. **Apps Script:** cole o `Codigo.gs` novo e salve. Publique na implantação de sempre, a que termina em `...NobjcbKww7NZF0MJiA/exec`: **Gerenciar implantações > lápis > Versão: Nova versão > Implantar**. O /exec deve mostrar `"versao":20`.
-2. **GitHub:** troque o `index.html` e o `sw.js`.
-3. Feche e abra o app (no computador, **Ctrl+Shift+R**).
-
-**A planilha ganha colunas novas.** No primeiro uso depois da atualização, o servidor faz um backup ("Antes da reorganização", na pasta "Odontograma - backups") e reescreve as abas Exames e Dentes com as colunas novas. Nenhum exame se perde. Se preferir fazer na hora, rode **reorganizarPlanilha** no Apps Script.
-- Aba **Exames**: `local_atendimento` (depois de `municipio`); `vigilancia_saude_bucal`, `protese_superior` e `protese_inferior` (depois de `fluorose_moderada_severa`).
-- Aba **Dentes**: `sigla` (depois de `situacao`), com a sigla do dente: H, Hs, C, R, Rc, M, Mi, A, E, Ei, RR ou NE.
-- Nos exames antigos essas colunas ficam vazias. O Dicionário explica cada uma.
-
-**O que muda no app**
-- **Visual "Clínico claro":** fundo claro, verde como cor de destaque, cartões arredondados. No celular, o menu fica embaixo, com ícones; no computador, continua em cima.
-- **Etapas no topo do exame:** Local, Indivíduo, Odontograma e Condições. A etapa feita ganha um ✓. Tocar numa etapa leva até ela.
-- **Risco numa barra fina** acima do menu: classe, nível, ceo-d, CPO-D e o botão Salvar. Tocar na barra mostra os motivos.
-- **Siglas nos dentes**, como nos odontogramas dos prontuários eletrônicos (H, Hs, C, R, Rc, M, Mi, A, E, Ei, RR, NE). A legenda e o painel do dente usam os mesmos nomes.
-- **Local de atendimento:** UBSI, Polo base, CASAI, Domicílio, Escola ou creche, Unidade móvel ou Outro. O app lembra o último usado.
-- **Vigilância em saúde bucal**, com os termos dos prontuários. A fluorose passou para cá. **Dor de dente** e **Abscesso dentoalveolar** levam à classe F. "Não identificado" desmarca os outros itens.
-- **Necessidade de prótese** superior e inferior: Não avaliado, Não ou Sim.
-- **Aplicar a vários dentes:** escolha um procedimento (por exemplo, verniz fluoretado realizado) e marque os dentes, um por um ou em grupo (todos os presentes, permanentes, decíduos, superiores, inferiores).
-- **Copiar o código de acompanhamento** num toque, no cartão da pessoa e em Meus exames. O aviso lembra que dá para colar nas observações do paciente no prontuário eletrônico.
-- **Meus exames:** busca por código ou aldeia, filtros (Todos, A enviar, Na nuvem, Cancelados), lista agrupada por dia. Tocar num exame mostra Abrir, Copiar código, Cancelar e Excluir. CSV e Reenviar ficam em **Mais opções**.
-- **Painel:** classes A a F numa barra só e três blocos novos: Vigilância em saúde bucal (toque num item para filtrar), Necessidade de prótese e Local de atendimento.
-
-## Versão 19 (inclui tudo da 17 e da 18)
-
-Instale do mesmo jeito: cole o `Codigo.gs`, publique como **Nova versão** na implantação ativa e troque o `index.html` e o `sw.js` no GitHub. O /exec deve mostrar `"versao":19`.
-
-**Novidade: identificação do indivíduo em passos.**
-1. O dentista escolhe **"Tenho o código de acompanhamento"** ou **"Não tenho o código"**.
-2. **Com código:** digita o código e toca em **Buscar**. A busca é só no DSEI do atendimento e aceita também o código de um exame posterior da pessoa.
-3. **Pessoa localizada:** **Ver histórico** mostra a linha do tempo; **Usar esta pessoa** faz o vínculo.
-4. **Pessoa vinculada:** data de nascimento e sexo vêm dos exames anteriores e ficam travados. Siga para o odontograma.
-5. **Sem código:** informa data de nascimento e sexo e toca em **Buscar possíveis exames anteriores**. A busca usa o DSEI e a aldeia do atendimento.
-6. Aparecem as possíveis pessoas, com **Ver histórico** e **É esta pessoa**. Na dúvida, use **Continuar como nova pessoa**.
-7. **Nova pessoa:** o app gera o código de acompanhamento na hora, com **Copiar código**. O código fica reservado: não muda se a aldeia for corrigida depois.
-8. O código fica visível durante todo o exame: anote na ficha da equipe.
-
-- O exame **só pode ser salvo depois de identificar** o indivíduo. O odontograma pode ser preenchido antes.
-- **Sem internet:** a busca é feita nos exames do aparelho. Se o código não for encontrado, dá para **usar mesmo assim**, e ele é conferido no envio.
-- O servidor confere se o código existe no DSEI e se a data de nascimento e o sexo batem com os exames anteriores da pessoa.
-- RTs e dentistas do mesmo DSEI podem ver o histórico da pessoa.
-
-## Versão 18 (inclui tudo da 17)
-
-Instale do mesmo jeito descrito abaixo para a 17. O /exec deve mostrar `"versao":18`.
-
-**Novidade: exames guardados com dono.**
-- Ao **sair do aparelho**, os exames que ainda não foram enviados **ficam guardados**.
-- Quando o mesmo profissional entra de novo nesse aparelho, eles aparecem em Meus exames e são **enviados sozinhos** quando houver internet.
-- Outra pessoa que entrar no mesmo aparelho **não vê nem envia** esses exames. Ela só vê um aviso de que há exames de outro profissional guardados. O servidor também recusa um exame enviado por quem não o fez.
-- Ao sair, o exame **em andamento e ainda não salvo** é descartado, e o app avisa antes. Para guardar, toque em Salvar exame antes de sair.
-
-## Atualizar para a versão 17 (endereço do servidor gravado no app)
-
-1. **Apps Script:** cole o `Codigo.gs` novo, salve e publique **na implantação que termina em `...NobjcbKww7NZF0MJiA/exec`**: **Gerenciar implantações > lápis > Versão: Nova versão > Implantar**. Não crie implantação nova: o endereço precisa continuar o mesmo. O /exec deve mostrar `"versao":17` (ou 18, se instalar a 18).
-2. **GitHub:** troque o `index.html` e o `sw.js`.
-3. Em **Gerenciar implantações**, deixe ativa **só essa implantação** e arquive as outras.
-
-**O que muda:**
-- **O endereço do servidor fica gravado no app.** Todos os aparelhos passam a usar sempre esse servidor, mesmo os que tinham guardado o endereço de uma implantação antiga. Ninguém precisa abrir link novo: basta abrir o app com internet.
-- **Abas "Acessos - formato antigo" são juntadas sozinhas** na aba Acessos, e as entradas antigas são somadas na aba Uso.
-
-**Se um dia você precisar criar uma implantação nova,** abra o `index.html` no GitHub, procure `ENDERECO_PADRAO`, troque o endereço entre as aspas pelo novo /exec e salve.
-
-## Atualizar para a versão 16 (coordenação que também é RT)
-
-1. **Apps Script:** cole o `Codigo.gs` novo e salve. Publique em **Implantar > Gerenciar implantações** > implantação **App da Web** que o app usa > **lápis > Versão: Nova versão > Implantar**. O /exec deve mostrar `"versao":16`.
-2. **GitHub:** troque o `index.html` e o `sw.js`.
-3. Feche e abra o app (ou **Ctrl+Shift+R**).
-
-**Novidade:** uma pessoa da coordenação pode ser também referência técnica de um DSEI, com um login só. Para isso, informe a UF, o DSEI e o CRO ao adicioná-la, ou depois, em **Tornar RT de um DSEI**. Com isso:
-- o DSEI conta como "com RT";
-- os pedidos e e-mails de dentistas desse DSEI vão para ela;
-- ela ganha as abas **Exame** e **Meus exames**.
-
-Se o e-mail adicionado já for de uma RT, ela continua RT, passa a ser também coordenação e mantém o mesmo código. Para tirar só a parte de RT, use **Deixar de ser RT**.
-
-## Atualizar da versão 14 para a 15
-
-**1. Servidor (Apps Script).** Cole o `Codigo.gs` novo no lugar do antigo e salve. As Propriedades do script continuam as mesmas: não precisa cadastrar nada.
-- Escolha **reorganizarPlanilha** e clique em **Executar**. Ela faz um backup antes, chamado "Antes da reorganização", na pasta "Odontograma - backups", e reorganiza as abas. Se você não rodar, a reorganização acontece sozinha no primeiro uso.
-- Publique em **Implantar > Gerenciar implantações > lápis > Versão: Nova versão > Implantar**.
-- Abra o endereço /exec: deve aparecer `"versao":15` e `"formato":"ok"`.
-
-**2. App (GitHub).** Suba `index.html` e `sw.js` no lugar dos antigos. Os outros arquivos não mudaram.
-
-**3. No celular e no computador,** feche e abra o app uma vez para ele pegar a versão nova.
-
-**O que muda na planilha:**
-- **Exames** e **Dentes**: as colunas foram reorganizadas. As primeiras são `codigo_individuo`, `numero_exame` e `situacao_registro`, e os dados completos (JSON) ficam na última coluna. Para qualquer análise, filtre `situacao_registro = válido`.
-- **Acessos**: só os eventos importantes, do mais recente para o mais antigo, com as colunas tipo, perfil e DSEI. As entradas no app saem daqui e viram contadores na aba **Uso**.
-- **Uso**: aba nova, com uma linha por pessoa: entradas no mês, total de entradas, exames válidos e cancelados.
-- **Dicionário**: aba nova, que explica cada coluna e cada valor possível.
-- Os dados antigos não se perdem: a cópia completa de antes fica no backup.
-
-## Novidades da versão 15
-
-- **Mais pessoas na coordenação.** Em Administração > Coordenação, a titular adiciona uma pessoa pelo nome e e-mail, e ela recebe o código pessoal por e-mail. A pessoa adicionada vê tudo e aprova RTs, mas só a titular adiciona ou desativa alguém da coordenação.
-- **Cancelar exame.** Em Meus exames > Cancelar exame, só quem fez o exame pode cancelar, e o motivo é obrigatório (digitado errado, exame em duplicidade, pessoa errada ou outro, com explicação). O exame continua na planilha, marcado como cancelado, e sai do painel, dos índices e do acompanhamento. A coordenação também não altera exames de dentistas.
-- **Mesma pessoa, novo exame.** Ao preencher aldeia, data de nascimento e sexo, o app procura no DSEI uma pessoa já examinada e pergunta se é a mesma. Se for, o exame vira o 2º (3º...) dessa pessoa, com o mesmo **código do indivíduo**. O dentista vê o exame anterior e quem o fez.
-- **Conferência dente a dente.** Mudanças que não acontecem na boca, como um decíduo que esfoliou e volta a aparecer, impedem salvar como a mesma pessoa: ou o dentista corrige o dente, ou marca "não é a mesma pessoa". Mudanças raras, como uma restauração que virou hígida, precisam ser conferidas na boca. O exame anterior nunca é alterado.
-- **Acompanhamento no painel.** A visão geral mostra o resultado por faixa etária do 1º exame. A visão por pessoa mostra a linha do tempo de cada uma, exame por exame, e o que mudou em cada dente. A melhora é medida pelos dentes cariados, pela classe de risco, pela cárie nova e pela dor ou abscesso, porque o CPO-D não diminui.
-
-## Instalação do zero (versão 15)
-
-Use sempre **a mesma conta Google** (por exemplo, luanabrisolla@gmail.com) em todos os passos. Se o navegador tiver mais de uma conta, confira a foto no canto superior direito.
-
-O `Codigo.gs` **não tem senha nem e-mail escritos nele**. Eles ficam guardados à parte, nas **Propriedades do script**. Por isso o código pode ser guardado ou compartilhado sem expor a senha.
-
-**A. Planilha e servidor (Google, não Excel)**
-1. Em drive.google.com: **Novo > Planilhas Google**. Dê o nome "Odontograma".
-2. Na planilha: **Extensões > Apps Script**. Apague o que estiver lá, cole todo o `Codigo.gs` e salve (**Ctrl+S**). Não precisa mudar nada no código.
-3. No menu da esquerda, clique na **engrenagem (Configurações do projeto)**. Role até **Propriedades do script** > **Adicionar propriedade do script** e crie as duas:
-   - Propriedade `EMAIL_COORDENACAO`, valor: o seu e-mail
-   - Propriedade `CHAVE_COORDENACAO`, valor: a sua senha de coordenação (pelo menos 6 caracteres)
-   Clique em **Salvar propriedades do script**. Os nomes das propriedades precisam ser exatamente esses, em maiúsculas.
-4. Volte ao **Editor** (ícone `< >`). Na lista ao lado de **Executar**, escolha **testarInstalacao** e clique em **Executar**. Autorize (Revisar permissões > sua conta > Avançado > Acessar > Permitir). No Registro de execução deve aparecer **TUDO CERTO**.
-5. Na mesma lista, escolha **ativarBackupSemanal** e clique em **Executar** (uma vez só). O Google pede uma autorização nova, para o Drive: é para criar as cópias. A primeira cópia aparece na pasta **Odontograma - backups** do seu Drive. Depois, uma cópia é feita sozinha toda segunda-feira de madrugada. As 8 mais recentes ficam guardadas, e as mais antigas vão para a lixeira.
-6. **Implantar > Nova implantação**. Na engrenagem, escolha **App da Web**. Executar como: **Eu**. Quem pode acessar: **Qualquer pessoa**. Clique em **Implantar** e copie o endereço de **App da Web** (termina em `/exec`).
-7. Abra esse endereço no navegador: deve aparecer `"versao":15` e `"pronto":true`.
-
-**B. App no GitHub**
-8. Crie um repositório **público** e envie os seis arquivos: `index.html`, `sw.js`, `manifest.webmanifest`, `icon.svg`, `icon-192.png`, `icon-512.png` (nomes exatos, sem "(1)"). O `Codigo.gs` não precisa ir para o GitHub.
-9. **Settings > Pages > Deploy from a branch**, **main** e **/(root)**, **Save**. Espere o "pages build and deployment" ficar verde em **Actions**.
-
-**C. Primeiro acesso**
-10. Abra `https://SEU-USUARIO.github.io/NOME-DO-REPOSITORIO/?s=` seguido do trecho do endereço `/exec` que fica entre `/s/` e `/exec`.
-11. Toque em **Já tenho um código** e entre com o e-mail e a senha das Propriedades do script.
-12. Em **Administração**, copie o **link de convite** e envie para as referências técnicas.
-
-Se o login não funcionar, o app mostra embaixo a **Situação do servidor**, dizendo exatamente o que falta.
-
-**Trocar a senha da coordenação:** mude o valor de `CHAVE_COORDENACAO` em Propriedades do script e salve. Vale na hora, sem publicar nova versão.
-
-**Backup à mão:** escolha **fazerBackup** e clique em **Executar**. Para parar os automáticos, use **desativarBackupSemanal**. **Para restaurar:** abra a cópia desejada na pasta de backups e copie as abas de volta para a planilha principal. A pasta contém dados de saúde: não a compartilhe.
-
-**Para atualizar o servidor depois:** cole o código novo, salve e use **Implantar > Gerenciar implantações > lápis > Versão: Nova versão > Implantar** (assim o endereço não muda). As Propriedades do script continuam lá: não precisa cadastrar de novo.
-
----
-
-
-## Novidades das versões 2 a 12
-
-**Versão 12: acesso individual por perfil, produção na nuvem.**
-- A chave única deixou de existir. Cada pessoa pede acesso no próprio app (cirurgião-dentista ou referência técnica do DSEI) e recebe **um código pessoal por e-mail** quando o pedido é aprovado.
-- **Quem aprova:** a coordenação aprova as referências técnicas; cada referência técnica aprova os dentistas do seu DSEI. Em DSEI sem referência técnica, os pedidos de dentistas vão para a coordenação. Um DSEI pode ter mais de uma referência técnica.
-- **Na nuvem:** o profissional entra com o mesmo e-mail e código no celular e no computador. "Meus exames" e "Minha produção" mostram os exames de todos os aparelhos. Só quem fez o exame pode corrigi-lo.
-- **Aba Equipe (referência técnica):** pedidos de acesso, profissionais do DSEI (exames no mês, total, último envio), desativar, reativar e novo código, e a lista de exames do DSEI com código anonimizado, só para leitura.
-- **Aba Administração (coordenação):** pedidos, link de convite, referências técnicas ativas com **substituição** (a equipe fica ligada ao DSEI, não à pessoa), mapa dos 34 DSEIs, usuários e registro de acessos. A planilha ganha as abas **Usuarios** e **Acessos**.
-
-**Como ativar a versão 12 (nesta ordem):**
-1. **Apps Script:** cole o novo `Codigo.gs`. Na linha `const CHAVE_COORDENACAO`, coloque a sua senha de coordenação (pode ser a chave de antes). Deixe `EMAIL_COORDENACAO` vazio para usar o e-mail da conta dona da planilha. Salve e publique: **Implantar > Gerenciar implantações > lápis > Versão: Nova versão > Implantar**. O Google vai pedir autorização para **enviar e-mails em seu nome**: clique em Autorizar; se aparecer "app não verificado", clique em **Avançado** e depois em **Acessar**.
-2. **GitHub:** envie `index.html`, `sw.js` e `manifest.webmanifest` (confira os nomes, sem "(1)").
-3. **Entre como coordenação:** abra o app, toque em "Já tenho um código" e use o **e-mail da conta dona da planilha** e a **CHAVE_COORDENACAO**.
-4. Em **Administração**, copie o **link de convite** e envie para as referências técnicas e dentistas. O link já abre o app conectado ao servidor.
-5. Aprove as referências técnicas. Elas passam a aprovar os dentistas dos seus DSEIs.
-
-Os exames enviados antes da versão 12 continuam no banco e são ligados ao profissional pelo CRO. Uma conta Gmail comum envia cerca de 100 e-mails por dia; se um e-mail não sair, o app mostra o código na tela para ser repassado.
-
-
-**Versões 10 e 11: dentição pela idade, qualquer idade, índices por faixa e painel interativo.**
-- O app passa a se chamar **Odontograma** e atende qualquer idade: o bloco "Criança" virou **Indivíduo**.
-- Ao informar a data de nascimento, o app escolhe a dentição e monta o odontograma pela tabela da ADA: antes da faixa de idade o dente aparece como não erupcionado; depois, como presente (ou ausente, no decíduo que já caiu); **dentro da faixa, aparece com ? e precisa ser conferido na boca**. Terceiros molares sempre aparecem com ? a partir dos 17 anos. **O exame só salva depois que todos os dentes com ? forem conferidos.**
-- CPO-D e ceo-d continuam sendo a soma de dentes atacados por pessoa (C + P + O e c + e + o).
-- O painel usa as faixas etárias da SESAI (0 a 5, 6 a 11, 12 a 18, adulto de 19 a 59 e pessoa idosa de 60 ou mais) e mostra o ceo-d e o CPO-D médios de cada faixa divididos em cariados, perdidos e obturados.
-- **Painel interativo:** toque numa faixa etária, sexo, classe de risco, procedimento por dente ou procedimento coletivo para ver o painel só daquele grupo. Os filtros aparecem no topo e podem ser tirados um a um. Nos painéis Geral e Por DSEI, cada toque consulta a planilha (precisa de internet) e continua respeitando a regra dos grupos com menos de 5 pessoas. Precisa do `Codigo.gs` desta versão.
-
-
-
-**Versão 8: insumos de higiene bucal.** Em "Condições gerais e procedimentos" entrou o grupo **Insumos de higiene bucal fornecidos** (escova dental, creme dental e fio dental). Vai para a planilha na coluna `insumos_fornecidos` e aparece no painel.
-
-
-**Versão 7: fluorose.** Em "Condições gerais e procedimentos" entrou a pergunta **Fluorose moderada ou severa** (Sim/Não). Ela vai para a planilha na coluna `fluorose_moderada_severa` e aparece no painel. Não muda a classificação de risco A–F.
-
-
-**Versão 6: visual e correção do painel.** Novo visual com as cores da identidade da saúde indígena (vermelho, amarelo, verde e azul), fundo claro e títulos em Montserrat, sem nenhum logotipo. As cores clínicas do odontograma e das classes de risco não mudaram. O painel agora avisa quando a planilha está rodando um código antigo e lê os exames mesmo que a aba tenha ficado com o cabeçalho desalinhado. Em Exames salvos, o botão **Reenviar todos** manda de novo os exames do aparelho, sem duplicar.
-
-
-**Versão 5: painel geral.** O painel tem três visões: **Geral** (abre por padrão: todos os exames de todos os profissionais e de todos os DSEIs, com o número de profissionais participantes e a comparação entre DSEIs), **Por DSEI** (todos os profissionais de um DSEI escolhido) e **Minha produção** (só os exames do próprio aparelho). A contagem de profissionais participantes precisa do `Codigo.gs` desta versão.
-
-
-**Versão 4: cadastro primeiro e código com o profissional.** A primeira aba agora é **Cadastro**: na primeira vez, o app abre nela e mostra o que falta preencher (nome, CRO, UF e DSEI). O botão "Salvar cadastro e ir para o exame" leva para a tela de exame, que passa a ser a tela inicial depois disso. No exame, o nome e o CRO do profissional aparecem no topo, e os campos ficam em dois blocos: **Local do atendimento** e **Criança**. O código da criança passa a incluir o número do CRO (ex.: `MT-LEO-KAM-4521-0007`), então dois dentistas nunca geram o mesmo código.
-
-
-**Versão 3: sem identificação da criança.** O app não tem mais os campos de nome, Cartão SUS, escola e turma. A criança passa a ser diferenciada por UF, DSEI, polo base, aldeia/comunidade, data de nascimento e sexo, e recebe um **código anonimizado** no formato da planilha da SESAI: UF + 3 letras do polo + 3 letras da aldeia + número sequencial, com o CRO do profissional a partir da versão 4.
-
-**Versão 2: painel por DSEI.** Aba **Painel** com os números agregados por DSEI e a opção "Minha produção".
-
-**Como atualizar (faça nesta ordem):**
-
-1. **Planilha:** abra o Apps Script, apague o código antigo e cole o novo `Codigo.gs`. Troque a chave na linha `const CHAVE` pela mesma de antes. Salve. Depois clique em **Implantar > Gerenciar implantações**, no **lápis**, em "Versão" escolha **Nova versão** e clique em **Implantar**. O endereço /exec continua o mesmo.
-2. **App:** no Netlify, entre no seu site, aba **Deploys**, e arraste a pasta nova inteira.
-3. **Dentistas:** ao abrir o app com internet, ele se atualiza sozinho. Quem ainda não tem cadastro completo cai direto na aba **Cadastro** e preenche nome, CRO, UF, DSEI e polo base.
-
-**O que acontece com os dados antigos:**
-- No primeiro envio da versão nova, a planilha renomeia as abas antigas (que têm nome e Cartão SUS) para "Exames - formato antigo..." e "Dentes - formato antigo...", e cria abas novas, já sem identificação. **Apague essas abas antigas** (botão direito na aba > Excluir).
-- Em cada aparelho, a versão nova apaga o nome e o Cartão SUS dos exames guardados e os reenvia no formato novo. Esses exames aparecem como "Exame sem código", porque não tinham polo base e aldeia.
-- Um aparelho que ainda esteja com a versão antiga não consegue mais enviar: recebe o aviso "Aplicativo desatualizado" e o exame fica guardado até o app ser atualizado.
-
-**Como o painel protege os dados:** o app nunca baixa exames individuais. A planilha faz as contas e envia só números prontos, e só para quem tem a chave. Quando um recorte tem de 1 a 4 crianças, aparece "<5" no lugar do número, e médias só aparecem com 5 crianças ou mais. Se o recorte inteiro tiver menos de 5 crianças, os detalhes não são mostrados. Para mudar esse limite, altere `const MINIMO = 5;` no `Codigo.gs`.
-
-**O que o painel mostra:** crianças examinadas, percentual em alto risco, ceo-d e CPO-D médios, procedimentos realizados, distribuição por classe de risco (A a F), idade × sexo × risco, CPO-D aos 12 anos com a severidade da OMS, procedimentos indicados e realizados, procedimentos coletivos, exames por mês e a comparação entre DSEIs. Em "Minha produção", cada dentista vê os números dos exames do próprio aparelho, sem ocultação, e só ele vê.
-
-**Sem internet:** o painel mostra os últimos números baixados, com a data e a hora em que foram atualizados.
-
----
-
-
-O aplicativo tem duas partes. A primeira é o app que os dentistas usam no celular ou tablet (arquivos `index.html`, `sw.js`, `manifest.webmanifest` e os ícones). A segunda é uma planilha Google que funciona como banco de dados e fica só com você (arquivo `Codigo.gs`).
-
-Os exames são guardados primeiro no próprio aparelho do dentista. Quando há internet, o app envia sozinho para a sua planilha. Sem internet, o exame fica na fila e sai quando a conexão voltar.
-
-## Passo 1: criar o banco de dados (Google Planilhas)
-
-1. No Google Drive, crie uma planilha nova, por exemplo "Odontograma - banco de dados".
-2. Menu **Extensões > Apps Script**. Apague o que estiver lá e cole todo o conteúdo de `Codigo.gs`.
-3. Na linha `const CHAVE = 'TROQUE-POR-UMA-CHAVE-SUA';` troque o texto por uma senha sua (ex.: `odonto-2026-xk47`). Salve.
-4. Clique em **Implantar > Nova implantação**. Em "Tipo", escolha **App da Web**.
-   - Executar como: **Eu**
-   - Quem pode acessar: **Qualquer pessoa**
-5. Autorize o acesso quando o Google pedir. Copie o endereço gerado, que termina em `/exec`.
-
-As abas **Exames** (uma linha por criança) e **Dentes** (uma linha por dente) são criadas automaticamente no primeiro envio. As duas se ligam pela coluna `id_exame`.
-
-"Qualquer pessoa" só permite *enviar* dados com a chave correta. Ninguém consegue ler a planilha por esse endereço; ela continua privada no seu Drive.
-
-## Passo 2: colocar o app na internet (gratuito)
-
-O app precisa de um endereço https para funcionar offline e ser instalado no celular. Duas opções simples:
-
-**Netlify (mais fácil):** crie uma conta gratuita em netlify.com, vá em "Add new site > Deploy manually" e arraste a pasta `odontograma` inteira (sem o `Codigo.gs` e este guia, se preferir). Você recebe um endereço como `https://odontograma-xyz.netlify.app`.
-
-**GitHub Pages:** crie um repositório, envie os arquivos e ative Pages em Settings > Pages.
-
-## Passo 3: enviar para os dentistas
-
-Mande para cada dentista três informações: o endereço do app, o endereço de envio (`.../exec`) e a chave. Cada um deve:
-
-1. Abrir o endereço do app no celular ou tablet **com internet** (na primeira vez).
-2. Instalar na tela inicial: no Android/Chrome, menu ⋮ > "Instalar app" ou "Adicionar à tela inicial"; no iPhone/Safari, botão Compartilhar > "Adicionar à Tela de Início".
-3. Na aba **Cadastro** (o app abre nela na primeira vez), preencher nome, CRO, UF, DSEI, polo base, endereço de envio e chave, tocar em "Testar conexão" e depois em "Salvar cadastro e ir para o exame".
-
-Depois disso o app abre e funciona sem internet.
-
-## Como o app classifica o risco
-
-A classe é calculada a partir do odontograma e das condições gerais, prevalecendo sempre a mais grave:
-
-| Classe | Situação | O que dispara no app |
-|---|---|---|
-| F | Dor e/ou abscesso | Qualquer dente marcado com "Dor ou abscesso" |
-| E | Cavidade em lesão ativa | Face com "Cárie ativa" ou "Restaurada com cárie" |
-| D | Placa, gengivite e/ou mancha branca ativa | "Placa visível: sim", "Gengivite: sim" ou face com "Mancha branca ativa" |
-| C | Cavidade em lesão crônica | Face com "Cárie crônica", "Raiz residual" ou "Extração indicada" |
-| B | História de restauração, sem atividade | Face "Restaurada", "Mancha branca inativa" ou "Extraído por cárie" |
-| A | Sem lesão, placa, gengivite ou mancha ativa | Nenhuma das anteriores |
-
-O agrupamento em nível de risco pode ser escolhido no Cadastro: baixo (A–C) e alto (D–F), ou baixo (A–B), moderado (C–D) e alto (E–F).
-
-Decisões que tomei e que vale você conferir com o protocolo que usa: raiz residual e extração indicada entram como cavidade crônica (C); mancha branca inativa entra como história de doença (B); e quando há cavidade crônica junto com placa ou gengivite, prevalece D.
-
-O app também calcula **ceo-d** (decíduos) e **CPO-D** (permanentes). Cada dente conta uma vez, nesta ordem: extraído por cárie ou extração indicada (e/P), cariado ou raiz residual (c/C), restaurado sem cárie (o/O). Selante não entra no índice.
-
-## Cuidados com dados (LGPD)
-
-São dados de saúde de crianças, considerados sensíveis. O app não coleta nome, Cartão SUS, CPF, filiação nem endereço, e os campos de observação pedem que nada identificável seja escrito. Mesmo assim: compartilhe a planilha só com quem precisa, siga o que o comitê de ética aprovou e troque a chave se ela vazar (edite o `Codigo.gs` e reimplante como nova versão).
-
-## Atualizar o app
-
-Se mudar o `index.html`, abra o `sw.js` e aumente o número da versão (esta já está em `odontograma-v13`; a próxima seria `odontograma-v14`) e publique de novo. Os aparelhos recebem a versão nova na próxima vez que abrirem o app com internet. Os exames guardados não se perdem.
-
-## Limitações conhecidas
-
-- Os exames ficam na memória do navegador do aparelho até serem enviados. Se o dentista apagar os dados do navegador antes de enviar, eles se perdem. O contador no topo mostra quantos faltam enviar.
-- No iPhone, o Safari pode apagar dados de sites não usados por várias semanas. Instalar na tela inicial reduz esse risco; o ideal é enviar os exames no mesmo dia.
-- A planilha Google atende bem a milhares de exames. Para uma rede municipal inteira, com muitos anos de dados, vale migrar depois para um banco de dados dedicado.
+/* ===== COMPARTILHADO INICIO =====
+   Código igual no app (index.html) e no servidor (Codigo.gs). É copiado pelo montar.py:
+   não edite só de um lado. */
+// Faixas etárias da SESAI (Ficha 4)
+var FAIXAS_ETARIAS = ["0 a 5 anos", "6 a 11 anos", "12 a 18 anos", "Adulto (19 a 59 anos)", "Pessoa idosa (60 anos ou mais)", "Idade não informada"];
+/** @param {any} i */
+function faixaEtaria(i) {
+  if (i === "" || i == null || isNaN(Number(i))) return FAIXAS_ETARIAS[5];
+  i = Math.floor(Number(i));
+  return i <= 5 ? FAIXAS_ETARIAS[0] : i <= 11 ? FAIXAS_ETARIAS[1] : i <= 18 ? FAIXAS_ETARIAS[2] : i <= 59 ? FAIXAS_ETARIAS[3] : FAIXAS_ETARIAS[4];
+}
+/** @param {any} e */
+function sexoDe(e) { return e.crianca && (e.crianca.sexo === "F" || e.crianca.sexo === "M") ? e.crianca.sexo : "NI"; }
+// UFs e DSEIs (o servidor também usa estas listas para validar o que chega do app).
+var UFS = ["AC", "AL", "AM", "AP", "BA", "CE", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
+var DSEI_UF = {"AC": ["Alto Rio Juruá", "Alto Rio Purus"], "AL": ["Alagoas e Sergipe"], "AM": ["Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Manaus", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Porto Velho", "Vale do Javari", "Yanomami"], "AP": ["Amapá e Norte do Pará"], "BA": ["Bahia"], "CE": ["Ceará"], "ES": ["Minas Gerais e Espírito Santo"], "GO": ["Araguaia"], "MA": ["Guamá-Tocantins", "Maranhão"], "MG": ["Minas Gerais e Espírito Santo"], "MS": ["Mato Grosso do Sul"], "MT": ["Araguaia", "Cuiabá", "Kaiapó do Mato Grosso", "Porto Velho", "Vilhena", "Xavante", "Xingu"], "PA": ["Altamira", "Amapá e Norte do Pará", "Guamá-Tocantins", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Parintins", "Rio Tapajós", "Tocantins"], "PB": ["Potiguara"], "PE": ["Pernambuco"], "PR": ["Interior Sul", "Litoral Sul"], "RJ": ["Litoral Sul"], "RN": ["Potiguara"], "RO": ["Alto Rio Purus", "Porto Velho", "Vilhena"], "RR": ["Leste de Roraima", "Yanomami"], "RS": ["Interior Sul"], "SC": ["Interior Sul", "Litoral Sul"], "SE": ["Alagoas e Sergipe"], "SP": ["Litoral Sul"], "TO": ["Araguaia", "Tocantins"]};
+var DSEIS = ["Alagoas e Sergipe", "Altamira", "Alto Rio Juruá", "Alto Rio Negro", "Alto Rio Purus", "Alto Rio Solimões", "Amapá e Norte do Pará", "Araguaia", "Bahia", "Ceará", "Cuiabá", "Guamá-Tocantins", "Interior Sul", "Kaiapó do Mato Grosso", "Kaiapó do Pará", "Leste de Roraima", "Litoral Sul", "Manaus", "Maranhão", "Mato Grosso do Sul", "Minas Gerais e Espírito Santo", "Médio Rio Purus", "Médio Rio Solimões e Afluentes", "Parintins", "Pernambuco", "Porto Velho", "Potiguara", "Rio Tapajós", "Tocantins", "Vale do Javari", "Vilhena", "Xavante", "Xingu", "Yanomami"];
+// Listas usadas no exame (termos genéricos dos prontuários eletrônicos da atenção primária).
+var LOCAIS_ATENDIMENTO = ["UBSI", "CASAI", "Domicílio", "Escola ou creche", "Unidade móvel", "Outro"];
+var INSUMOS = ["Escova dental","Creme dental","Fio dental"];
+var GERAIS = ["Escovação supervisionada","Aplicação tópica de flúor","Orientação de higiene e dieta","Profilaxia / remoção de placa","Raspagem supragengival","Encaminhamento para especialidade"];
+var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", "Fendas ou fissuras lábio palatais", "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
+var VIG_FLUOROSE = "Fluorose dentária moderada ou severa", VIG_NENHUM = "Não identificado";
+/** @type {any} */
+var NOMES_PROTESE = {"": "Não avaliado", nao: "Não", sim: "Sim"};
+// Situação do dente. Só o dente presente tem faces, sinais e tratamento.
+// Esfoliado só existe para decíduo; no permanente, ausente é sempre "por outro motivo".
+var STATUS_DENTE = ["presente", "nao_erupc", "esfoliado", "ausente", "ausente_carie"];
+/** Exodontia devido à cárie indicada ou realizada neste exame. @param {any} d */
+function exoCarie(d) { var p = (d && d.procs) || {}; return p.exo_carie === "indicado" || p.exo_carie === "realizado"; }
+// Itens da vigilância que vêm do odontograma (não são perguntados de novo).
+/** @param {any} ex */
+function vigilanciaDosDentes(ex) {
+  var ds = ex.dentes || {}, l = [], nums = dentesDaDenticao(ex.denticao);
+  if (nums.some(function (n) { return ds[n] && ds[n].status === "presente" && ds[n].dor; })) l.push("Dor de dente");
+  if (nums.some(function (n) { return ds[n] && ds[n].status === "presente" && ds[n].abscesso; })) l.push("Abscesso dentoalveolar");
+  return l;
+}
+// Vigilância final do exame: os itens do odontograma + os marcados pelo profissional. Sem nenhum: "Não identificado".
+/** @param {any} ex */
+function completarVigilancia(ex) {
+  var der = vigilanciaDosDentes(ex), outros = (Array.isArray(ex.vigilancia) ? ex.vigilancia : []).filter(function (v) {
+    return v !== VIG_NENHUM && v !== "Dor de dente" && v !== "Abscesso dentoalveolar"; });
+  var l = der.concat(outros);
+  return l.length ? l : [VIG_NENHUM];
+}
+// Sigla do dente, como nos odontogramas dos prontuários eletrônicos.
+/** @param {any} d */
+function siglaDente(d) {
+  if (!d) return "";
+  /** @type {any} */ var S = {nao_erupc: "NE", esfoliado: "Es", ausente: "A", ausente_carie: "E"};
+  if (S[d.status]) return S[d.status];
+  var fs = d.faces || {}, vs = Object.keys(fs).map(function (k) { return fs[k]; });
+  /** @param {any} v */
+  function tem(v) { return vs.indexOf(v) >= 0; }
+  if (tem("restc")) return "Rc";
+  if (tem("ca") || tem("cc")) return "C";
+  if (tem("rest")) return "R";
+  if (tem("mba")) return "M";
+  if (tem("mbi")) return "Mi";
+  if (tem("sel")) return "Hs";
+  return "H";
+}
+// Exame cancelado continua guardado, mas não entra em painel, índices nem acompanhamento.
+/** @param {any} e */
+function exameValido(e) { return !!e && e.situacao !== "cancelado"; }
+// Filtro cruzado: faixa, sexo, classe, proc (procedimento por dente) e coletivo. "exceto" ignora algumas dimensões.
+/** @param {any} e @param {any} f @param {any} [exceto] */
+function exameCombina(e, f, exceto) {
+  exceto = exceto || [];
+  /** @param {any} k */
+  function usa(k) { return f && f[k] && exceto.indexOf(k) < 0; }
+  var res = e.resultado || {};
+  if (usa("faixa") && faixaEtaria(e.idadeAnos) !== f.faixa) return false;
+  if (usa("sexo") && sexoDe(e) !== f.sexo) return false;
+  if (usa("classe") && res.classe !== f.classe) return false;
+  if (usa("coletivo") && (e.gerais || []).indexOf(f.coletivo) < 0) return false;
+  if (usa("vig") && (e.vigilancia || []).indexOf(f.vig) < 0) return false;
+  if (usa("proc")) {
+    var tem = Object.keys(e.dentes || {}).some(function (n) { var p = (e.dentes[n] || {}).procs || {}; return p[f.proc] === "indicado" || p[f.proc] === "realizado"; });
+    if (!tem) return false;
+  }
+  return true;
+}
+// Cada bloco do painel ignora o próprio filtro, para continuar mostrando as outras opções.
+/** @param {any} regs @param {any} f @param {any} agrup */
+function montarPainel(regs, f, agrup) {
+  var validos = regs.filter(exameValido), ult = idsUltimoPorPessoa(validos);
+  /** @param {any} exceto */
+  function ag(exceto) { return agregarExames(validos.filter(function (e) { return exameCombina(e, f, exceto); }), agrup, ult); }
+  return {resumo: ag([]), risco: ag(["classe"]), tabela: ag(["faixa", "sexo", "classe"]), faixa: ag(["faixa"]), proc: ag(["proc"]), coletivo: ag(["coletivo"]), vig: ag(["vig"])};
+}
+// Nível de risco pela classe, igual para todos: A–B baixo, C–D moderado, E–F alto.
+/** @param {any} c */
+function nivelDaClasse(c) { var i = "ABCDEF".indexOf(String(c || "")); return i < 0 || !c ? "" : i < 2 ? "Baixo risco" : i < 4 ? "Risco moderado" : "Alto risco"; }
+// Faixas etárias da população indígena da SESAI (de 5 em 5 anos), usadas na cobertura.
+var FAIXAS_POP = ["0 a 4", "5 a 9", "10 a 14", "15 a 19", "20 a 24", "25 a 29", "30 a 34", "35 a 39", "40 a 44", "45 a 49", "50 a 54", "55 a 59", "60 a 64", "65 a 69", "70 a 74", "75 ou mais"];
+/** @param {any} i */
+function faixaPop(i) { if (i === "" || i == null || isNaN(Number(i))) return -1; return Math.min(15, Math.floor(Math.floor(Number(i)) / 5)); }
+/** @param {any} t */
+function normNome(t) { return String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); }
+// Nomes da planilha da SESAI vêm em maiúsculas: "ALTO CATRIMANI" vira "Alto Catrimani".
+/** @param {any} s */
+function nomeTitulo(s) {
+  var peq = ["de", "da", "do", "das", "dos", "e", "d"], rom = /^(i|ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii)$/;
+  return String(s || "").trim().replace(/\s+/g, " ").toLowerCase().split(" ").map(function (w, i) {
+    if (rom.test(w)) return w.toUpperCase();
+    if (i > 0 && peq.indexOf(w) >= 0) return w;
+    return w.replace(/(^|[-\/(])([a-zà-ÿ])/g, function (_, a, b) { return a + b.toUpperCase(); });
+  }).join(" ");
+}
+// Monta a base de territórios e população a partir das linhas da planilha baixada do painel da SESAI
+// (uma linha por aldeia, sexo e faixa etária). `linhas` = cabeçalho + dados, como no Excel.
+/** @param {any[][]} linhas @param {string[]} dseisConhecidos */
+function montarPopulacao(linhas, dseisConhecidos) {
+  if (!linhas || linhas.length < 2) throw new Error("A planilha está vazia.");
+  var cab = linhas[0].map(normNome), col = {};
+  var PEDE = {cdsei: ["codigo dsei"], dsei: ["dsei"], cpolo: ["codigo polo base"], polo: ["polo base"], cti: ["codigo terra indigena"], ti: ["terra indigena"],
+    cmun: ["codigo municipio ibge", "codigo municipio"], mun: ["municipio"], uf: ["uf"], cald: ["codigo aldeia"], ald: ["aldeia"], sexo: ["sexo"], faixa: ["faixa etaria"], ano: ["ano"], pop: ["populacao indigena", "populacao"]};
+  var falta = [];
+  Object.keys(PEDE).forEach(function (k) { var i = -1; PEDE[k].some(function (n) { i = cab.indexOf(n); return i >= 0; }); if (i < 0) falta.push(PEDE[k][0]); col[k] = i; });
+  if (falta.length) throw new Error("Colunas que faltam na planilha: " + falta.join(", ") + ". Use a planilha baixada do painel da população indígena da SESAI.");
+  var mapaDsei = {};
+  (dseisConhecidos || []).forEach(function (d) { mapaDsei[normNome(d)] = d; });
+  var out = {ano: 0, dseis: {}, polos: {}, tis: {}, muns: {}, aldeias: {}, pop: {}, linhas: 0, pessoas: 0};
+  var anos = {};
+  for (var i = 1; i < linhas.length; i++) {
+    var l = linhas[i]; if (!l || l[col.cald] === "" || l[col.cald] == null) continue;
+    var ca = String(l[col.cald]).trim(), cp = String(l[col.cpolo]).trim(), cd = String(l[col.cdsei]).trim(), ct = String(l[col.cti] == null ? "" : l[col.cti]).trim(), cm = String(l[col.cmun] == null ? "" : l[col.cmun]).trim();
+    var nd = String(l[col.dsei] || "");
+    out.dseis[cd] = mapaDsei[normNome(nd)] || nomeTitulo(nd);
+    if (!out.polos[cp]) out.polos[cp] = [nomeTitulo(l[col.polo]), cd];
+    if (ct && !out.tis[ct]) out.tis[ct] = nomeTitulo(l[col.ti]);
+    if (cm && !out.muns[cm]) out.muns[cm] = nomeTitulo(l[col.mun]);
+    if (!out.aldeias[ca]) out.aldeias[ca] = [nomeTitulo(l[col.ald]), cp, ct, cm, String(l[col.uf] || "").trim().toUpperCase()];
+    var f = faixaPop(String(l[col.faixa] || "").replace(/[^0-9].*$/, "")), s = String(l[col.sexo] || "").trim().toUpperCase().charAt(0), n = Number(l[col.pop]) || 0;
+    if (f < 0 || (s !== "F" && s !== "M")) continue;
+    var v = out.pop[ca] || (out.pop[ca] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    v[f * 2 + (s === "F" ? 0 : 1)] += n; out.pessoas += n; out.linhas++;
+    anos[String(l[col.ano] || "")] = 1;
+  }
+  var la = Object.keys(anos).filter(function (a) { return /^\d{4}$/.test(a); }).sort();
+  out.ano = la.length ? Number(la[la.length - 1]) : 0;
+  if (!out.linhas) throw new Error("Nenhuma linha de população foi lida.");
+  return out;
+}
+/** @param {any} regs @param {any} agrup */
+/* Situação das pessoas x produção:
+ * - Indicadores clínicos (risco, ceo-d, CPO-D, placa, gengivite, sexo, faixa etária, vigilância, prótese) contam
+ *   UMA observação por pessoa: o exame mais recente dela no recorte (como no ceo-d/CPO-D comunitário:
+ *   soma dos índices dividida pelo número de indivíduos). r.n = pessoas.
+ * - Produção (exames, exames por mês, procedimentos, coletivos, insumos, local de atendimento) conta todos os
+ *   exames. r.nExames = exames.
+ * ult: ids dos exames que são o último de cada pessoa (calculado antes dos filtros); sem ele, calcula aqui. */
+/** @param {any[]} regs */
+function idsUltimoPorPessoa(regs) {
+  /** @type {any} */ var por = {}, ids = {};
+  regs.forEach(function (e) {
+    var k = codigoIndividuoDe(e) || e.id, a = por[k], de = String(e.dataExame || ""), da = a ? String(a.dataExame || "") : "";
+    if (!a || de > da || (de === da && String(e.atualizadoEm || "") > String(a.atualizadoEm || ""))) por[k] = e;
+  });
+  Object.keys(por).forEach(function (k) { ids[por[k].id] = true; });
+  return ids;
+}
+/** @param {any} regs @param {any} agrup @param {any} [ult] */
+function agregarExames(regs, agrup, ult) {
+  ult = ult || idsUltimoPorPessoa(regs);
+  var CL = ["A", "B", "C", "D", "E", "F"], FX = FAIXAS_ETARIAS;
+  /** @param {any} c */
+  function nivel(c) {
+    var i = CL.indexOf(c);
+    return i < 2 ? "Baixo" : i < 4 ? "Moderado" : "Alto";
+  }
+  /** @param {any} ks */
+  function zeros(ks) { /** @type {any} */ var o = {}; ks.forEach(function (/** @type {any} */ k) { o[k] = 0; }); return o; }
+  function idxVazio() { return {n: 0, soma: 0, c: 0, e: 0, p: 0, o: 0}; }
+  /** @param {any} alvo @param {any} ind @param {any} perdido */
+  function somar(alvo, ind, perdido) { alvo.n++; alvo.soma += Number(ind.total) || 0; alvo.c += Number(ind.c) || 0; alvo[perdido] += Number(ind[perdido]) || 0; alvo.o += Number(ind.o) || 0; }
+  /** @type {any} */
+  var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
+    ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
+    vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0}};
+  FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
+  regs.forEach(function (/** @type {any} */ e) {
+    var res = e.resultado || {};
+    var c = CL.indexOf(res.classe) >= 0 ? res.classe : null;
+    if (!c) return;
+    // produção: todos os exames
+    r.nExames++;
+    var mes = String(e.dataExame || "").slice(0, 7);
+    if (mes) r.meses[mes] = (r.meses[mes] || 0) + 1;
+    (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
+    (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
+    if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
+    Object.keys(e.dentes || {}).forEach(function (n) {
+      var p = (e.dentes[n] || {}).procs || {};
+      Object.keys(p).forEach(function (k) {
+        if (p[k] !== "indicado" && p[k] !== "realizado") return;
+        if (!r.procs[k]) r.procs[k] = {indicado: 0, realizado: 0};
+        r.procs[k][p[k]]++;
+        if (p[k] === "realizado") r.procsRealizados++;
+      });
+    });
+    // situação das pessoas: só o último exame de cada pessoa
+    if (!ult[e.id]) return;
+    r.n++;
+    var sx = sexoDe(e);
+    r.sexo[sx]++; r.classe[c]++; r.nivel[nivel(c)]++;
+    var f = r.faixas[faixaEtaria(e.idadeAnos)]; f.n++; f.sexo[sx]++; f.classe[c]++;
+    var idade = e.idadeAnos === "" || e.idadeAnos == null || isNaN(Number(e.idadeAnos)) ? null : Math.floor(Number(e.idadeAnos));
+    if (e.denticao !== "permanente" && res.ceod) { somar(r.ceod, res.ceod, "e"); somar(f.ceod, res.ceod, "e"); }
+    if (e.denticao !== "decidua" && res.cpod) {
+      somar(r.cpod, res.cpod, "p"); somar(f.cpod, res.cpod, "p");
+      if (idade === 12) { r.cpod12.soma += Number(res.cpod.total) || 0; r.cpod12.n++; }
+    }
+    if (e.placa) r.placa++;
+    if (e.gengivite) r.gengivite++;
+    if (e.fluorose) r.fluorose++;
+    (e.vigilancia || []).forEach(function (/** @type {any} */ g) { r.vigilancia[g] = (r.vigilancia[g] || 0) + 1; });
+    var pr = e.protese || {};
+    if (pr.sup || pr.inf) {
+      r.protese.avaliados++;
+      if (pr.sup === "sim") r.protese.sup++;
+      if (pr.inf === "sim") r.protese.inf++;
+      if (pr.sup === "sim" || pr.inf === "sim") r.protese.alguma++;
+    }
+  });
+  /** @param {any} o */
+  function media(o) { return o.n ? Math.round(o.soma / o.n * 100) / 100 : null; }
+  r.ceodMedia = media(r.ceod); r.cpodMedia = media(r.cpod); r.cpod12Media = media(r.cpod12);
+  var m = r.cpod12Media == null ? null : Math.round(r.cpod12Media * 10) / 10;
+  r.cpod12Severidade = m == null ? null : m <= 1.1 ? "Muito baixa" : m <= 2.6 ? "Baixa" : m <= 4.4 ? "Moderada" : m <= 6.5 ? "Alta" : "Muito alta";
+  return r;
+}
+
+/* ---------- linhas da planilha (abas Exames e Dentes) ---------- */
+var NOMES_STATUS = {presente: "Presente", nao_erupc: "Não erupcionado", esfoliado: "Esfoliado", ausente: "Ausente por outro motivo", ausente_carie: "Extraído por cárie"};
+var NOMES_FACE = {"": "Hígida", ca: "Cárie ativa", cc: "Cárie crônica", mba: "Mancha branca ativa", mbi: "Mancha branca inativa",
+  rest: "Restaurada sem cárie", restc: "Restaurada com cárie", sel: "Selante"};
+var NOMES_PROC = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia por outros motivos", selante: "Selante", art: "ART (restauração atraumática)", civ: "Restauração em ionômero de vidro", resina: "Restauração em resina",
+  amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado", cdf: "Cariostático (diamino fluoreto de prata)", selprov: "Selamento provisório / adequação do meio",
+  pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço"};
+var CAB_EXAME = ["id_exame", "codigo_individuo", "numero_exame", "codigo_exame", "situacao_registro", "data_exame", "faixa_etaria", "idade_anos", "sexo", "nascimento",
+  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "codigo_municipio_ibge", "terra_indigena", "codigo_terra_indigena", "codigo_polo_base", "codigo_aldeia", "aldeia_fora_da_lista", "codigo_confere_local", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
+  "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod", "dentes_cariados", "placa_visivel", "gengivite", "fluorose_moderada_severa",
+  "vigilancia_saude_bucal", "protese_superior", "protese_inferior", "usa_protese_superior", "usa_protese_inferior", "dentes_com_dor_abscesso", "procedimentos_gerais", "insumos_fornecidos", "observacoes", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
+  "motivo_cancelamento", "observacao_cancelamento", "cancelado_em", "cancelado_por", "criado_em", "atualizado_em", "usuario_id", "dados_completos_json"];
+var CAB_DENTE = ["id_exame", "codigo_individuo", "numero_exame", "situacao_registro", "data_exame", "dsei", "dente", "tipo", "situacao", "sigla",
+  "face_oclusal_incisal", "face_vestibular", "face_lingual_palatina", "face_mesial", "face_distal", "dor", "abscesso_fistula", "procedimentos_indicados", "procedimentos_realizados", "observacao"];
+/** @param {any} n */
+function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
+/** @param {any} iso */
+function dataBR(iso) { return iso ? String(iso).slice(0, 10).split("-").reverse().join("/") : ""; }
+/** @param {any} e */
+function codigoIndividuoDe(e) { return e.codigoIndividuo || e.codigo || ""; }
+/** @param {any} e */
+function cariadosDe(e) { var r = e.resultado || {}; return (Number((r.ceod || {}).c) || 0) + (Number((r.cpod || {}).c) || 0); }
+/** @param {any} e */
+function dentesComDor(e) { return Object.keys(e.dentes || {}).filter(function (n) { var d = e.dentes[n] || {}; return d.dor || d.abscesso; }); }
+/** @param {any} e */
+function registroParaJson(e) {
+  /** @type {any} */ var j = {};
+  Object.keys(e).forEach(function (k) { if (k !== "envio" && k.charAt(0) !== "_") j[k] = e[k]; });
+  return JSON.stringify(j);
+}
+// Parte do código de acompanhamento: 1 a 3 letras ou números do nome, sem acento. Nome sem letra nem número vira "X".
+/** @param {any} t */
+function parteCodigo(t) { return String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^0-9A-Za-z]/g, "").slice(0, 3).toUpperCase() || "X"; }
+// O começo do código de acompanhamento (UF-POLO-ALDEIA) bate com o local deste exame? O código nunca muda depois de
+// mostrado; então "não" aparece quando a pessoa foi examinada em outra aldeia ou o local foi corrigido depois.
+/** @param {any} e */
+function codigoConfereLocal(e) {
+  var m = /^([A-Z]{2})-([A-Z0-9]{1,3})-([A-Z0-9]{1,3})-/.exec(String(codigoIndividuoDe(e)).toUpperCase());
+  if (!m) return "";
+  return m[1] === String(e.uf || "").toUpperCase() && m[2] === parteCodigo(e.polo) && m[3] === parteCodigo(e.aldeia) ? "sim" : "não";
+}
+/** @param {any} e */
+function linhaExame(e) {
+  var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, sn = function (/** @type {any} */ b) { return b == null ? "" : b ? "sim" : "não"; };
+  return [e.id, codigoIndividuoDe(e), e.numeroExame || 1, e.codigo || "", exameValido(e) ? "válido" : "cancelado", e.dataExame || "", faixaEtaria(e.idadeAnos),
+    e.idadeAnos, (e.crianca || {}).sexo || "", (e.crianca || {}).nascimento || "", e.uf || "", e.dsei || "", e.polo || "", e.aldeia || "", e.municipio || "", e.codMunicipio || "", e.ti || "", e.codTI || "", e.codPolo || "", e.codAldeia || "",
+    e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), codigoConfereLocal(e), e.localAtendimento || "",
+    (e.profissional || {}).nome || "", (e.profissional || {}).cro || "", e.denticao || "", r.classe || "", nivelDaClasse(r.classe) || r.risco || "",
+    ce.c, ce.e, ce.o, ce.total, cp.c, cp.p, cp.o, cp.total, cariadosDe(e), sn(e.placa), sn(e.gengivite), sn(e.fluorose),
+    (e.vigilancia || []).join("; "), e.protese ? NOMES_PROTESE[e.protese.sup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.inf || ""] : "",
+    e.protese ? NOMES_PROTESE[e.protese.usoSup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.usoInf || ""] : "",
+    dentesComDor(e).join(" "), (e.gerais || []).join("; "), (e.insumos || []).join("; "), e.observacoes || "",
+    v.anteriorId ? (v.conferidos && v.conferidos.length ? "compatível, com mudança conferida" : "compatível") : "1º exame",
+    (v.conferidos || []).join(" · "), v.anteriorId || "",
+    c.motivo || "", c.observacao || "", c.em || "", c.por || "", e.criadoEm || "", e.atualizadoEm || "", e.usuarioId || "", registroParaJson(e)];
+}
+/** @param {any} e */
+function linhasDentes(e) {
+  var cod = codigoIndividuoDe(e), num = e.numeroExame || 1, sit = exameValido(e) ? "válido" : "cancelado";
+  return Object.keys(e.dentes || {}).map(Number).sort(function (a, b) { return a - b; }).map(function (n) {
+    var d = e.dentes[n] || {}, p = d.procs || {}, fs = d.faces || {};
+    /** @param {any} v */
+    function proc(v) { return Object.keys(p).filter(function (k) { return p[k] === v; }).map(function (k) { return NOMES_PROC[k] || k; }).join("; "); }
+    var semFaces = d.status !== "presente";
+    /** @param {any} k */
+    function f(k) { return semFaces ? "" : (NOMES_FACE[fs[k] || ""] || ""); }
+    return [e.id, cod, num, sit, e.dataExame || "", e.dsei || "", n, decidDe(n) ? "decíduo" : "permanente", NOMES_STATUS[d.status] || d.status || "", siglaDente(d),
+      f("O"), f("V"), f("L"), f("M"), f("D"), d.dor ? "sim" : "não", d.abscesso ? "sim" : "não", proc("indicado"), proc("realizado"), d.obs || ""];
+  });
+}
+
+/* ---------- mesma pessoa: conferência dente a dente entre dois exames ---------- */
+// Compara sempre do exame mais antigo para o mais novo (pela data do exame).
+// "impossivel": não acontece na boca (é outra pessoa ou erro de registro). "confira": raro, o dentista confere na boca.
+/** @param {any} a @param {any} b */
+function conferirVinculo(a, b) {
+  var antes = a, depois = b;
+  if (String(b.dataExame || "") < String(a.dataExame || "")) { antes = b; depois = a; }
+  var PRES = ["presente"], AUS = ["esfoliado", "ausente", "ausente_carie"], COM_FACES = ["presente"];
+  var FACES = ["O", "V", "L", "M", "D"], NOME_F = {O: "oclusal/incisal", V: "vestibular", L: "lingual/palatina", M: "mesial", D: "distal"};
+  var da1 = dataBR(antes.dataExame), da2 = dataBR(depois.dataExame);
+  /** @type {any[]} */ var alertas = [];
+  var nums = Object.keys(antes.dentes || {}).filter(function (n) { return (depois.dentes || {})[n]; }).map(Number).sort(function (x, y) { return x - y; });
+  nums.forEach(function (n) {
+    var x = antes.dentes[n] || {}, y = depois.dentes[n] || {}, fx = x.faces || {}, fy = y.faces || {};
+    var tipo = decidDe(n) ? "decíduo" : "permanente";
+    if (AUS.indexOf(x.status) >= 0 && PRES.indexOf(y.status) >= 0) {
+      alertas.push({dente: n, nivel: "impossivel", chave: n + ":volta", texto: (x.status === "ausente_carie" ? "extraído" : x.status === "esfoliado" ? "esfoliado" : "ausente") + " no exame de " + da1 + " e presente no exame de " + da2 + ".",
+        motivo: "Um dente " + tipo + " que " + (decidDe(n) ? "esfoliou ou foi extraído" : "foi perdido") + " não volta."});
+      return;
+    }
+    if (PRES.indexOf(x.status) >= 0 && y.status === "nao_erupc") {
+      alertas.push({dente: n, nivel: "impossivel", chave: n + ":desnasceu", texto: "presente no exame de " + da1 + " e não erupcionado no exame de " + da2 + ".",
+        motivo: "Um dente que já erupcionou não volta a ficar sem erupcionar."});
+      return;
+    }
+    if (COM_FACES.indexOf(x.status) >= 0 && COM_FACES.indexOf(y.status) >= 0) {
+      var rest = FACES.filter(function (k) { return (fx[k] === "rest" || fx[k] === "restc") && !fy[k]; });
+      var cav = FACES.filter(function (k) { return (fx[k] === "ca" || fx[k] === "cc") && !fy[k]; });
+      /** @param {any} l */
+      var nomes = function (l) { return l.map(function (/** @type {any} */ k) { return NOME_F[k]; }).join(", "); };
+      if (rest.length) alertas.push({dente: n, nivel: "confira", chave: n + ":rest:" + rest.join(""), texto: "face " + nomes(rest) + " restaurada no exame de " + da1 + " e hígida no exame de " + da2 + ".",
+        motivo: "A restauração pode ter caído, mas é raro a face ficar hígida."});
+      if (cav.length) alertas.push({dente: n, nivel: "confira", chave: n + ":cav:" + cav.join(""), texto: "face " + nomes(cav) + " com cárie cavitada no exame de " + da1 + " e hígida no exame de " + da2 + ".",
+        motivo: "Cavidade não some sem tratamento: deveria aparecer restaurada."});
+    }
+  });
+  return alertas;
+}
+// Situação simplificada de um dente, para a linha do tempo da pessoa.
+/** @param {any} d */
+function estadoDente(d) {
+  if (!d) return "";
+  var fs = d.faces || {}, vs = Object.keys(fs).map(function (k) { return fs[k]; });
+  if (d.status === "nao_erupc") return "nao_erupc";
+  if (d.status === "esfoliado") return "esfoliado";
+  if (d.status === "ausente") return "ausente";
+  if (d.status === "ausente_carie") return "extraido";
+  if (d.status !== "presente") return "";
+  if (exoCarie(d)) return "exo_carie";
+  if (vs.some(function (v) { return v === "ca" || v === "cc" || v === "restc"; })) return "cariado";
+  if (vs.indexOf("rest") >= 0) return "obturado";
+  return "higido";
+}
+var NOMES_ESTADO = {nao_erupc: "não erupcionado", esfoliado: "esfoliado", ausente: "ausente", extraido: "extraído", exo_carie: "com exodontia devido à cárie",
+  cariado: "cariado", obturado: "obturado", higido: "hígido"};
+// O que mudou em cada dente entre o primeiro e o último exame de uma pessoa.
+/** @param {any} a @param {any} b */
+function mudancasDentes(a, b) {
+  /** @type {any[]} */ var l = [];
+  var nums = Object.keys(Object.assign({}, a.dentes || {}, b.dentes || {})).map(Number).sort(function (x, y) { return x - y; });
+  nums.forEach(function (n) {
+    var x = estadoDente((a.dentes || {})[n]), y = estadoDente((b.dentes || {})[n]);
+    if (!x || !y || x === y) return;
+    var tipo = "outro";
+    if (y === "cariado" && (x === "higido" || x === "nao_erupc" || x === "obturado")) tipo = "carie_nova";
+    else if (x === "cariado" && y === "obturado") tipo = "tratado";
+    else if (y === "extraido" || (y === "ausente" && (x === "cariado" || x === "exo_carie"))) tipo = "extraido";
+    else if (y === "esfoliado") tipo = "esfoliou";
+    else if (x === "nao_erupc") tipo = "erupcionou";
+    l.push({dente: n, de: x, para: y, tipo: tipo});
+  });
+  return l;
+}
+
+/* ---------- avaliação do exame: classe de risco e índices (igual no app e no servidor) ----------
+ * O servidor refaz este cálculo a partir dos dentes ao gravar: o resultado da planilha nunca é o que o
+ * navegador mandou pronto.
+ * Índices (cada dente conta uma vez; vale a pior situação: e/P > cariado > obturado):
+ * - CPO-D (permanentes): C = cavidade (ativa ou crônica), restauração com cárie ou exodontia devido à cárie
+ *   (indicada ou realizada no exame); P = extraído por cárie (já ausente); O = restaurado sem cárie.
+ *   Mancha branca não conta (só cavidade evidente é cárie).
+ * - ceo-d (decíduos): c = como no CPO-D, sem a exodontia; e = exodontia devido à cárie (indicada ou realizada);
+ *   decíduo extraído por cárie, esfoliado ou ausente NÃO conta; o = restaurado sem cárie.
+ */
+var DESCRICAO_CLASSE = {
+  A: "Sem lesão de cárie, sem placa, sem gengivite e sem mancha branca ativa.",
+  B: "História de dente restaurado ou perdido por cárie, sem sinais de atividade.",
+  C: "Uma ou mais cavidades em lesão crônica, sem placa, gengivite ou mancha branca ativa.",
+  D: "Placa, gengivite e/ou mancha branca ativa, sem cavidade ativa.",
+  E: "Uma ou mais cavidades em lesão ativa.",
+  F: "Presença de dor e/ou abscesso."
+};
+/** Dentes da dentição, na ordem do odontograma. @param {string} den */
+function dentesDaDenticao(den) {
+  var sup = [18, 17, 16, 15, 14, 13, 12, 11, 21, 22, 23, 24, 25, 26, 27, 28], inf = [48, 47, 46, 45, 44, 43, 42, 41, 31, 32, 33, 34, 35, 36, 37, 38];
+  var supD = [55, 54, 53, 52, 51, 61, 62, 63, 64, 65], infD = [85, 84, 83, 82, 81, 71, 72, 73, 74, 75];
+  if (den === "permanente") return sup.concat(inf);
+  if (den === "decidua") return supD.concat(infD);
+  return sup.concat(supD, infD, inf);
+}
+/** @param {any} ex */
+function avaliarExame(ex) {
+  var nums = dentesDaDenticao(ex.denticao), dentes = ex.dentes || {};
+  var F = [], E = [], Dm = [], C = [], B = [];
+  var ceod = {c: 0, e: 0, o: 0, total: 0}, cpod = {c: 0, p: 0, o: 0, total: 0};
+  nums.forEach(function (n) {
+    var d = dentes[n]; if (!d) return;
+    var faces = d.faces || {}, fs = Object.keys(faces).map(function (k) { return faces[k]; });
+    var tem = function (x) { return fs.indexOf(x) >= 0; };
+    var presente = d.status === "presente", exo = presente && exoCarie(d);
+    var decid = Math.floor(n / 10) >= 5;
+    if (presente && (d.dor || d.abscesso)) F.push(n);
+    if (presente && (tem("ca") || tem("restc"))) E.push(n);
+    if (presente && tem("mba")) Dm.push(n);
+    if (presente && (tem("cc") || exo)) C.push(n);
+    if ((presente && (tem("rest") || tem("mbi"))) || d.status === "ausente_carie") B.push(n);
+    var perdido = decid ? exo : d.status === "ausente_carie";
+    var cariado = presente && (tem("ca") || tem("cc") || tem("restc") || (!decid && exo));
+    var obturado = presente && tem("rest") && !cariado;
+    var alvo = decid ? ceod : cpod;
+    if (perdido) alvo[decid ? "e" : "p"]++;
+    else if (cariado) alvo.c++;
+    else if (obturado) alvo.o++;
+  });
+  ceod.total = ceod.c + ceod.e + ceod.o; cpod.total = cpod.c + cpod.p + cpod.o;
+  var lista = function (a) { return a.join(", "); };
+  var juntar = function (a) { return a.length > 1 ? a.slice(0, -1).join(", ") + " e " + a[a.length - 1] : a.join(""); };
+  var motivos = [];
+  var vigF = (ex.vigilancia || []).filter(function (v) { return v === "Dor de dente" || v === "Abscesso dentoalveolar"; });
+  if (F.length) motivos.push("Dor ou abscesso: " + lista(F));
+  if (vigF.length && !F.length) motivos.push(juntar(vigF) + " (vigilância em saúde bucal)");
+  if (E.length) motivos.push("Cavidade ativa: " + lista(E));
+  if (Dm.length) motivos.push("Mancha branca ativa: " + lista(Dm));
+  if (ex.placa) motivos.push("Placa visível");
+  if (ex.gengivite) motivos.push("Gengivite");
+  if (C.length) motivos.push("Cavidade crônica ou exodontia devido à cárie: " + lista(C));
+  if (B.length) motivos.push("Restauração, mancha inativa ou extração por cárie: " + lista(B));
+  var classe = "A";
+  if (F.length || vigF.length) classe = "F";
+  else if (E.length) classe = "E";
+  else if (Dm.length || ex.placa || ex.gengivite) classe = "D";
+  else if (C.length) classe = "C";
+  else if (B.length) classe = "B";
+  if (!motivos.length) motivos.push("Nenhuma alteração registrada");
+  return {classe: classe, descricao: DESCRICAO_CLASSE[classe], risco: nivelDaClasse(classe), motivos: motivos, ceod: ceod, cpod: cpod};
+}
+/* ===== COMPARTILHADO FIM ===== */
