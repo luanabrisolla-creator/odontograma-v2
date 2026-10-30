@@ -36,7 +36,9 @@ for (let i = 0; i < 8; i++) {
   const URL = `http://localhost:${srv.address().port}/index.html`;
   const b = await chromium.launch();
   async function pagina(cel) {
-    const ctx = await b.newContext({ viewport: cel ? { width: 390, height: 844 } : { width: 1280, height: 900 }, serviceWorkers: "block" });
+    // Fuso de Brasília, como nos aparelhos do piloto: a máquina do GitHub roda no horário de Londres e, depois das 21 h,
+    // já estaria no dia seguinte (o exame sairia "com data no futuro" para o servidor).
+    const ctx = await b.newContext({ viewport: cel ? { width: 390, height: 844 } : { width: 1280, height: 900 }, serviceWorkers: "block", timezoneId: "America/Sao_Paulo" });
     const pg = await ctx.newPage(); pg.erros = [];
     pg.on("pageerror", e => pg.erros.push(e.message));
     pg.on("dialog", d => d.accept());
