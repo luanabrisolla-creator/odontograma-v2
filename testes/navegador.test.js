@@ -457,6 +457,12 @@ for (let i = 0; i < 8; i++) {
   T("Administração mostra a situação do servidor", /Situação do servidor/.test(await pg.textContent("#admConteudo")) && /✓ ok/.test(await pg.textContent("#admConteudo")));
   const [da] = await Promise.all([pg.waitForEvent("download", { timeout: 30000 }), pg.click("#admAnBaixar")]);
   T("dados para análise: arquivo do Excel com todos os exames", /analise.*\.xlsx$/.test(da.suggestedFilename()), da.suggestedFilename());
+  // Planilha de análise para o Looker Studio (só a titular).
+  T("Administração mostra a planilha de análise, ainda por criar", /Planilha de análise \(Looker Studio\)/.test(await pg.textContent("#admConteudo")) && (await pg.textContent("#admPlanAnalise")).trim() === "Criar agora");
+  await pg.click("#admPlanAnalise"); await pg.waitForTimeout(2500);
+  const blocoPA = await pg.textContent("#admConteudo");
+  T("Criar agora: a planilha é criada e o quadro mostra quando, quantos exames e o link", /Atualizada em \d{2}\/\d{2}\/\d{4}/.test(blocoPA) && !!(await pg.$('a.sec[href*="docs.google.com"]')) && (await pg.textContent("#admPlanAnalise")).trim() === "Atualizar agora", blocoPA.slice(blocoPA.indexOf("Planilha de análise"), blocoPA.indexOf("Planilha de análise") + 300));
+  await foto(pg, "9_planilha_analise_pc", "#admConteudo");
   T("sem erros na Administração", !pg.erros.length, pg.erros);
   await ctx.close();
 

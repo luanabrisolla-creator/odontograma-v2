@@ -611,7 +611,7 @@ aba("Acessos").push(velho);
 const nAc = aba("Acessos").length;
 G.ctx.tarefaDiaria();
 T("tarefa diária: corta as linhas e colunas vazias", G.est.max.Usuarios.r <= aba("Usuarios").length + 50 && G.est.max.Usuarios.c < 40, G.est.max.Usuarios);
-const arq = Object.values(G.est.extras)[0];
+const arq = Object.values(G.est.extras).find(x => x.nome === "Odontograma - arquivo de acessos");
 T("tarefa diária: Acessos com mais de 12 meses vão para a planilha de arquivo (nada se perde)", aba("Acessos").length === nAc - 1 && arq && arq.abas.Acessos.some(l => l[0] === "2024-01-02"), [nAc, aba("Acessos").length]);
 G.est.max.Exames = { r: 60000, c: 2 };   // 60 mil linhas × 113 colunas: a planilha passa da metade
 G.ctx.conferirEspaco();
@@ -632,6 +632,38 @@ T("profissional: só os próprios exames", r.ok && r.linhas.every(l => r.cabecal
 r = P(C, { acao: "dadosAnalise", pagina: 0, de: "2030-01-01" });
 T("filtro por período", r.ok && r.linhas.length === 0);
 T("baixar dados fica registrado em Acessos", aba("Acessos").some(l => l[7] === "Baixou dados para análise"));
+
+/* ---------------------------------------------------------------- planilha de análise (Looker Studio) */
+parte("planilha de análise");
+r = P(C, { acao: "atualizarAnalise" });
+const pAn = Object.values(G.est.extras).find(x => x.nome === "Odontograma - análise");
+T("a titular atualiza a planilha de análise: um arquivo separado, com as abas Exames, Dentes e Sobre", r.ok && r.analise.ok && pAn && pAn.ordem.join() === "Exames,Dentes,Sobre", [r, pAn && pAn.ordem]);
+const validosIdx = G.ctx.lerIndiceDaPlanilha().filter(x => x.situacao !== "cancelado");
+const anEx = pAn.abas.Exames, anDe = pAn.abas.Dentes;
+T("aba Exames: uma linha por exame válido, sem cancelados e sem as colunas do sistema", anEx.length - 1 === validosIdx.length && anEx[0].join() === G.ctx.cabAnExames().join()
+  && !anEx[0].includes("dados_completos_json") && anEx.slice(1).every(l => l[anEx[0].indexOf("situacao_registro")] === "válido"), [anEx.length - 1, validosIdx.length]);
+const somaDentes = validosIdx.reduce((t, x) => t + Object.keys(JSON.parse(linhaEx(x.id).at(-1)).dentes).length, 0);
+T("aba Dentes: uma linha por dente de cada exame válido", anDe.length - 1 === somaDentes && anDe[0].join() === require("vm").runInContext("CAB_AN_DENTES", G.ctx).join(), [anDe.length - 1, somaDentes]);
+const cD = k => anDe[0].indexOf(k), cE = k => anEx[0].indexOf(k);
+const comCarie = anDe.slice(1).find(l => l[cD("face_oclusal_incisal")] === "Cárie ativa");
+const exDaLinha = comCarie && anEx.find(l => l[cE("id_exame")] === comCarie[cD("id_exame")]);
+T("cada dente traz o exame dele (id_exame, DSEI, faixa etária e sexo iguais aos da aba Exames)", !!exDaLinha && ["dsei", "faixa_etaria", "sexo", "data_exame", "codigo_individuo"].every(k => String(comCarie[cD(k)]) === String(exDaLinha[cE(k)])), comCarie);
+T("conta pronta por dente: tem_carie e faces_com_carie", comCarie && comCarie[cD("tem_carie")] === "sim" && comCarie[cD("faces_com_carie")] >= 1 && anDe.slice(1).some(l => l[cD("tem_carie")] === "não" && l[cD("faces_com_carie")] === 0));
+T("todo dente aponta para um exame que está na aba Exames", anDe.slice(1).every(l => anEx.some(e => e[0] === l[0])));
+T("a aba Sobre diz quando foi atualizada e quantos exames tem", pAn.abas.Sobre.some(l => l[0] === "Exames válidos" && l[1] === String(validosIdx.length)));
+T("refazer a planilha de análise não apaga a cópia rápida da planilha do app", !!G.ctx.lerDaMemoria("indice+") && !!G.ctx.lerDaMemoria("resumos+"));
+r = P(C, { acao: "admin" });
+T("Administração (titular) mostra a planilha de análise: quando, quantos, espaço e o link", r.analise && r.analise.ok && r.analise.exames === validosIdx.length && /docs\.google\.com/.test(r.analise.url) && r.analise.pct >= 0, r.analise);
+T("outra pessoa da coordenação não vê nem atualiza a planilha de análise", P(PAULA, { acao: "admin" }).analise === null && !P(PAULA, { acao: "atualizarAnalise" }).ok);
+T("dentista não atualiza a planilha de análise", !P(ANA, { acao: "atualizarAnalise" }).ok);
+// Conferência: um exame válido na planilha do app que não pôde ir para a análise (dados quebrados) é avisado.
+const quebrada = linhaEx(validosIdx[0].id).slice(); quebrada[0] = "QUEBRADO1"; quebrada[quebrada.length - 1] = "{quebrado"; aba("Exames").push(quebrada); editouAMao("Exames");
+const nErros0 = aba("_erros").length;
+r = P(C, { acao: "atualizarAnalise" });
+T("se os números não batem com a planilha do app, a atualização avisa (e vai para Erros recentes)", !r.ok && r.analise && !r.analise.ok && /Conferência/.test(r.analise.erro) && aba("_erros").length === nErros0 + 1 && aba("_erros").at(-1)[2] === "analise", [r, aba("_erros").at(-1)]);
+aba("Exames").splice(aba("Exames").findIndex(l => l[0] === "QUEBRADO1"), 1); editouAMao("Exames");
+T("corrigido, volta a bater", P(C, { acao: "atualizarAnalise" }).ok);
+T("a tarefa diária também refaz a planilha de análise", (G.ctx.tarefaDiaria().analise === validosIdx.length));
 
 /* ---------------------------------------------------------------- geral */
 parte("geral");

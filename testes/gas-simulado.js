@@ -55,12 +55,28 @@ function criar(opcoes) {
   est.extras = {};
   // Planilha separada (ex.: arquivo de acessos): guarda as abas em est.extras[id].abas.
   function criarExtra(nome, id) {
-    const abas = {};
-    const mk = n => ({ getName: () => n, getLastRow: () => abas[n].length, getLastColumn: () => Math.max(0, ...abas[n].map(l => l.length)),
-      getRange: (r, c, nr, nc) => ({ getValues: () => Array.from({ length: nr || 1 }, (_, i) => Array.from({ length: nc || 1 }, (_, j) => (abas[n][r - 1 + i] || [])[c - 1 + j] ?? "")),
-        setValues: v => { v.forEach((l, i) => { while (abas[n].length < r + i) abas[n].push([]); l.forEach((x, j) => { abas[n][r - 1 + i][c - 1 + j] = x; }); }); return { setFontWeight() {} }; }, setFontWeight() {} }),
-      setFrozenRows() {}, appendRow: l => { abas[n].push(l); } });
-    return { nome, abas, getId: () => id, getSheetByName: n => abas[n] ? mk(n) : null, insertSheet: n => { abas[n] = []; return mk(n); }, getSheets: () => Object.keys(abas).map(mk), deleteSheet() {} };
+    const abas = {}, ordem = [], maxx = {};
+    const ultima = n => { const R = abas[n]; let k = R.length; while (k > 0 && (R[k - 1] || []).every(x => x === "" || x == null)) k--; return k; };
+    const mk = n => {
+      const sh = { getName: () => n, getLastRow: () => ultima(n), getLastColumn: () => abas[n].reduce((m, l) => Math.max(m, l.length), 0),
+        getMaxRows: () => Math.max(maxx[n].r, abas[n].length), getMaxColumns: () => Math.max(maxx[n].c, sh.getLastColumn()),
+        deleteRows: (i, k) => { abas[n].splice(i - 1, k); maxx[n].r = Math.max(1, sh.getMaxRows() - k); },
+        deleteColumns: (i, k) => { maxx[n].c = Math.max(1, maxx[n].c - k); },
+        getRange: (r, c, nr, nc) => ({ getValues: () => Array.from({ length: nr || 1 }, (_, i) => Array.from({ length: nc || 1 }, (_, j) => { const v = (abas[n][r - 1 + i] || [])[c - 1 + j]; return v == null ? "" : typeof v === "string" && v[0] === "'" ? v.slice(1) : v; })),
+          setValues: v => { v.forEach((l, i) => { while (abas[n].length < r + i) abas[n].push([]); l.forEach((x, j) => { abas[n][r - 1 + i][c - 1 + j] = x; }); }); return { setFontWeight() {} }; }, setFontWeight() {} }),
+        setFrozenRows() {}, appendRow: l => { abas[n].push(l); },
+        setName: novo => { abas[novo] = abas[n]; maxx[novo] = maxx[n]; delete abas[n]; delete maxx[n]; ordem[ordem.indexOf(n)] = novo; n = novo; return sh; } };
+      return sh;
+    };
+    const ss = { nome, abas, ordem, getId: () => id, getName: () => nome, getUrl: () => "https://docs.google.com/spreadsheets/d/" + id,
+      getSheetByName: n => abas[n] ? mk(n) : null,
+      insertSheet: n => { abas[n] = []; maxx[n] = { r: 1000, c: 26 }; ordem.push(n); return mk(n); },
+      getSheets: () => ordem.map(mk),
+      deleteSheet: a => { const n = a && a.getName ? a.getName() : a; delete abas[n]; delete maxx[n]; const i = ordem.indexOf(n); if (i >= 0) ordem.splice(i, 1); },
+      setActiveSheet: a => { ss._ativa = a.getName(); return a; },
+      moveActiveSheet: pos => { const n = ss._ativa; ordem.splice(ordem.indexOf(n), 1); ordem.splice(pos - 1, 0, n); } };
+    if (opcoes.folhaPadrao !== false) ss.insertSheet("Página1");
+    return ss;
   }
   const iter = l => { let i = 0; return { hasNext: () => i < l.length, next: () => l[i++] }; };
   const pastas = {};
