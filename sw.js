@@ -1,6 +1,6 @@
 // Guarda o aplicativo no aparelho para funcionar sem internet.
 // Ao publicar uma nova versão do index.html, troque o número abaixo (e a VERSAO_APP do index.html).
-const CACHE = "odontograma-v37-1";
+const CACHE = "odontograma-v38";
 // O essencial precisa existir; os demais são guardados se estiverem no site (um arquivo faltando não impede o resto).
 const ESSENCIAIS = ["./", "./index.html"];
 const EXTRAS = ["./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./mapa-ti.json", "./paisagem.webp", "./paisagem-faixa.webp"];

@@ -757,6 +757,37 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 #blocoOdonto{border-top:5px solid var(--sesai-vermelho)}
 #blocoCond,#blocoCond~.bloco{border-top:5px solid var(--sesai-amarelo)}
 
+/* exame numa página só: partes ainda bloqueadas ficam em cinza, com cadeado */
+#aba-exame .bloco{scroll-margin-top:96px}
+.bloco.bloq{box-shadow:none;background:var(--surface-2);border-top-color:#C3CBD6!important}
+.bloco.bloq>:not(.bloq-msg){filter:grayscale(1);opacity:.42;pointer-events:none;user-select:none}
+.bloq-msg{display:flex;align-items:center;gap:8px;margin:0 0 12px;padding:8px 12px;border-radius:10px;background:#fff;color:var(--muted);font-size:.86rem;font-weight:600}
+.bloq-msg svg{width:18px;height:18px;flex:none}
+.bloq-msg[hidden]{display:none}
+.rev-tit{margin:16px 0 4px;font-size:.95rem;color:var(--marinho)}
+.rd{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--surface-2);font-size:.88rem;line-height:1.35}
+.rd:first-child{border-top:0}
+.rd .n{min-width:32px;height:24px;padding:0 4px;border-radius:7px;background:var(--surface-2);color:var(--marinho);font-weight:800;font-size:.8rem;display:grid;place-items:center;flex:none}
+.rd .n.g{background:#E3F4EA;color:#13633A;min-width:auto;padding:0 8px}
+.rd .n.c{background:#EEF1F5;color:#4A5668;min-width:auto;padding:0 8px}
+.rd span{flex:1}
+#salvarFim{margin-top:16px;min-height:48px;font-size:1rem}
+/* janela no centro da tela (depois de salvar) */
+.fundo:has(> .salvo){align-items:center;padding:16px}
+.painel.salvo{border-radius:18px;max-width:420px;position:relative}
+.salvo{text-align:center}
+.salvo .bola{width:64px;height:64px;border-radius:50%;background:#13924B;color:#fff;display:grid;place-items:center;margin:6px auto 12px;font-size:2rem;font-weight:800}
+.salvo h3{margin:0 0 4px;font-size:1.3rem;color:var(--marinho)}
+.salvo .cod{font-weight:700;color:var(--ink);word-break:break-all}
+.salvo .est{display:flex;gap:10px;align-items:center;text-align:left;border-radius:14px;padding:12px 14px;margin:14px 0 4px;font-size:.92rem;background:var(--surface-2)}
+.salvo .est i{width:12px;height:12px;border-radius:50%;flex:none;background:#8A96A8;font-style:normal}
+.salvo .est[data-e="enviado"]{background:#E3F4EA;color:#0E5A31}.salvo .est[data-e="enviado"] i{background:#13924B}
+.salvo .est[data-e="enviando"] i{background:var(--sesai-azul);animation:pisca 1s infinite}
+.salvo .est[data-e="aparelho"],.salvo .est[data-e="erro"]{background:#FFF4E5;color:#6A3F00}.salvo .est[data-e="aparelho"] i,.salvo .est[data-e="erro"] i{background:#E8890C}
+.salvo .est[data-e="corrigir"]{background:#FDECEC;color:#7A1020}.salvo .est[data-e="corrigir"] i{background:#D7263D}
+@keyframes pisca{50%{opacity:.25}}
+.salvo .p-acoes{justify-content:center;flex-wrap:wrap}
+
 /* nível de risco na barra de baixo */
 #resRisco[data-nivel="baixo"]{color:var(--sesai-verde)}
 #resRisco[data-nivel="moderado"]{color:#946A00}
@@ -807,13 +838,18 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
 .st-ausente .face,.st-ausente_carie .face,.st-nao_erupc .face{fill:var(--surface-2)!important}
 .legenda-odo{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
 .legenda-odo summary{font-weight:700;font-size:.86rem;color:var(--accent);cursor:pointer;min-height:32px;display:flex;align-items:center}
-.lgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px 14px;margin-top:6px}
-.lg p{margin:0 0 3px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
-.lg div{display:flex;align-items:center;gap:7px;font-size:.8rem;line-height:1.2;padding:2px 0}
-.lg svg.mini{width:18px;height:18px;flex:none}
+.lgs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:12px;margin-top:6px}
+.lg p{margin:0 0 4px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.lg div{display:flex;align-items:center;gap:8px;font-size:.78rem;line-height:1.2;min-height:34px;padding:2px 0}
+.lg .ic{width:20px;height:20px;flex:none;display:grid;place-items:center}
+.lg .ic svg.mini{width:20px;height:20px;flex:none;padding:0;min-height:0;display:block}
 .sq{width:14px;height:14px;border-radius:3px;border:1px solid #9AA7B6;flex:none;display:inline-block}
+.lg .ic .sq{width:18px;height:18px}
 .sq.duv{background:#fff;outline:2px dotted #F7B500;outline-offset:1px;border-color:transparent}
+.lg .ic .sq.duv{width:15px;height:15px}
 .bd2{color:#fff;font-style:normal;font-size:.62rem;font-weight:800;border-radius:5px;padding:1px 3px;flex:none;min-width:18px;text-align:center}
+.lg .ic .bd2{width:20px;height:18px;min-width:0;padding:0;display:grid;place-items:center;font-size:.6rem}
+@media (max-width:420px){.lgs{column-gap:8px}.lg div{font-size:.72rem;gap:6px}}
 .aviso-idade{background:#FFF4D6;color:#6B4B00;border-radius:10px;padding:9px 12px;font-size:.9rem;font-weight:600;margin:4px 0 2px}
 .faces-box{display:flex;align-items:center;gap:16px;margin-top:14px;padding:12px;border-radius:12px;background:var(--surface-2)}
 .faces-desenho svg.dente-grande{width:136px;height:136px;display:block}
@@ -984,9 +1020,12 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     </div>
 
     <div class="bloco" id="blocoRevisao">
-      <h2 style="margin-bottom:10px">Revisão do exame</h2>
+      <h2 style="margin-bottom:10px">Resumo e salvar</h2>
       <div id="revResultado"></div>
       <div id="revLista"></div>
+      <h4 class="rev-tit">Dentes</h4>
+      <div id="revDentes"></div>
+      <button class="prim largo-bt" id="salvarFim" type="button">Salvar e enviar</button>
     </div>
   </section>
 
@@ -1100,7 +1139,7 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
       <span class="classe" id="resClasse" data-c="A">A</span>
       <span class="res-txt"><b id="resRisco">Baixo risco</b> <small>· ceo-d <span id="resCeod">0</span> · CPO-D <span id="resCpod">0</span></small><span class="seta" aria-hidden="true">⌃</span></span>
     </button>
-    <button class="prim" id="salvar">Salvar</button>
+    <button class="prim" id="salvar">Salvar e enviar</button>
   </div>
   <div class="motivos" id="motivos" hidden><p id="resDesc"></p><ul id="motivosLista"></ul></div>
 </footer>
@@ -1154,7 +1193,7 @@ function avisarSemEspaco() {
   a.classList.add("aviso-servidor"); a.hidden = false;
 }
 // Versão do app: a mesma do número no sw.js (odontograma-vNN). Vai junto em cada pedido ao servidor.
-const VERSAO_APP = 37;
+const VERSAO_APP = 38;
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_LEG = "odonto.legenda.v1";
 const K_SESSAO = "odonto.sessao.v1";
@@ -1490,9 +1529,10 @@ function renderLegenda() {
   const dente = [["presente", "Hígido"], ["nao_erupc", "Não erupcionado"], ["esfoliado", "Esfoliado"], ["ausente", "Ausente por outro motivo"], ["ausente_carie", "Extraído por cárie"]]
     .filter(([k]) => !(k === "esfoliado" && den === "permanente"));
   const g = (t, itens) => `<div class="lg"><p>${t}</p>${itens.join("")}</div>`;
-  box.innerHTML = g("Dente", dente.map(([k, t]) => `<div>${mini(k)}<span>${t}</span></div>`)) +
-    g("Faces", FACES.filter(f => f.k).map(f => `<div><i class="sq" style="background:${f.k === "restc" ? "repeating-linear-gradient(45deg,var(--rest) 0 3px,var(--carie) 3px 5px)" : f.estilo.replace("fill:", "")}"></i><span>${f.nome}</span></div>`)) +
-    g("Marcas", [`<div><i class="bd2" style="background:#D7263D">Ex</i><span>Exodontia devido à cárie</span></div>`, `<div><i class="bd2" style="background:#E2231A">!</i><span>Dor ou abscesso</span></div>`, `<div><i class="sq duv"></i><span>Conferir pela idade</span></div>`]);
+  // Três colunas iguais; todos os ícones na mesma caixa de 20 px.
+  box.innerHTML = g("Dente", dente.map(([k, t]) => `<div><span class="ic">${mini(k)}</span><span>${t}</span></div>`)) +
+    g("Faces", FACES.filter(f => f.k).map(f => `<div><span class="ic"><i class="sq" style="background:${f.k === "restc" ? "repeating-linear-gradient(45deg,var(--rest) 0 3px,var(--carie) 3px 5px)" : f.estilo.replace("fill:", "")}"></i></span><span>${f.nome}</span></div>`)) +
+    g("Marcas", [`<div><span class="ic"><i class="bd2" style="background:#D7263D">Ex</i></span><span>Exodontia devido à cárie</span></div>`, `<div><span class="ic"><i class="bd2" style="background:#E2231A">!</i></span><span>Dor ou abscesso</span></div>`, `<div><span class="ic"><i class="sq duv"></i></span><span>Conferir pela idade</span></div>`]);
 }
 function renderResultado() {
   const r = avaliarExame(estado.ex);
@@ -1506,8 +1546,7 @@ function renderResultado() {
   $("#motivosLista").innerHTML = r.motivos.map(m => `<li>${esc(m)}</li>`).join("") +
     (temDec ? `<li>ceo-d ${r.ceod.total} (c ${r.ceod.c}, e ${r.ceod.e}, o ${r.ceod.o})</li>` : "") +
     (temPerm ? `<li>CPO-D ${r.cpod.total} (C ${r.cpod.c}, P ${r.cpod.p}, O ${r.cpod.o})</li>` : "");
-  const ult = (estado.ex._etapa || 0) >= ETAPAS.length - 1;
-  $("#salvar").textContent = estado.ex._soMemoria ? "Tentar guardar de novo" : !ult ? "Continuar" : estado.editando ? "Salvar alterações" : "Salvar exame";
+  $("#salvar").textContent = $("#salvarFim").textContent = estado.ex._soMemoria ? "Tentar guardar de novo" : "Salvar e enviar";
   const nm = soNaMemoria().length > 0; $("#novoExame").disabled = nm; $("#novoExame").title = nm ? MSG_MEMORIA : "";
   renderConf();
 }
@@ -1560,14 +1599,16 @@ function renderProtese() {
   $("#proteseInfo").hidden = !pr.naoAvaliado;
   $("#blocoProtese").classList.toggle("nao-aval", !!pr.naoAvaliado);
 }
-// Exame em etapas: cada uma abre depois da anterior. Tocar numa etapa já liberada leva até ela.
+// Exame numa página só, de cima para baixo. Cada parte é liberada quando as anteriores estão completas; Vigilância e
+// prótese são liberadas junto com o odontograma. O que já foi liberado continua liberado. A barra de números no topo
+// leva até cada parte.
 const ETAPAS = [
   {k: "local", t: "Local", blocos: ["#blocoLocal"]},
   {k: "ind", t: "Indivíduo", blocos: ["#blocoInd"]},
   {k: "odonto", t: "Odonto­grama", blocos: ["#blocoOdonto"]},
   {k: "vig", t: "Vigilância e prótese", blocos: ["#blocoCond", "#blocoProtese"]},
   {k: "cond", t: "Condições", blocos: ["#blocoGerais"]},
-  {k: "rev", t: "Revisão", blocos: ["#blocoRevisao"]}
+  {k: "rev", t: "Resumo", blocos: ["#blocoRevisao"]}
 ];
 // O que falta em cada etapa: [texto, seletor para levar o profissional até a pergunta].
 function faltasEtapa(i, ex) {
@@ -1604,32 +1645,101 @@ function faltasEtapa(i, ex) {
   }
   return f;
 }
-function irEtapa(i, rolar) {
-  const ex = estado.ex; ex._etapa = Math.max(0, Math.min(i, ETAPAS.length - 1)); ex._max = Math.max(ex._max || 0, ex._etapa);
-  mostrarEtapa(); renderEtapas(); renderResultado(); if (ex._etapa === ETAPAS.length - 1) renderRevisao();
-  if (rolar !== false) window.scrollTo({top: 0});
-  alterado();
+// Até que parte o exame está liberado agora (0 = só o Local).
+function nivelLiberado(ex) {
+  if (cadastroFaltando().length) return 0;
+  const ok = i => !faltasEtapa(i, ex).length;
+  if (!ok(0)) return 0;
+  if (!ok(1)) return 1;
+  if (!ok(2) || !ok(3)) return 3;
+  if (!ok(4)) return 4;
+  return 5;
 }
-function mostrarEtapa() {
-  const at = estado.ex._etapa || 0;
-  ETAPAS.forEach((e, i) => e.blocos.forEach(b => { const el = $(b); if (el) el.hidden = i !== at; }));
+// Algum dente já marcado ou conferido pelo profissional?
+function odontoMarcado(ex) { return Object.keys(ex._conf || {}).length > 0 || dentesDe(ex.denticao).some(n => temRegistro(ex.dentes[n])); }
+const ICONE_CADEADO = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>`;
+// Cinza e cadeado nas partes ainda não liberadas. Quando uma parte nova é liberada, a página desce até ela,
+// menos quando o profissional está no odontograma (ele confere a dentição antes de seguir).
+function atualizarBloqueios(rolar) {
+  const ex = estado.ex, antes = Math.min(ex._max || 0, ETAPAS.length - 1), nivel = nivelLiberado(ex);
+  if (nivel > antes) ex._max = nivel;
+  ETAPAS.forEach((e, i) => e.blocos.forEach(b => {
+    const el = $(b); if (!el) return;
+    const bloq = i > ex._max; el.classList.toggle("bloq", bloq); el.inert = bloq;
+    let m = el.querySelector(":scope > .bloq-msg");
+    if (bloq && !m) { m = document.createElement("p"); m.className = "bloq-msg"; el.prepend(m); }
+    if (!m) return;
+    m.hidden = !bloq;
+    if (bloq) {
+      // O que precisa estar completo antes (vigilância e prótese dependem só de Local e Indivíduo, como o odontograma).
+      const pre = [...Array(i === 3 ? 2 : i).keys()], faltam = pre.filter(j => faltasEtapa(j, ex).length).map(j => ETAPAS[j].t.replace("­", ""));
+      m.innerHTML = `${ICONE_CADEADO}<span>Libera quando você completar: ${esc(listaE(faltam.length ? faltam : [ETAPAS[pre.at(-1)].t.replace("­", "")]))}.</span>`;
+    }
+  }));
+  if (rolar !== false && ex._max > antes && estado.aba === "exame" && estado.ultimoBloco !== "blocoOdonto" && $("#fundo").hidden) {
+    clearTimeout(tRolar); tRolar = setTimeout(() => rolarQuandoLivre($(ETAPAS[antes + 1].blocos[0]), 0), 450);
+  }
 }
-// "Continuar": confere a etapa e abre a próxima. Na revisão, salva.
-function continuarEtapa() {
-  const ex = estado.ex, at = ex._etapa || 0;
-  if (at >= ETAPAS.length - 1) return salvarExame();
-  if (at === 0 && cadastroFaltando().length) { toast("Entre com o seu acesso de profissional para registrar exames."); return irAba("acesso"); }
-  const f = faltasEtapa(at, ex);
-  if (f.length) { toast(`Falta responder: ${listaE(f.map(x => x[0]))}.`); const el = $(f[0][1]); if (el) { el.scrollIntoView({block: "center", behavior: "smooth"}); if (el.focus) el.focus({preventScroll: true}); } return; }
-  irEtapa(at + 1);
+let tRolar = 0;
+// Desce até a parte liberada assim que nenhuma janela estiver aberta (ex.: a do código da pessoa nova).
+function rolarQuandoLivre(alvo, n) {
+  if (estado.aba !== "exame") return;
+  if (!$("#leitura").hidden || !$("#fundo").hidden) { if (n < 75) tRolar = setTimeout(() => rolarQuandoLivre(alvo, n + 1), 400); return; }
+  if (alvo) alvo.scrollIntoView({block: "start", behavior: "smooth"});
 }
+// A barra do topo leva até a parte (só as já liberadas).
+function irEtapa(i) {
+  const ex = estado.ex; if (i > (ex._max || 0)) return;
+  const el = $(ETAPAS[i].blocos[0]); if (el) el.scrollIntoView({block: "start", behavior: "smooth"});
+}
+function mostrarEtapa() { ETAPAS.forEach(e => e.blocos.forEach(b => { const el = $(b); if (el) el.hidden = false; })); }
+// Parte que está na tela agora (para a barra do topo marcar).
+function etapaNaTela() {
+  let at = 0;
+  ETAPAS.forEach((e, i) => { const el = $(e.blocos[0]); if (el && el.getBoundingClientRect().top <= 130) at = i; });
+  if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) at = ETAPAS.length - 1;
+  return at;
+}
+let rafEtapa = 0;
+window.addEventListener("scroll", () => { if (estado.aba !== "exame" || rafEtapa) return; rafEtapa = requestAnimationFrame(() => { rafEtapa = 0; const at = etapaNaTela(); if (at !== estado.etapaTela) { estado.etapaTela = at; renderEtapas(); } }); }, {passive: true});
 function renderEtapas() {
   const el = $("#etapas"); if (!el) return;
-  const ex = estado.ex, at = ex._etapa || 0, max = ex._max || 0;
-  el.innerHTML = ETAPAS.map((e, i) => { const feita = i < max && (i !== at) && !faltasEtapa(i, ex).length, livre = i <= max;
-    return `<button class="etapa ${feita ? "feita" : ""} ${i === at ? "atual" : ""}" type="button" data-etapa="${i}" ${livre ? "" : "disabled"} aria-current="${i === at ? "step" : "false"}" aria-label="${e.t.replace("­", "")}: ${i === at ? "etapa atual" : feita ? "feita" : livre ? "falta completar" : "abre depois das anteriores"}"><i>${feita ? "✓" : i + 1}</i>${e.t}</button>`; }).join("");
+  const ex = estado.ex;
+  atualizarBloqueios();
+  const at = estado.etapaTela || 0, max = ex._max || 0;
+  el.innerHTML = ETAPAS.map((e, i) => {
+    // O odontograma não tem pergunta obrigatória: fica "feito" quando algum dente foi marcado ou quando o exame já passou dele.
+    const feita = i < ETAPAS.length - 1 && i <= max && !faltasEtapa(i, ex).length && (i !== 2 || odontoMarcado(ex) || max >= 4), livre = i <= max;
+    return `<button class="etapa ${feita ? "feita" : ""} ${i === at ? "atual" : ""}" type="button" data-etapa="${i}" ${livre ? "" : "disabled"} aria-current="${i === at ? "step" : "false"}" aria-label="${e.t.replace("­", "")}: ${feita ? "completa" : livre ? "falta completar" : "libera depois das anteriores"}"><i>${feita ? "✓" : i + 1}</i>${e.t}</button>`; }).join("");
   $("#exTitulo").textContent = estado.editando ? "Editando exame" : "Novo exame";
   $("#exSub").innerHTML = [ex.polo && ex.polo.trim() && "Polo " + ex.polo.trim(), ex.aldeia && ex.aldeia.trim(), ex.localAtendimento, fmtData(ex.dataExame)].filter(Boolean).map(esc).join(" · ") || "Comece pelo local do atendimento";
+  renderRevisao();
+}
+// Resumo de cada dente: os que têm alguma marcação, um por linha; os hígidos e os não erupcionados, juntos.
+function descricaoDente(n, d) {
+  const it = [];
+  if (d.status !== "presente") it.push((STATUS_NOME[d.status] || d.status).replace(/ \([A-Z]+\)$/, "").toLowerCase());
+  const grupos = {};
+  ["O", "V", "L", "M", "D"].forEach(f => { const c = (d.faces || {})[f]; if (c) (grupos[c] = grupos[c] || []).push(SIGLA_FACE(n, f)); });
+  FACES.forEach(f => { if (grupos[f.k]) it.push(`${f.nome.toLowerCase()} (${grupos[f.k].join(", ")})`); });
+  if (d.dor) it.push("dor");
+  if (d.abscesso) it.push("abscesso ou fístula");
+  Object.keys(d.procs || {}).filter(k => d.procs[k]).forEach(k => it.push((PROC_NOME[k] || k).replace(/ \(.*\)$/, "") + " (" + (d.procs[k] === "realizado" ? "realizado" : "indicado") + ")"));
+  if ((d.obs || "").trim()) it.push("obs.: " + d.obs.trim());
+  const t = it.join(" · ");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+function resumoDentesHtml(ex) {
+  const ds = ex.dentes, hig = [], ne = [], esf = [], linhas = [];
+  for (const n of dentesDe(ex.denticao)) {
+    const d = ds[n]; if (!d) continue;
+    if (!temRegistro(d) && d.status === "presente") hig.push(n);
+    else if (!temRegistro(d) && d.status === "nao_erupc") ne.push(n);
+    else if (!temRegistro(d) && d.status === "esfoliado") esf.push(n);
+    else linhas.push(`<div class="rd"><b class="n">${n}</b><span>${esc(descricaoDente(n, d))}</span></div>`);
+  }
+  const grupo = (cls, t, l) => l.length ? `<div class="rd"><b class="n ${cls}">${t} (${l.length})</b><span>${l.join(", ")}</span></div>` : "";
+  return linhas.join("") + grupo("g", "Hígidos", hig) + grupo("c", "Não erupcionados", ne) + grupo("c", "Esfoliados", esf);
 }
 // Revisão: resultado e um resumo de cada etapa, com "Editar".
 function renderRevisao() {
@@ -1649,8 +1759,9 @@ function renderRevisao() {
   ];
   $("#revLista").innerHTML = linhasR.map(([i, t, txt]) => { const ok = !faltasEtapa(i, ex).length;
     return `<div class="rev"><span class="ok ${ok ? "" : "falta"}">${ok ? "✓" : "!"}</span><div><b>${t}</b><small>${esc(txt)}</small></div><button class="link" type="button" data-etapa="${i}">Editar</button></div>`; }).join("");
+  $("#revDentes").innerHTML = resumoDentesHtml(ex);
 }
-function renderExame() { renderFormulario(); renderOdonto(); renderResultado(); renderPessoa(); renderEtapas(); mostrarEtapa(); renderSugLocal(); if ((estado.ex._etapa || 0) === ETAPAS.length - 1) renderRevisao(); }
+function renderExame() { renderFormulario(); renderOdonto(); renderResultado(); renderPessoa(); mostrarEtapa(); renderEtapas(); renderSugLocal(); }
 
 /* ---------- dica ao passar o mouse no dente ---------- */
 const COM_MOUSE = !!(window.matchMedia && matchMedia("(hover: hover) and (pointer: fine)").matches);
@@ -1731,6 +1842,13 @@ function renderPainel(focoSel) {
   const p = $(".painel"); p.scrollTop = rolagem;
   if (focoSel) p.querySelector(focoSel)?.focus();
 }
+// Odontograma do início, para a idade nova: dentição e dentes esperados pela idade, nada marcado.
+function reiniciarOdonto(ex) {
+  ex.dentes = {}; ex._conf = {}; ex._duvAnt = {}; estado.faceSel = null;
+  aplicarPrevisao(ex, true); garantirDentes(ex); aplicarAnterior(ex); atualizarVigilancia(ex);
+  renderOdonto(); renderResultado(); renderVig();
+  setTimeout(() => { toast("Data de nascimento alterada: o odontograma voltou do início. Marque os dentes de novo."); $("#blocoOdonto").scrollIntoView({block: "start", behavior: "smooth"}); }, 50);
+}
 function mudouDente() { alterado(); renderOdonto(); renderResultado(); renderVig(); }
 
 const exames = () => store.get(K_EXAMES, []);
@@ -1780,7 +1898,7 @@ function salvarExame() {
   // Confere todas as etapas, na ordem; a primeira que faltar é aberta.
   for (let i = 0; i < ETAPAS.length - 1; i++) {
     const f = faltasEtapa(i, ex);
-    if (f.length) { irEtapa(i); toast(`Falta responder: ${listaE(f.map(x => x[0]))}.`); const el = $(f[0][1]); if (el) el.scrollIntoView({block: "center", behavior: "smooth"}); return; }
+    if (f.length) { toast(`Falta responder: ${listaE(f.map(x => x[0]))}.`); const el = $(f[0][1]) || $(ETAPAS[i].blocos[0]); if (el) { el.scrollIntoView({block: "center", behavior: "smooth"}); if (el.focus) el.focus({preventScroll: true}); } return; }
   }
   const al = alertasAtuais();
   if (ex.vinculo) ex.vinculo.chaves = al.filter(a => a.nivel === "confira").map(a => a.chave);
@@ -1797,8 +1915,34 @@ function salvarExame() {
   }
   estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null; store.set(K_RASC, null);
   renderExame(); window.scrollTo({top: 0});
-  toast(`Exame ${reg.codigo} salvo (classe ${reg.resultado.classe}).` + (navigator.onLine && c.url ? " Enviando…" : " Será enviado quando houver internet."));
+  mostrarSalvo(reg);
   sincronizar();
+}
+// Janela no centro da tela depois de salvar: o que aconteceu com o exame. O envio se atualiza sozinho na janela.
+function mostrarSalvo(reg) {
+  estado.salvoId = reg.id;
+  const r = reg.resultado || {};
+  abrirModal(`<div class="painel salvo" role="alertdialog" aria-modal="true" aria-labelledby="svTit">
+    <div class="bola" aria-hidden="true">✓</div>
+    <h3 id="svTit">Exame salvo</h3>
+    <p class="dica" style="margin:0">Código <span class="cod">${esc(reg.codigo)}</span></p>
+    <p class="dica" style="margin:4px 0 0">Classe ${esc(r.classe || "")} · ${esc(String(r.risco || "").toLowerCase())}</p>
+    <div class="est" id="svEstado" role="status"></div>
+    <div class="p-acoes"><button class="prim" type="button" data-fecha-leitura>Começar novo exame</button><button class="sec" type="button" data-fecha-leitura data-ir="lista">Ver em Meus exames</button></div>
+  </div>`);
+  atualizarSalvo();
+}
+function atualizarSalvo() {
+  const box = $("#svEstado"); if (!box || $("#leitura").hidden || !estado.salvoId) return;
+  const e = exames().find(x => x.id === estado.salvoId), env = e ? e.envio : {estado: "enviado"};
+  let k, t;
+  if (env.estado === "enviado") [k, t] = ["enviado", "Enviado para a planilha."];
+  else if (env.estado === "corrigir") [k, t] = ["corrigir", `A planilha não aceitou o exame: ${env.erro || "veja o motivo em Meus exames"} Abra em Meus exames para corrigir.`];
+  else if (!navigator.onLine || !cfg().url) [k, t] = ["aparelho", "Sem internet agora. O exame ficou guardado neste aparelho e vai sozinho quando houver internet."];
+  else if (env.estado === "erro" && /ocupado/i.test(env.erro || "")) [k, t] = ["enviando", "O servidor está ocupado com outros envios. O app tenta de novo sozinho em alguns segundos."];
+  else if (env.estado === "erro") [k, t] = ["erro", "Não foi possível enviar agora. O exame está guardado neste aparelho e o app tenta de novo sozinho."];
+  else [k, t] = ["enviando", "Enviando para a planilha…"];
+  box.dataset.e = k; box.innerHTML = `<i aria-hidden="true"></i><span>${esc(t)}</span>`;
 }
 function abrirExame(id) {
   const reg = meus().find(e => e.id === id); if (!reg) return;
@@ -2270,7 +2414,10 @@ async function sincronizar(manual) {
   liberarSeGuardado();
   clearTimeout(tProxEnvio); if (proxima && proxima < 120000) tProxEnvio = setTimeout(() => sincronizar(), proxima);
   const aindaFalha = meus().some(e => e.envio.estado === "erro");
-  if (corrigir) toast(`${corrigir === 1 ? "1 exame precisa" : corrigir + " exames precisam"} de correção. Veja em Meus exames.`);
+  // Com a janela de "Exame salvo" aberta, o resultado do envio aparece nela (sem aviso por cima).
+  const janela = !!$("#svEstado") && !$("#leitura").hidden; atualizarSalvo();
+  if (janela) { /* a janela já mostra */ }
+  else if (corrigir) toast(`${corrigir === 1 ? "1 exame precisa" : corrigir + " exames precisam"} de correção. Veja em Meus exames.`);
   else if (falhou && (manual || !estado.avisouFalha)) toast("Não foi possível enviar agora. Os exames estão guardados e o app vai tentar de novo sozinho.");
   else if (ok && (manual || estado.avisouFalha)) toast(`${ok} ${ok === 1 ? "exame enviado" : "exames enviados"} para a planilha.`);
   estado.avisouFalha = aindaFalha;
@@ -2350,6 +2497,17 @@ $("#rede").addEventListener("click", () => sincronizar(true));
 
 $("#aba-exame").addEventListener("input", e => {
   const i = e.target;
+  let reiniciar = false;
+  if (i.dataset.campo === "crianca.nascimento") {
+    // O odontograma é montado pela idade: mudar a data de nascimento depois de marcar dentes faz o odontograma
+    // voltar do início (o resto do exame continua como está). Antes, o app pede confirmação.
+    const velho = estado.ex.crianca.nascimento || "", novo = i.value;
+    if (novo && +novo.slice(0, 4) < 1900) return;   // ainda digitando o ano
+    if (velho && novo !== velho && odontoMarcado(estado.ex)) {
+      if (!confirm("O odontograma é montado pela idade. Mudando a data de nascimento, o odontograma volta do início e os dentes marcados são apagados. O resto do exame continua como está.\n\nMudar a data de nascimento?")) { i.value = velho; return; }
+      reiniciar = true;
+    }
+  }
   if (i.dataset.campo) {
     const ks = i.dataset.campo.split("."); let o = estado.ex; ks.slice(0, -1).forEach(k => o = o[k]); o[ks.at(-1)] = i.value;
     if (i.dataset.campo === "dsei") preencherLocalDsei(estado.ex);
@@ -2357,7 +2515,8 @@ $("#aba-exame").addEventListener("input", e => {
     if (i.dataset.campo === "aldeia" && estado.ex.aldeiaManual) limparAldeia(estado.ex);
     if (["uf","polo","aldeia"].includes(i.dataset.campo)) renderCodigo();
     if (["dsei","aldeia","crianca.nascimento","crianca.sexo"].includes(i.dataset.campo) && estado.ex._id && estado.ex._id.buscou && !estado.ex.vinculo && !estado.ex.codigoFixo) { estado.ex._id.buscou = false; estado.ex._cand = null; renderPessoa(); }
-    if (i.dataset.campo === "crianca.nascimento" || i.dataset.campo === "dataExame") {
+    if (reiniciar) { renderIdade(); reiniciarOdonto(estado.ex); }
+    else if (i.dataset.campo === "crianca.nascimento" || i.dataset.campo === "dataExame") {
       renderIdade();
       if (!estado.editando) {
         const den0 = estado.ex.denticao, r = aplicarPrevisao(estado.ex, true);
@@ -2428,7 +2587,10 @@ $("#cancelarEdicao").addEventListener("click", () => {
   if (!confirm("Descartar as alterações feitas neste exame?")) return;
   estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null; store.set(K_RASC, null); renderExame();
 });
-$("#salvar").addEventListener("click", continuarEtapa);
+$("#salvar").addEventListener("click", salvarExame);
+$("#salvarFim").addEventListener("click", salvarExame);
+// Em que parte do exame o profissional mexeu por último (a página não desce sozinha depois do odontograma).
+["input", "change", "click"].forEach(t => $("#aba-exame").addEventListener(t, e => { const b = e.target.closest && e.target.closest(".bloco"); if (b && b.id) estado.ultimoBloco = b.id; }, true));
 $("#verMotivos").addEventListener("click", () => { const m = $("#motivos"); m.hidden = !m.hidden; $("#verMotivos").setAttribute("aria-expanded", String(!m.hidden)); });
 
 // painel

@@ -1,7 +1,24 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 37 · servidor 36 · formato da planilha 25**.
+Versão atual: **app 38 · servidor 36 · formato da planilha 25**.
+
+## Versão 38: exame numa página só
+
+Só o app muda (o servidor continua o 36, e a planilha não muda).
+- **O exame fica todo numa página, de cima para baixo**, sem o botão "Continuar". As partes que ainda não podem ser preenchidas aparecem em cinza, com um cadeado e o que falta completar antes. Ao completar uma parte, a próxima fica colorida e a página desce sozinha até ela.
+- **Vigilância e prótese** são liberadas junto com o odontograma. Depois do odontograma a página **não** desce sozinha: o profissional confere a dentição (mista, incompleta) e segue quando quiser.
+- O que já foi liberado continua liberado, mesmo se a pessoa voltar e apagar uma resposta. A exceção é a idade: o odontograma é montado pela idade, então **mudar a data de nascimento depois de marcar dentes faz o odontograma voltar do início** (dentição e dentes esperados pela idade nova, nada marcado). Antes, o app pede confirmação; se o profissional cancelar, a data antiga e os dentes marcados ficam. O resto do exame (local, indivíduo, vigilância, prótese e condições) continua como está.
+- A barra de números no topo continua: mostra em que parte a tela está e leva até cada parte.
+- No fim, **"Resumo e salvar"**: o resultado, cada parte com "Editar" e o **resumo de cada dente** (os dentes com alguma marcação, um por linha; os hígidos, os não erupcionados e os esfoliados, juntos).
+- O botão passa a se chamar **"Salvar e enviar"** (na barra de baixo e no fim do resumo).
+- Depois de salvar, uma **janela no centro da tela** mostra o código, a classe e o que aconteceu com o envio (enviando, enviado, sem internet, ou se a planilha não aceitou e por quê). A janela se atualiza sozinha quando o envio termina.
+- **Legenda do odontograma** em três colunas iguais (Dente, Faces, Marcas), com todos os ícones do mesmo tamanho e as linhas com o mesmo espaçamento.
+
+**Como instalar a 38:** só o GitHub (o Apps Script não muda).
+1. **GitHub, na raiz:** `index.html`, `sw.js` e `LEIA-ME.md`.
+2. **GitHub, dentro de `testes`:** `navegador.test.js`.
+3. **Actions:** ✓ verde. **Celular:** feche e abra o app com internet; em Conta deve aparecer "app versão 38 · servidor versão 36".
 
 ## Servidores 35 e 36 (versão 37.1): correção do teste de carga
 
@@ -219,7 +236,7 @@ A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
 - **243 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
-- **113 verificações no navegador**, com os fluxos principais, no horário de Brasília.
+- **132 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
 Todas as datas e horas, no app e no servidor, usam o horário de Brasília (`America/Sao_Paulo`), qualquer que seja o fuso do aparelho.
 
@@ -241,6 +258,7 @@ São dados de saúde, considerados sensíveis. O app não coleta nome, Cartão S
 
 ## Histórico resumido
 
+- **38:** exame numa página só, com partes liberadas aos poucos; resumo de cada dente; botão "Salvar e enviar"; janela no centro depois de salvar; legenda em três colunas.
 - **37.1 (servidores 35 e 36):** sessões guardadas separadas (sem perder entradas com muita gente ao mesmo tempo); cópia rápida dos exames e envio numa escrita só; aba Uso atualizada de madrugada; fila que não lota o limite do Google.
 - **37:** uma linha por exame (sem aba Dentes) e arquivo de análise em Excel; envio em lote com fila organizada; acesso que vence em 15 dias; erros explicados e avisos de espaço para a coordenação titular; cópia de segurança dos exames.
 - **36:** limpeza do código, sem mudar o uso. A aba Uso mantém os contadores quando a planilha é reorganizada.
