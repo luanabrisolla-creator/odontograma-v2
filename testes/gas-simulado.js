@@ -55,22 +55,25 @@ function criar(opcoes) {
   est.extras = {};
   // Planilha separada (ex.: arquivo de acessos): guarda as abas em est.extras[id].abas.
   function criarExtra(nome, id) {
-    const abas = {}, ordem = [], maxx = {};
+    const abas = {}, ordem = [], maxx = {}, ids = {}; let proxId = 1;
     const ultima = n => { const R = abas[n]; let k = R.length; while (k > 0 && (R[k - 1] || []).every(x => x === "" || x == null)) k--; return k; };
     const mk = n => {
-      const sh = { getName: () => n, getLastRow: () => ultima(n), getLastColumn: () => abas[n].reduce((m, l) => Math.max(m, l.length), 0),
+      const sh = { getName: () => n, getSheetId: () => ids[n], getLastRow: () => ultima(n),
+        insertRowsAfter: (i, k) => { maxx[n].r = sh.getMaxRows() + k; return sh; },
+        insertColumnsAfter: (i, k) => { maxx[n].c = sh.getMaxColumns() + k; return sh; }, getLastColumn: () => abas[n].reduce((m, l) => Math.max(m, l.length), 0),
         getMaxRows: () => Math.max(maxx[n].r, abas[n].length), getMaxColumns: () => Math.max(maxx[n].c, sh.getLastColumn()),
         deleteRows: (i, k) => { abas[n].splice(i - 1, k); maxx[n].r = Math.max(1, sh.getMaxRows() - k); },
         deleteColumns: (i, k) => { maxx[n].c = Math.max(1, maxx[n].c - k); },
         getRange: (r, c, nr, nc) => ({ getValues: () => Array.from({ length: nr || 1 }, (_, i) => Array.from({ length: nc || 1 }, (_, j) => { const v = (abas[n][r - 1 + i] || [])[c - 1 + j]; return v == null ? "" : typeof v === "string" && v[0] === "'" ? v.slice(1) : v; })),
-          setValues: v => { v.forEach((l, i) => { while (abas[n].length < r + i) abas[n].push([]); l.forEach((x, j) => { abas[n][r - 1 + i][c - 1 + j] = x; }); }); return { setFontWeight() {} }; }, setFontWeight() {} }),
+          setValues: v => { if (r - 1 + v.length > sh.getMaxRows() || c - 1 + (v[0] || []).length > sh.getMaxColumns()) throw new Error("Esta ação adicionaria células além do tamanho da aba (simulado)"); v.forEach((l, i) => { while (abas[n].length < r + i) abas[n].push([]); l.forEach((x, j) => { abas[n][r - 1 + i][c - 1 + j] = x; }); }); return { setFontWeight() {} }; }, setFontWeight() {},
+          clearContent: () => { for (let i = 0; i < (nr || 1); i++) if (abas[n][r - 1 + i]) for (let j = 0; j < (nc || 1); j++) abas[n][r - 1 + i][c - 1 + j] = ""; } }),
         setFrozenRows() {}, appendRow: l => { abas[n].push(l); },
-        setName: novo => { abas[novo] = abas[n]; maxx[novo] = maxx[n]; delete abas[n]; delete maxx[n]; ordem[ordem.indexOf(n)] = novo; n = novo; return sh; } };
+        setName: novo => { abas[novo] = abas[n]; maxx[novo] = maxx[n]; ids[novo] = ids[n]; delete abas[n]; delete maxx[n]; delete ids[n]; ordem[ordem.indexOf(n)] = novo; n = novo; return sh; } };
       return sh;
     };
     const ss = { nome, abas, ordem, getId: () => id, getName: () => nome, getUrl: () => "https://docs.google.com/spreadsheets/d/" + id,
       getSheetByName: n => abas[n] ? mk(n) : null,
-      insertSheet: n => { abas[n] = []; maxx[n] = { r: 1000, c: 26 }; ordem.push(n); return mk(n); },
+      insertSheet: n => { abas[n] = []; maxx[n] = { r: 1000, c: 26 }; ids[n] = proxId++; ordem.push(n); return mk(n); },
       getSheets: () => ordem.map(mk),
       deleteSheet: a => { const n = a && a.getName ? a.getName() : a; delete abas[n]; delete maxx[n]; const i = ordem.indexOf(n); if (i >= 0) ordem.splice(i, 1); },
       setActiveSheet: a => { ss._ativa = a.getName(); return a; },

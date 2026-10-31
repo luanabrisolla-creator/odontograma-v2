@@ -663,7 +663,16 @@ r = P(C, { acao: "atualizarAnalise" });
 T("se os números não batem com a planilha do app, a atualização avisa (e vai para Erros recentes)", !r.ok && r.analise && !r.analise.ok && /Conferência/.test(r.analise.erro) && aba("_erros").length === nErros0 + 1 && aba("_erros").at(-1)[2] === "analise", [r, aba("_erros").at(-1)]);
 aba("Exames").splice(aba("Exames").findIndex(l => l[0] === "QUEBRADO1"), 1); editouAMao("Exames");
 T("corrigido, volta a bater", P(C, { acao: "atualizarAnalise" }).ok);
-T("a tarefa diária também refaz a planilha de análise", (G.ctx.tarefaDiaria().analise === validosIdx.length));
+// O Looker guarda o número interno de cada aba: as abas não podem ser apagadas e criadas de novo.
+const idsAbas = () => ["Exames", "Dentes", "Sobre"].map(n => G.ctx.planilhaAnalise().getSheetByName(n).getSheetId()).join();
+const ids0 = idsAbas(), nDentes0 = pAn.abas.Dentes.length;
+r = P(ANA, { acao: "cancelarExame", id: validosIdx[0].id, motivo: "Exame em duplicidade" });
+T("(cancela um exame para a planilha de análise encolher)", r.ok, r);
+T("atualizar de novo reescreve dentro das mesmas abas (o Looker continua ligado a elas)", P(C, { acao: "atualizarAnalise" }).ok && idsAbas() === ids0, [ids0, idsAbas()]);
+T("com menos exames, não sobram linhas da versão anterior", pAn.abas.Dentes.length < nDentes0 && pAn.abas.Dentes.length - 1 === G.ctx.estadoAnalise().dentes && pAn.abas.Exames.length - 1 === G.ctx.estadoAnalise().exames,
+  [pAn.abas.Dentes.length, nDentes0, G.ctx.estadoAnalise()]);
+T("a aba Sobre termina sem o aviso de atualização em andamento", !pAn.abas.Sobre.some(l => /em andamento/.test(l[1])) && pAn.abas.Sobre.some(l => l[0] === "Exames válidos"));
+T("a tarefa diária também refaz a planilha de análise, nas mesmas abas", G.ctx.tarefaDiaria().analise === validosIdx.length - 1 && idsAbas() === ids0);
 
 /* ---------------------------------------------------------------- geral */
 parte("geral");
