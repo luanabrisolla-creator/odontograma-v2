@@ -17,6 +17,7 @@ const aba = n => G.est.sheets[n] || [];
 const col = (n, c) => aba(n)[0].indexOf(c);
 const linhaEx = id => aba("Exames").find(l => l[0] === id);
 const jsonEx = id => JSON.parse(linhaEx(id).at(-1));
+const editouAMao = nome => G.ctx.onEdit({ range: { getSheet: () => ({ getName: () => nome }) } }); // o Google avisa cada edição feita na tela
 const mailsPara = e => G.est.mails.filter(m => m.to === e);
 const URL_OFICIAL = "https://luanabrisolla-creator.github.io/odontograma-v2/";
 let r;
@@ -150,6 +151,7 @@ parte("concorrência");
 const realLer = G.ctx.lerUsuarios;
 const linhaAna = aba("Usuarios").findIndex(l => l[3] === ANA.email);
 aba("Usuarios")[linhaAna][col("Usuarios", "ultimo_acesso")] = "2020-01-01T00:00:00.000Z";
+editouAMao("Usuarios"); G.ctx.cadastrosMudaram(); // mexemos na planilha "à mão": o Google avisa e a cópia rápida é esquecida
 const fotoAntiga = realLer();
 aba("Usuarios")[linhaAna][col("Usuarios", "status")] = "desativado";
 G.ctx.lerUsuarios = () => JSON.parse(JSON.stringify(fotoAntiga));
@@ -304,6 +306,7 @@ r = P(BRUNO, { acao: "enviarExame", registro: exame({ id: "MD2", data: "2026-10-
 T("pessoa com dois exames no mesmo DSEI", r.ok && r.numeroExame === 2, r);
 // Simula um dado corrompido: um dos exames aparece em outro DSEI na planilha.
 (() => { const l = linhaEx("MD2"), j = JSON.parse(l.at(-1)); j.dsei = "Leste de Roraima"; l[col("Exames", "dsei")] = "Leste de Roraima"; l[l.length - 1] = JSON.stringify(j); })();
+editouAMao("Exames");
 const mails0 = mailsPara("coord@teste.org").length;
 r = P(BRUNO, { acao: "pessoa", codigoIndividuo: "RR-SUR-SAU-MDMDMDM2" });
 T("CD do DSEI não vê o histórico de código com exames em dois DSEIs", !r.ok, r);
@@ -343,6 +346,7 @@ const examesAntes = JSON.stringify(aba("Exames"));
 const comErro = jsonEx("OK1"); comErro.resultado.ceod = { c: 0, e: 9, o: 0, total: 9 };
 linhaEx("OK1")[aba("Exames")[0].length - 1] = JSON.stringify(comErro);
 const usoAna = () => aba("Uso").filter(l => l[2] === ANA.email)[0] || [];
+G.ctx.recalcularUso(G.ctx.planilha(), G.ctx.lerResumos());   // a tarefa diária leva os contadores para a aba Uso
 const usoAntes = usoAna().slice();
 G.est.props.FORMATO_PLANILHA = "21";
 r = P(ANA, { acao: "enviarExame", registro: exame({ id: "DURANTE", sufixo: "DURANTE2" }) });
@@ -431,7 +435,7 @@ T("lote: reenviar o mesmo exame atualiza a mesma linha (não cria outra)", r.ok 
 G.est.travaOcupada = true;
 r = P(ANA, { acao: "enviarExames", registros: [exame({ id: "LTOCUP", sufixo: "QTRQCUP2" })] });
 G.est.travaOcupada = false;
-T("fila cheia: o servidor responde \"ocupado\" na hora, com o tempo para tentar de novo", !r.ok && r.ocupado && r.passageiro && r.tenteEm >= 5 && !linhaEx("LTOCUP"), r);
+T("fila cheia: o servidor responde \"ocupado\" na hora, com um tempo sorteado entre 15 e 45 s para tentar de novo", !r.ok && r.ocupado && r.passageiro && r.tenteEm >= 15 && r.tenteEm <= 45 && !linhaEx("LTOCUP"), r);
 const extra = exame({ id: "LTEXTRA", sufixo: "QTREXTR2" }); extra.nome = "Maria da Silva"; extra.dentes[16].paciente = "x"; extra.crianca.mae = "Joana";
 r = P(ANA, { acao: "enviarExame", registro: extra });
 const je = r.ok ? jsonEx("LTEXTRA") : {};
@@ -442,21 +446,120 @@ T("Meus exames traz só o resumo (sem os dentes), para ser leve", r.ok && r.exam
 r = P(ANA, { acao: "verExame", id: "LT3" });
 T("ao abrir um exame, ele vem completo (com os dentes)", r.ok && r.exame.dentes && Object.keys(r.exame.dentes).length === 52 && !("_linha" in r.exame), r.ok && Object.keys(r.exame));
 
+/* ---------------------------------------------------------------- cópia rápida */
+parte("cópia rápida");
+// O índice e os resumos ficam na memória rápida: depois da primeira leitura, as páginas não leem a aba Exames de novo.
+const lidas = () => G.est.leituras.Exames || 0;
+P(ANA, { acao: "meusExames" });
+let antes = lidas();
+r = P(ANA, { acao: "meusExames" });
+T("com a cópia rápida, abrir Meus exames de novo não lê a aba Exames", r.ok && lidas() === antes, [antes, lidas()]);
+P(ANA, { acao: "inicio" }); antes = lidas(); P(RT, { acao: "inicio" });
+T("a página inicial também usa a cópia (outra pessoa, mesmo DSEI)", lidas() === antes, [antes, lidas()]);
+r = P(ANA, { acao: "enviarExames", registros: [exame({ id: "CPNOVO", sufixo: "QTRCPNV2" })] });
+antes = lidas();
+r = P(ANA, { acao: "meusExames" });
+T("depois de um envio, a cópia já vem com o exame novo, sem reler a planilha", r.ok && r.exames.some(x => x.id === "CPNOVO") && lidas() === antes, [antes, lidas()]);
+// Fora de um pedido, começa uma "memória do pedido" nova (como o servidor faz a cada pedido).
+const novoPedido = () => require("vm").runInContext("MEMO = null", G.ctx);
+const comparar = () => {
+  novoPedido();
+  const ind = G.ctx.lerIndiceDaPlanilha().map(G.ctx.empacotarIndice), res = G.ctx.lerResumosDaPlanilha();
+  const cI = G.ctx.copiaDosExames("indice"), cR0 = G.ctx.copiaDosExames("resumos"), cR = cR0 && G.ctx.numerarResumos(cR0);
+  const ord = l => JSON.stringify(l.slice().sort((a, b) => JSON.stringify(a) < JSON.stringify(b) ? -1 : 1));
+  return { indice: !!cI && ord(cI) === ord(JSON.parse(JSON.stringify(ind))), resumos: !!cR && ord(cR) === ord(JSON.parse(JSON.stringify(res))), atual: !!cI && !!cR };
+};
+let cmp = comparar();
+T("a cópia do índice e dos resumos é igual à planilha, campo por campo", cmp.indice && cmp.resumos && cmp.atual, cmp);
+r = P(ANA, { acao: "cancelarExame", id: "CPNOVO", motivo: "Exame em duplicidade" });
+cmp = comparar();
+T("cancelar um exame também atualiza a cópia (igual à planilha)", r.ok && cmp.indice && cmp.resumos && cmp.atual, [r, cmp]);
+// Alguém apaga uma linha à mão na aba Exames: o número de linhas não bate e a cópia é refeita da planilha.
+const linhaApagada = aba("Exames").splice(aba("Exames").findIndex(l => l[0] === "LT9"), 1)[0];
+antes = lidas();
+r = P(ANA, { acao: "meusExames" });
+T("linha apagada à mão: a cópia é descartada e a planilha é lida de novo", r.ok && !r.exames.some(x => x.id === "LT9") && lidas() > antes, [antes, lidas()]);
+aba("Exames").push(linhaApagada); editouAMao("Exames");
+// Enquanto alguém está gravando (com a trava), quem só lê não guarda cópia (poderia guardar uma foto pela metade):
+// deixa o pedido para o próximo envio refazer.
+G.ctx.esquecerDaMemoria("resumos+"); G.est.travaOcupada = true;
+P(ANA, { acao: "meusExames" });
+G.est.travaOcupada = false;
+T("com a trava ocupada, a leitura não guarda cópia (e pede para o próximo envio refazer)", G.ctx.lerDaMemoria("resumos+") === null && !!G.est.cache["refazer:resumos"]);
+P(ANA, { acao: "meusExames" });
+T("com a trava livre, a leitura guarda a cópia de novo", !!G.ctx.lerDaMemoria("resumos+") && !G.est.cache["refazer:resumos"]);
+// Emendas: cada envio só acrescenta o que mudou; a base grande fica como está.
+const baseAntes = G.ctx.lerDaMemoria("resumos").id;
+P(ANA, { acao: "enviarExames", registros: [exame({ id: "CPEM1", sufixo: "QTREMUM2" }), exame({ id: "CPEM2", sufixo: "QTREMDS2" })] });
+const em = G.ctx.lerDaMemoria("resumos+");
+T("um envio só regrava as emendas (pequenas), não a lista inteira", em.base === baseAntes && "CPEM1" in em.itens && "CPEM2" in em.itens && G.ctx.lerDaMemoria("resumos").id === baseAntes, em && Object.keys(em.itens));
+cmp = comparar();
+T("base + emendas = planilha", cmp.indice && cmp.resumos, cmp);
+// A memória do Google guarda por até 6 horas: depois de 3 horas, o próximo envio regrava a base (com as emendas dentro).
+(() => { novoPedido(); const e = G.ctx.lerDaMemoria("resumos+"); e.criada = Date.now() - 4 * 3600e3; G.ctx.guardarNaMemoria("resumos+", e, 600); })();
+P(ANA, { acao: "enviarExames", registros: [exame({ id: "CPEM4", sufixo: "QTREMQT2" })] });
+const em4 = G.ctx.lerDaMemoria("resumos+");
+cmp = comparar();
+T("base com mais de 3 horas: o envio seguinte regrava a base, e ela continua igual à planilha", em4.base !== baseAntes && !Object.keys(em4.itens).length && cmp.resumos && cmp.indice, [em4 && Object.keys(em4.itens), cmp]);
+// Um envio que o Google interrompe no meio deixa a marca "gravando": o próximo envio não confia na cópia e refaz da planilha.
+G.est.cache["indice+"] && (() => { novoPedido(); const e = G.ctx.lerDaMemoria("indice+"); e.itens.FANTASMA = ["FANTASMA", "X", 1, 0, "", "Yanomami", "", "", "", "", "", 9999]; G.ctx.guardarNaMemoria("indice+", e, 600); })();
+G.est.cache.gravando = { v: "1", exp: Date.now() + 60000 };
+P(ANA, { acao: "enviarExames", registros: [exame({ id: "CPEM3", sufixo: "QTREMTR2" })] });
+cmp = comparar();
+T("envio interrompido no meio: o próximo refaz a cópia da planilha", cmp.indice && cmp.resumos && !G.ctx.copiaDosExames("indice").some(x => x[0] === "FANTASMA") && !G.est.cache.gravando, cmp);
+// Se a cópia apontar a linha errada (alguém mexeu à mão), o servidor confere antes de escrever por cima e não estraga outro exame.
+(() => { novoPedido(); const e = G.ctx.lerDaMemoria("indice+"), cI = G.ctx.copiaDosExames("indice"), l3 = cI.find(x => x[0] === "LT3").slice(), l4 = cI.find(x => x[0] === "LT4");
+  l3[11] = l4[11]; e.itens.LT3 = l3; G.ctx.guardarNaMemoria("indice+", e, 600); })();
+const lt4Antes = JSON.stringify(linhaEx("LT4"));
+r = P(ANA, { acao: "enviarExames", registros: [Object.assign(exame({ id: "LT3", sufixo: "QTRADXX2" }), { atualizadoEm: "2026-10-25T12:00:00.000Z" })] });
+T("linha errada na cópia: confere o id antes de escrever e grava na linha certa", r.ok && r.resultados[0].ok && JSON.stringify(linhaEx("LT4")) === lt4Antes && jsonEx("LT3").atualizadoEm === "2026-10-25T12:00:00.000Z"
+  && aba("Exames").filter(l => l[0] === "LT3").length === 1, r.resultados);
+cmp = comparar();
+T("e a cópia volta a ficar igual à planilha", cmp.indice && cmp.resumos, cmp);
+// Exames novos de um lote vão para a planilha numa escrita só, antes da resposta ao app.
+G.est.escritas.Exames = 0;
+r = P(ANA, { acao: "enviarExames", registros: Array.from({ length: 10 }, (_, i) => exame({ id: "UMA" + i, sufixo: "QTRU" + "ABCDEFGHJK"[i] + "XX2" })) });
+T("lote de 10 exames novos: uma escrita só na aba Exames", r.ok && r.resultados.every(x => x.ok) && G.est.escritas.Exames === 1 && ["UMA0", "UMA9"].every(id => linhaEx(id)), [G.est.escritas.Exames, r.resultados.filter(x => !x.ok)]);
+// No mesmo lote: o 1º exame da pessoa e o 2º (ligado ao 1º), e o mesmo exame mandado duas vezes.
+const p1 = exame({ id: "MLA1", sufixo: "QTRMQAX2", data: "2026-10-02" }), p2 = exame({ id: "MLA2", data: "2026-10-09", vinculo: { codigoIndividuo: "RR-SUR-SAU-QTRMQAX2", chaves: [] } });
+r = P(ANA, { acao: "enviarExames", registros: [p1, p2, Object.assign(JSON.parse(JSON.stringify(p1)), { atualizadoEm: "2026-10-03T12:00:00.000Z" })] });
+T("no mesmo lote: o 2º exame acha o 1º (ainda esperando para ser gravado) e o repetido não vira outra linha",
+  r.ok && r.resultados.every(x => x.ok) && r.resultados[1].numeroExame === 2 && aba("Exames").filter(l => l[0] === "MLA1").length === 1 && jsonEx("MLA1").atualizadoEm === "2026-10-03T12:00:00.000Z", r.resultados);
+cmp = comparar();
+T("e a cópia rápida continua igual à planilha", cmp.indice && cmp.resumos, cmp);
+// Se a escrita final falhar, o app NÃO recebe "deu certo": recebe erro passageiro e manda de novo.
+G.est.falharEscrita = "Exames";
+r = P(ANA, { acao: "enviarExames", registros: [exame({ id: "FALHA1", sufixo: "QTRFQHX2" })] });
+G.est.falharEscrita = null; delete G.est.props.ERROS_EMAIL_EM; G.est.mails = G.est.mails.filter(m => !/erro/i.test(m.subject || "")); // (os testes de e-mail de erro vêm depois)
+T("escrita na planilha falhou: o app recebe erro passageiro (o exame continua no aparelho)", !r.ok && r.passageiro && !linhaEx("FALHA1"), r);
+cmp = comparar();
+T("e a cópia rápida não ficou com o exame que não foi gravado", !(G.ctx.copiaDosExames("indice") || []).some(x => x[0] === "FALHA1"), cmp);
+r = P(ANA, { acao: "enviarExames", registros: [exame({ id: "FALHA1", sufixo: "QTRFQHX2" })] });
+T("na tentativa seguinte, grava normalmente", r.ok && r.resultados[0].ok && linhaEx("FALHA1"), r);
+// A memória rápida guarda listas grandes comprimidas e em pedaços (cada pedaço tem até 100 KB no Google).
+const grande = Array.from({ length: 6000 }, (_, i) => ["id-" + i + "-" + Math.random().toString(36).slice(2), "RR-123-456-ABCD" + i, 1, 0, "2026-10-01", "Yanomami", "u" + i]);
+T("lista grande: guardada comprimida, em pedaços, e lida igual", G.ctx.guardarNaMemoria("teste", grande, 60) && JSON.stringify(G.ctx.lerDaMemoria("teste")) === JSON.stringify(grande)
+  && /:1$/.test(G.est.cache.teste.v), G.est.cache.teste && G.est.cache.teste.v);
+const ptr = G.est.cache.teste.v.split(":"); delete G.est.cache["teste:" + ptr[0] + ":0"];
+T("se a memória perder um pedaço, a lista não é usada (lê da planilha)", G.ctx.lerDaMemoria("teste") === null);
+
 /* ---------------------------------------------------------------- sessão */
 parte("sessão");
 r = P(ANA, { acao: "entrar", aparelho: "teste" });
 const SES = { email: ANA.email, sessao: r.sessao };
 T("ao entrar com o código, o app recebe uma sessão", r.ok && /^[0-9a-f]{80}$/.test(r.sessao) && r.diasSessao === 15, r);
-T("a planilha guarda só o hash da sessão", !JSON.stringify(G.est.sheets).includes(r.sessao) && aba("_sessoes").length >= 2);
+const sessoes = () => Object.keys(G.est.props).filter(k => k.startsWith("sessao_")).map(k => [k, JSON.parse(G.est.props[k])]);
+T("a sessão fica nas Propriedades do script, só o hash (nem na planilha, nem em texto)", !JSON.stringify(G.est.sheets).includes(r.sessao) && !JSON.stringify(G.est.props).includes(r.sessao) && sessoes().length >= 1 && !G.est.sheets._sessoes);
 T("com a sessão, o app usa o servidor sem mandar o código", P(SES, { acao: "inicio" }).ok);
 T("ao entrar pela sessão, não cria outra sessão", !P(SES, { acao: "entrar" }).sessao);
 T("sessão com outro e-mail não vale", !P({ email: BRUNO.email, sessao: SES.sessao }, { acao: "inicio" }).ok);
-const lin = aba("_sessoes").findIndex(l => l[1] === S.idDe("ana@teste.org") && l[6] === "teste");
-aba("_sessoes")[lin][5] = new Date(Date.now() - 16 * 864e5).toISOString();
+const kAna = sessoes().find(([k, v]) => v.u === S.idDe("ana@teste.org") && v.ap === "teste")[0];
+const usoSessao = d => { const v = JSON.parse(G.est.props[kAna]); v.uso = new Date(Date.now() - d * 864e5).toISOString(); G.est.props[kAna] = JSON.stringify(v); };
+usoSessao(16);
 r = P(SES, { acao: "inicio" });
 T("sessão sem uso há mais de 15 dias vence, com mensagem clara", !r.ok && r.semAcesso && r.sessaoVencida && /15 dias/.test(r.erro) && /continuam/.test(r.erro), r);
-aba("_sessoes")[lin][5] = new Date(Date.now() - 14 * 864e5).toISOString();
-T("com 14 dias sem uso, ainda vale (e o uso renova a contagem)", P(SES, { acao: "inicio" }).ok && new Date(aba("_sessoes")[lin][5]) > new Date(Date.now() - 864e5));
+usoSessao(14);
+T("com 14 dias sem uso, ainda vale (e o uso renova a contagem)", P(SES, { acao: "inicio" }).ok && new Date(JSON.parse(G.est.props[kAna]).uso) > new Date(Date.now() - 864e5));
 P(RT, { acao: "novoCodigo", id: S.idDe("ana@teste.org") });
 T("um código novo para a pessoa derruba as sessões antigas", !P(SES, { acao: "inicio" }).ok);
 const novoCodAna = S.codigoDoEmail("ana@teste.org"); ANA.codigo = novoCodAna;
@@ -465,6 +568,18 @@ T("a coordenação titular também recebe sessão", r.ok && P(SESC, { acao: "adm
 G.est.props.CHAVE_COORDENACAO = "outra-senha-bem-longa-2026";
 T("trocar a senha da titular derruba as sessões dela", !P(SESC, { acao: "admin" }).ok);
 G.est.props.CHAVE_COORDENACAO = S.SENHA_TITULAR;
+// Muitas pessoas entrando ao mesmo tempo: cada sessão é guardada à parte (nenhuma apaga a outra).
+const antesS = sessoes().length, muitas = Array.from({ length: 40 }, () => P(BRUNO, { acao: "entrar", aparelho: "lote" }).sessao);
+T("40 entradas seguidas: 40 sessões diferentes, todas valendo", new Set(muitas).size === 40 && sessoes().length === antesS + 40 && muitas.every(t => P({ email: BRUNO.email, sessao: t }, { acao: "inicio" }).ok));
+usoSessao(20); const nS = sessoes().length;
+G.ctx.limparSessoes();
+T("a tarefa diária apaga as sessões vencidas", sessoes().length === nS - 1 && !G.est.props[kAna]);
+// Uso: contador leve a cada entrada; a aba é refeita na tarefa diária.
+const kUso = "uso_" + S.idDe("bruno@teste.org");
+T("cada entrada vira um contador leve (sem regravar a aba Uso)", JSON.parse(G.est.props[kUso] || "{}").e >= 40);
+G.ctx.tarefaDiaria();
+const usoB = aba("Uso").find(l => l[0] === S.idDe("bruno@teste.org")) || [];
+T("a tarefa diária leva os contadores para a aba Uso e conta os exames", Number(usoB[8]) >= 40 && Number(usoB[10]) >= 1 && !G.est.props[kUso], usoB);
 
 /* ---------------------------------------------------------------- erros explicados, espaço e tarefa diária */
 parte("erros e espaço");
@@ -525,6 +640,9 @@ const dic = aba("Dicionário").filter(l => l[0] === "Exames").map(l => String(l[
 const semDic = G.ctx.CAB_EXAME.filter(k => !dic.split(" · ").includes(k) && !(/^vig_/.test(k) && dic.includes(k)) && !/^n_/.test(k));
 T("o Dicionário explica todas as colunas da aba Exames", !semDic.length && dic.includes("n_<tratamento>_indicado"), semDic);
 T("nenhuma célula gravada como fórmula em todo o teste", G.est.formulas.length === 0, G.est.formulas.slice(0, 5));
+P(ANA, { acao: "meusExames" });
+cmp = comparar();
+T("no fim de todo o teste (envios, cancelamentos, renumerações, reorganização), a cópia rápida continua igual à planilha", cmp.indice && cmp.resumos && cmp.atual, cmp);
 T("nenhuma senha ou código de acesso gravado em texto na planilha", !JSON.stringify(G.est.sheets).includes(S.SENHA_TITULAR) && !JSON.stringify(G.est.sheets).includes(ANA.codigo));
 
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);

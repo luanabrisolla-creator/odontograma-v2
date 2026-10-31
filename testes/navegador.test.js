@@ -397,8 +397,10 @@ for (let i = 0; i < 8; i++) {
   ({ ctx, pg } = await pagina(true));
   await entrar(pg, S.BRUNO);
   const sesB = await pg.evaluate(() => JSON.parse(localStorage.getItem("odonto.sessao.v1")).sessao);
-  const iB = aba("_sessoes").findIndex(l => l[1] === S.idDe("bruno@teste.org") && l[0] && l[5]);
-  aba("_sessoes").forEach(l => { if (l[1] === S.idDe("bruno@teste.org")) l[5] = new Date(Date.now() - 20 * 864e5).toISOString(); });
+  // As sessões ficam nas Propriedades do script ("sessao_..."): a do Bruno passa a ter o último uso há 20 dias.
+  const chavesB = Object.keys(G.est.props).filter(k => k.startsWith("sessao_") && JSON.parse(G.est.props[k]).u === S.idDe("bruno@teste.org"));
+  const iB = chavesB.length - 1;
+  chavesB.forEach(k => { const x = JSON.parse(G.est.props[k]); x.uso = new Date(Date.now() - 20 * 864e5).toISOString(); G.est.props[k] = JSON.stringify(x); });
   await pg.evaluate(l => { localStorage.setItem("odonto.exames.v1", JSON.stringify(l)); }, [Object.assign(exame({ id: "BVB", sufixo: "BVZMQXR2" }), { dono: S.idDe("bruno@teste.org"), envio: { estado: "pendente", tentativas: 0 } })]);
   await pg.evaluate(() => sincronizar(true)); await pg.waitForTimeout(1000);
   T("sessão vencida: o app volta para a tela de entrada com a explicação", !!sesB && iB >= 0 && /15 dias/.test(await pg.textContent("body")) && await pg.evaluate(() => !sessao()), await pg.evaluate(() => estAc.msg));
