@@ -1,7 +1,43 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 36 · servidor 33 · formato da planilha 24**.
+Versão atual: **app 37 · servidor 34 · formato da planilha 25**.
+
+## Versão 37: planilha nova, envio mais rápido e mais segurança
+
+**Planilha (formato 25): uma linha por exame.**
+- A aba **Dentes sai**. O detalhe de cada dente fica guardado no exame completo, e a aba Exames ganha as **contas prontas** (quantos dentes e faces com cada condição, quantos tratamentos indicados e realizados). Cada exame passa a ocupar uns 110 quadradinhos em vez de mais de mil: cabem cerca de **85 mil exames**.
+- Vigilância: uma coluna de sim ou não para cada condição. Prótese: `protese_sup_necessita`, `protese_sup_usa` (e as inferiores), com sim · não · não avaliado.
+- **Dados para análise (Excel):** em Administração (e em Meus exames, só os próprios), um arquivo com uma linha por exame e três partes: o exame, as contas prontas e cada dente (situação, 5 faces, dor, abscesso, tratamento indicado e realizado, observação).
+
+**Envio mais rápido com muita gente ao mesmo tempo.**
+- O app manda até **10 exames por pedido** e o servidor lê só o que precisa (não a planilha inteira).
+- Fila cheia: o servidor responde **"ocupado"** na hora e o app tenta de novo sozinho em alguns segundos.
+- Erro passageiro: o app tenta de novo sozinho, cada vez esperando mais (2, 5 e 15 minutos). Um aviso quando o problema começa e outro quando os exames saem.
+- Exame recusado pelo servidor: aparece em Meus exames como **"Precisa de correção"**, com o motivo, e o app para de tentar até o profissional corrigir.
+- O Painel guarda a conta pronta enquanto nenhum exame mudar.
+
+**Segurança.**
+- **Acesso que vence em 15 dias sem usar o app.** Depois de entrar, o aparelho guarda uma sessão, e não o código. Exames guardados nunca são apagados: sem internet, o profissional continua examinando; com internet, digita o código de novo e os exames saem.
+- **Senha da coordenação titular: no mínimo 12 caracteres.**
+- O servidor guarda só os campos permitidos de um exame (o resto é descartado e anotado em Acessos).
+- O modo sem internet só guarda a página se ela for mesmo o Odontograma (página de Wi-Fi com login ou arquivo trocado não substituem a cópia boa).
+- Arquivos baixados protegidos contra fórmulas. Leitor de Excel guardado no repositório (`exceljs.min.js`), sem depender de outro site; a planilha de população passa a ser aceita em .xlsx ou .csv (.xls antigo: salve como .xlsx).
+- O endereço /exec mostra só a versão. A situação da instalação fica em Administração.
+
+**Para a coordenação titular, em Administração.**
+- **Erros recentes:** o motivo em linguagem simples, o que fazer e o detalhe técnico para copiar. E-mail no máximo a cada 6 horas.
+- **Espaço da planilha:** aviso a partir de 50% (e e-mail em 50, 60, 75, 85, 90 e a cada 1% de 95 a 100%), com quantos exames ainda cabem.
+- **Tarefa diária** (de madrugada, criada sozinha): confere o espaço, corta linhas e colunas vazias, passa o registro de Acessos com mais de 12 meses para a planilha "Odontograma - arquivo de acessos" (na pasta de backups) e apaga sessões vencidas.
+
+**Para o profissional, em Meus exames.** Botão "Baixar cópia de segurança dos exames não enviados" (e "Importar cópia de segurança" em outro aparelho) e aviso quando um exame está guardado há mais de 3 dias.
+
+**Como instalar a 37 (nesta ordem):**
+1. **Senha:** confira se a `CHAVE_COORDENACAO` tem pelo menos 12 caracteres (Propriedades do script). Se não tiver, troque antes.
+2. **Apps Script:** cole o `Codigo.gs` e publique **pelo lápis**. Confira o /exec: `"versao":34`.
+3. **Planilha:** sem exames, ela se reorganiza sozinha no primeiro uso (com backup antes). Com exames de teste, confirme em **Administração > Atualização da planilha pendente**. A aba Dentes sai (está no backup).
+4. **GitHub:** na raiz, `index.html`, `sw.js`, `Codigo.gs`, `compartilhado.js`, `LEIA-ME.md`, `exceljs.min.js` e `exceljs-LICENCA.txt` (novos). Dentro de `ferramentas`: `verificar.js`. Dentro de `testes`: `servidor.test.js`, `navegador.test.js` e `gas-simulado.js`.
+5. **Actions:** ✓ verde. **Celular:** "app versão 37 · servidor versão 34".
 
 ## Versão 36: limpeza do código (mesmas funções)
 
@@ -41,6 +77,7 @@ O exame é guardado primeiro no aparelho. Com internet, o app envia sozinho para
 | `sw.js` | Guarda o app no aparelho para funcionar sem internet |
 | `manifest.webmanifest`, `icon.svg`, `icon-192.png`, `icon-512.png` | Instalação na tela inicial do celular |
 | `paisagem.webp`, `paisagem-faixa.webp` | Ilustrações da tela de entrada e da página inicial |
+| `exceljs.min.js`, `exceljs-LICENCA.txt` | Leitor e gerador de Excel (ExcelJS 4.4.0), usado na planilha de população e no arquivo de análise |
 | `mapa-ti.json` | Mapa usado na cobertura do Painel |
 | `Codigo.gs` | O servidor (sem senha nem e-mail escritos nele) |
 | `compartilhado.js` | Regras que o app e o servidor usam iguais (classe de risco, índices, colunas da planilha) |
@@ -63,11 +100,11 @@ Use sempre **a mesma conta Google** em todos os passos (confira a foto no canto 
 2. Na planilha: **Extensões > Apps Script**. Apague o que estiver lá, cole todo o `Codigo.gs` e salve (Ctrl+S).
 3. Clique na **engrenagem (Configurações do projeto)** > **Propriedades do script** e crie as duas propriedades abaixo. Depois clique em **Salvar propriedades do script**.
    - `EMAIL_COORDENACAO`: o e-mail da conta dona da planilha.
-   - `CHAVE_COORDENACAO`: a senha da coordenação titular. Use uma frase longa (o app avisa se tiver menos de 12 caracteres).
+   - `CHAVE_COORDENACAO`: a senha da coordenação titular, com **pelo menos 12 caracteres** (use uma frase longa).
 4. Volte ao **Editor** (ícone `< >`). Na lista ao lado de **Executar**, escolha **testarInstalacao** e clique em **Executar**. Autorize: Revisar permissões > sua conta > Avançado > Acessar > Permitir. Deve aparecer **TUDO CERTO**.
 5. Escolha **ativarBackupSemanal** e clique em **Executar**, uma vez só. Toda segunda-feira de madrugada vai uma cópia da planilha para a pasta **Odontograma - backups** do Drive. As 8 mais recentes ficam guardadas.
 6. **Implantar > Nova implantação** > engrenagem > **App da Web**. Executar como: **Eu**. Quem pode acessar: **Qualquer pessoa**. Clique em **Implantar** e copie o endereço que termina em `/exec`.
-7. Abra esse endereço no navegador. Deve aparecer `"versao":33` e `"pronto":true`.
+7. Abra esse endereço no navegador. Deve aparecer `"versao":34`. A situação completa da instalação aparece em Administração.
 
 **B. App no GitHub**
 8. Crie um repositório e envie todos os arquivos da tabela acima, com os nomes exatos (sem "(1)").
@@ -98,7 +135,7 @@ Se algo não funcionar, **Administração > Situação do servidor** mostra o qu
 - **Referência técnica (RT):** aprova os cirurgiões-dentistas do seu DSEI. Em DSEI sem RT ativa, os pedidos vão para a coordenação.
 - **Cirurgião-dentista (CD):** registra exames.
 
-Cada pessoa tem um código pessoal, recebido por e-mail, e entra com o mesmo e-mail e código em qualquer aparelho. CD e RT registram exames só no DSEI do próprio cadastro. O servidor confere isso, e não só o app. Há também convites por e-mail, "Esqueci meu código" (em duas etapas) e pedido de reativação para quem foi desativado.
+Cada pessoa tem um código pessoal, recebido por e-mail, e entra com o mesmo e-mail e código em qualquer aparelho. Depois de entrar, o aparelho guarda uma sessão (não o código), que vence depois de 15 dias sem usar o app. CD e RT registram exames só no DSEI do próprio cadastro. O servidor confere isso, e não só o app. Há também convites por e-mail, "Esqueci meu código" (em duas etapas) e pedido de reativação para quem foi desativado.
 
 ## O exame
 
@@ -148,8 +185,7 @@ O Painel mostra só números somados, nunca exames de uma pessoa. Quando um reco
 
 | Aba | O que tem |
 |---|---|
-| Exames | Uma linha por exame (sem identificação da pessoa) |
-| Dentes | Uma linha por dente de cada exame, ligada pela coluna `id_exame` |
+| Exames | Uma linha por exame (sem identificação da pessoa): o exame, as contas prontas, o resumo e o exame completo (com cada dente) |
 | Acessos | Registro do que cada pessoa fez (auditoria), do mais recente para o mais antigo |
 | Uso | Uma linha por pessoa com acesso: entradas, consultas e exames |
 | Usuarios, Convites | Cadastros e convites |
@@ -163,9 +199,9 @@ As abas que começam com `_` são de uso interno do servidor: não mexa nelas.
 
 A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
-- **175 verificações do servidor**, num simulador do Apps Script e sem dados reais;
+- **217 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
-- **88 verificações no navegador**, com os fluxos principais, no horário de Brasília.
+- **113 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
 Todas as datas e horas, no app e no servidor, usam o horário de Brasília (`America/Sao_Paulo`), qualquer que seja o fuso do aparelho.
 
@@ -187,6 +223,7 @@ São dados de saúde, considerados sensíveis. O app não coleta nome, Cartão S
 
 ## Histórico resumido
 
+- **37:** uma linha por exame (sem aba Dentes) e arquivo de análise em Excel; envio em lote com fila organizada; acesso que vence em 15 dias; erros explicados e avisos de espaço para a coordenação titular; cópia de segurança dos exames.
 - **36:** limpeza do código, sem mudar o uso. A aba Uso mantém os contadores quando a planilha é reorganizada.
 - **35:** exame em etapas; odontograma novo (situação do dente, faces, sinais e tratamento separados); prótese; dor e abscesso separados; horário de Brasília em tudo; botão para limpar o aviso de auditoria.
 - **34:** exame só aparece como "salvo" quando foi guardado de verdade; coluna `codigo_confere_local`; pedido de reativação.

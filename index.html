@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Odontograma · Saúde Bucal</title>
 <meta name="theme-color" content="#FFFFFF">
+<!-- Marca que o modo sem internet confere antes de guardar a página (não apague). -->
+<meta name="odontograma-app" content="1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -995,14 +997,17 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     <div class="filtros-chip" id="listaFiltros" role="group" aria-label="Filtrar exames"></div>
     <div class="envio" id="listaEnvio" hidden><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4 4 0 0 1 0 9"/><path d="M12 12v8m-3-5 3-3 3 3"/></svg>
       <div><b id="envioTit"></b><span>Vão sozinhos quando houver internet.</span></div><button class="prim" id="enviarTudo">Enviar</button></div>
+    <div class="aviso" id="avisoParados" hidden></div>
     <div id="lista"></div>
     <details class="mais"><summary>Mais opções</summary>
       <div class="lista-topo">
         <button class="sec" id="nuvemAtualizar">Atualizar da nuvem</button>
-        <button class="sec" id="csvExames">Baixar exames (CSV)</button>
-        <button class="sec" id="csvDentes">Baixar dentes (CSV)</button>
+        <button class="sec" id="xlsMeus">Baixar meus exames (Excel)</button>
         <button class="sec" id="reenviarTodos">Reenviar todos</button>
-      </div></details>
+        <button class="sec" id="copiaBaixar">Baixar cópia de segurança dos exames não enviados</button>
+        <label class="sec botao-arq">Importar cópia de segurança<input type="file" id="copiaImportar" accept=".json,application/json"></label>
+      </div>
+      <p class="dica">A cópia de segurança é um arquivo com os exames que ainda não foram para a planilha. Guarde-a (por exemplo, mande para o seu e-mail). Se este aparelho quebrar ou for perdido, importe a cópia em outro aparelho e entre com o seu acesso para enviar.</p></details>
   </section>
 
   <!-- PAINEL -->
@@ -1149,11 +1154,13 @@ function avisarSemEspaco() {
   a.classList.add("aviso-servidor"); a.hidden = false;
 }
 // Versão do app: a mesma do número no sw.js (odontograma-vNN). Vai junto em cada pedido ao servidor.
-const VERSAO_APP = 36;
+const VERSAO_APP = 37;
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_LEG = "odonto.legenda.v1";
 const K_SESSAO = "odonto.sessao.v1";
 const sessao = () => store.get(K_SESSAO, null);
+// Quando o servidor devolve uma sessão (ao entrar com o código), o app guarda a sessão e apaga o código do aparelho.
+function comSessao(s, j) { if (j && j.sessao) { s.sessao = j.sessao; delete s.codigo; } return s; }
 
 /* ---------- dados de referência ---------- */
 const PERM = {1:[18,17,16,15,14,13,12,11],2:[21,22,23,24,25,26,27,28],3:[31,32,33,34,35,36,37,38],4:[48,47,46,45,44,43,42,41]};
@@ -1829,9 +1836,16 @@ function examesTodos() {
   const daNuvem = (estado.nuvem || []).filter(e => !idsLocais.has(e.id)).map(e => Object.assign({}, e, {envio: {estado: "nuvem"}}));
   return [...locais, ...daNuvem].sort((a, b) => String(b.dataExame || "").localeCompare(String(a.dataExame || "")) || String(b.atualizadoEm || "").localeCompare(String(a.atualizadoEm || "")));
 }
-function abrirDaLista(id) {
+// A lista da nuvem traz só o resumo de cada exame: o exame completo (com os dentes) é buscado ao abrir.
+async function completo(e) {
+  if (!e || e.dentes) return e;
+  try { const j = await api("verExame", {id: e.id}); const i = (estado.nuvem || []).findIndex(x => x.id === e.id); if (i >= 0) estado.nuvem[i] = j.exame; return j.exame; }
+  catch (err) { toast(navigator.onLine ? err.message : "Sem internet agora: este exame está só na nuvem."); return null; }
+}
+async function verLeitura(e) { e = await completo(e); if (!e) return; const m = $("#leitura"); m.innerHTML = htmlLeitura(e); m.hidden = false; document.body.style.overflow = "hidden"; }
+async function abrirDaLista(id) {
   const e = examesTodos().find(x => x.id === id); if (!e) return;
-  if (!exameValido(e)) { const m = $("#leitura"); m.innerHTML = htmlLeitura(e); m.hidden = false; document.body.style.overflow = "hidden"; return; }
+  if (!exameValido(e)) return verLeitura(e);
   return e.envio.estado === "nuvem" ? abrirDaNuvem(id) : abrirExame(id);
 }
 function renderLista() {
@@ -1846,21 +1860,25 @@ function renderLista() {
   $("#envioTit").textContent = `${pend} ${pend === 1 ? "exame aguardando" : "exames aguardando"} envio`;
   $("#enviarTudo").disabled = !pend || estado.enviando;
   $("#enviarTudo").textContent = estado.enviando ? "Enviando…" : "Enviar";
-  $("#csvExames").disabled = $("#csvDentes").disabled = !todos.length;
+  $("#xlsMeus").disabled = !todos.length;
+  const nParados = parados().length;
+  $("#copiaBaixar").disabled = !locais.some(e => e.envio.estado !== "enviado");
+  $("#avisoParados").hidden = !nParados;
+  if (nParados) $("#avisoParados").innerHTML = textoParados(nParados);
   $("#reenviarTodos").disabled = !locais.length || estado.enviando;
   estado.listaCompleta = todos;
   const q = normTexto(estL.busca);
   const naNuvem = e => e.envio.estado === "enviado" || e.envio.estado === "nuvem";
   const l = todos.filter(e => (estL.filtro === "todos" || (estL.filtro === "enviar" ? !naNuvem(e) : estL.filtro === "nuvem" ? naNuvem(e) && exameValido(e) : !exameValido(e)))
     && (!q || normTexto(codigoIndividuoDe(e)).includes(q) || normTexto(e.codigo).includes(q) || normTexto(e.aldeia).includes(q) || normTexto(e.polo).includes(q)));
-  const rot = {enviado: "Na nuvem", nuvem: "Na nuvem", pendente: "A enviar", erro: "Erro no envio"};
+  const rot = {enviado: "Na nuvem", nuvem: "Na nuvem", pendente: "A enviar", erro: "Tentando de novo", corrigir: "Precisa de correção"};
   const item = e => { const canc = !exameValido(e), nn = naNuvem(e), n = e.numeroExame || 1, cl = (e.resultado || {}).classe || "?", c = e.cancelamento || {};
     const idade = e.idadeAnos !== "" && e.idadeAnos != null ? Math.floor(e.idadeAnos) + " anos" : "", sx = {F: "feminino", M: "masculino"}[(e.crianca || {}).sexo] || "";
     const sub = canc ? `Cancelado em ${fmtData(c.em)}: ${esc(c.motivo || "")}${c.observacao ? " · " + esc(c.observacao) : ""}. Fora do painel e dos índices.`
       : [n > 1 || e.vinculo ? `${n}º exame da pessoa` : "1º exame", idade, sx, esc([e.polo, e.aldeia || "sem aldeia"].filter(Boolean).join(" › "))].filter(Boolean).join(" · ") + (e.envio.estado === "nuvem" ? " · enviado de outro aparelho" : "");
     const cod = codigoIndividuoDe(e);
-    return `<details class="item ${canc ? "cancelado" : ""}"><summary><span class="classe" data-c="${esc(cl)}">${esc(cl)}</span><span style="min-width:0"><b class="cod">${esc(cod || "Exame sem código")}</b><span class="it-sub">${sub}</span>${e.envio.estado === "erro" ? `<span class="it-erro">${esc(e.envio.erro || "")}</span>` : ""}</span>
-      ${canc ? `<span class="estado erro">Cancelado</span>` : `<span class="estado ${nn ? "enviado" : e.envio.estado}">${rot[e.envio.estado]}</span>`}</summary>
+    return `<details class="item ${canc ? "cancelado" : ""}"><summary><span class="classe" data-c="${esc(cl)}">${esc(cl)}</span><span style="min-width:0"><b class="cod">${esc(cod || "Exame sem código")}</b><span class="it-sub">${sub}</span>${e.envio.estado === "corrigir" ? `<span class="it-erro"><b>Por que:</b> ${esc(e.envio.erro || "")} Toque em Abrir, corrija e salve de novo.</span>` : e.envio.estado === "erro" ? `<span class="it-sub">Guardado no aparelho. O app tenta de novo sozinho${e.envio.proxima ? " por volta de " + new Date(e.envio.proxima).toLocaleTimeString("pt-BR", {hour: "2-digit", minute: "2-digit", timeZone: FUSO}) : ""}.</span>` : ""}</span>
+      ${canc ? `<span class="estado erro">Cancelado</span>` : `<span class="estado ${nn ? "enviado" : e.envio.estado === "corrigir" ? "erro" : e.envio.estado === "erro" ? "pendente" : e.envio.estado}">${rot[e.envio.estado]}</span>`}</summary>
       <div class="it-acoes">${canc ? `<button class="sec mini" data-ver-local="${e.id}">Ver</button>` : `<button class="prim mini" data-abrir="${e.id}" data-nuvem="${e.envio.estado === "nuvem" ? 1 : ""}">Abrir</button>`}
         ${cod ? `<button class="sec mini" data-id-acao="copiar" data-cod="${esc(cod)}">Copiar código</button>` : ""}
         ${!canc && nn ? `<button class="link perigo" data-cancelar="${e.id}">Cancelar exame</button>` : ""}
@@ -2181,7 +2199,8 @@ document.addEventListener("click", e => { const b = e.target.closest("[data-abre
 
 /* ---------- CSV ---------- */
 function csv(linhas) {
-  return "\ufeff" + linhas.map(r => r.map(v => { v = v == null ? "" : String(v); return /[;"\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }).join(";")).join("\r\n");
+  // Texto que começa com = + - @ (ou tabulação) viraria fórmula no Excel: ganha um apóstrofo na frente.
+  return "\ufeff" + linhas.map(r => r.map(v => { const num = typeof v === "number"; v = v == null ? "" : String(v); if (!num && /^[=+\-@\t\r]/.test(v)) v = "'" + v; return /[;"\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }).join(";")).join("\r\n");
 }
 function baixar(nome, texto) {
   const a = document.createElement("a");
@@ -2190,37 +2209,72 @@ function baixar(nome, texto) {
 }
 
 /* ---------- envio ---------- */
-async function enviarUm(e) {
-  return api("enviarExame", {id: e.id, registro: JSON.parse(registroParaJson(e))});
+/* Envio dos exames para a planilha.
+ * - Manda até LOTE exames por pedido (uma passagem pela fila do servidor para todos).
+ * - Erro passageiro (sem internet, servidor ocupado, Google lento): o exame fica "erro" e o app tenta de novo sozinho,
+ *   cada vez esperando mais (2, 5 e depois 15 minutos), com um pouco de sorteio para os celulares não voltarem juntos.
+ * - Exame recusado pelo servidor (precisa de correção): fica "corrigir" e o app para de tentar até o profissional abrir,
+ *   corrigir e salvar de novo.
+ * - Avisos: um quando o problema começa e um quando os exames finalmente saem (nada a cada tentativa). */
+const LOTE = 10, ESPERAS_MIN = [2, 5, 15];
+const pendenteDeEnvio = e => e.envio.estado !== "enviado" && e.envio.estado !== "corrigir" && e.envio.estado !== "nuvem";
+function confirmarEnviado(l, i, r, t) {
+  l[i].envio = {estado: "enviado", em: new Date().toISOString(), tentativas: t};
+  // A planilha confirma o código do indivíduo, o número do exame, o vínculo e o resultado (que o servidor recalcula).
+  Object.assign(l[i], {codigoIndividuo: r.codigoIndividuo || l[i].codigoIndividuo, numeroExame: r.numeroExame || l[i].numeroExame, vinculo: r.vinculo || null}, r.resultado ? {resultado: r.resultado} : {});
 }
+async function enviarLote(lote) {
+  const regs = lote.map(e => JSON.parse(registroParaJson(e)));
+  try { return (await api("enviarExames", {registros: regs}, {tempo: 45000})).resultados || []; }
+  catch (err) {
+    if (!/^Ação desconhecida/.test(err.message || "")) throw err;
+    // Servidor ainda na versão anterior: manda um por um.
+    const out = [];
+    for (const r of regs) { try { out.push(Object.assign({id: r.id, ok: true}, await api("enviarExame", {id: r.id, registro: r}))); } catch (x) { if (!x.dados || x.dados.passageiro || x.dados.ocupado) throw x; out.push(Object.assign({id: r.id}, x.dados, {ok: false, erro: x.message})); } }
+    return out;
+  }
+}
+let tProxEnvio = null;
 async function sincronizar(manual) {
   const c = cfg();
   if (estado.enviando) return;
   if (!sessao() || !fazExames()) return;
   if (!c.url) { if (manual) toast("O endereço do servidor não está configurado."); return; }
   if (!navigator.onLine) { if (manual) toast("Sem internet agora. Os exames serão enviados quando a conexão voltar."); return; }
-  const pend = meus().filter(e => e.envio.estado !== "enviado");
-  if (!pend.length) { if (manual) toast("Todos os exames já foram enviados."); return; }
+  const agora = Date.now();
+  const pend = meus().filter(e => pendenteDeEnvio(e) && (manual || !e.envio.proxima || new Date(e.envio.proxima).getTime() <= agora));
+  if (!pend.length) { if (manual) toast(meus().some(e => e.envio.estado === "corrigir") ? "Há exames que precisam de correção: veja em Meus exames." : "Todos os exames já foram enviados."); return; }
   estado.enviando = true; atualizarRede(); if (estado.aba === "lista") renderLista();
-  let ok = 0, falha = 0;
-  for (const e of pend) {
-    let novo;
-    let resp = null;
-    try { resp = await enviarUm(e); novo = {estado: "enviado", em: new Date().toISOString(), tentativas: (e.envio.tentativas || 0) + 1}; ok++; }
-    catch (err) { novo = {estado: "erro", erro: err.message, tentativas: (e.envio.tentativas || 0) + 1}; falha++; }
-    const l = exames(), i = l.findIndex(x => x.id === e.id);
-    if (i >= 0 && l[i].atualizadoEm === e.atualizadoEm) {
-      l[i].envio = novo;
-      // A planilha confirma o código do indivíduo, o número do exame, o vínculo e o resultado (que o servidor recalcula).
-      if (resp) Object.assign(l[i], {codigoIndividuo: resp.codigoIndividuo || l[i].codigoIndividuo, numeroExame: resp.numeroExame || l[i].numeroExame, vinculo: resp.vinculo || null}, resp.resultado ? {resultado: resp.resultado} : {});
-      gravarExames(l);
+  let ok = 0, corrigir = 0, falhou = false, proxima = 0;
+  for (let k = 0; k < pend.length; k += LOTE) {
+    const lote = pend.slice(k, k + LOTE);
+    let res = null, erro = null;
+    try { res = await enviarLote(lote); } catch (err) { erro = err; }
+    const l = exames();
+    for (const e of lote) {
+      const i = l.findIndex(x => x.id === e.id); if (i < 0 || l[i].atualizadoEm !== e.atualizadoEm) continue;
+      const r = res && res.find(x => x.id === e.id), t = (e.envio.tentativas || 0) + 1;
+      if (r && r.ok) { confirmarEnviado(l, i, r, t); ok++; }
+      else if (r && !r.passageiro) { l[i].envio = {estado: "corrigir", erro: r.erro || "O servidor recusou este exame.", tentativas: t, em: new Date().toISOString()}; corrigir++; }
+      else {
+        const ocup = erro && erro.dados && erro.dados.ocupado;
+        const espera = ocup ? (erro.dados.tenteEm || 8) * 1000 * (0.7 + Math.random() * 0.6) : ESPERAS_MIN[Math.min(t, ESPERAS_MIN.length) - 1] * 60000 * (0.8 + Math.random() * 0.4);
+        l[i].envio = {estado: "erro", erro: (erro && erro.message) || (r && r.erro) || "", tentativas: t, desde: e.envio.desde || new Date().toISOString(), proxima: new Date(Date.now() + espera).toISOString()};
+        falhou = true; proxima = proxima ? Math.min(proxima, espera) : espera;
+      }
     }
-    if (!sessao()) break;
+    gravarExames(l);
+    if (erro || !sessao()) break;   // sem internet, servidor ocupado ou acesso vencido: para e tenta depois
   }
-  if (ok) estado.nuvemEm = 0;
   estado.enviando = false; atualizarRede(); if (estado.aba === "lista") renderLista();
   liberarSeGuardado();
-  if (ok || manual || falha) toast(falha ? `${ok} enviado(s), ${falha} com erro. Veja em Meus exames.` : `${ok} ${ok === 1 ? "exame enviado" : "exames enviados"} para o banco de dados.`);
+  clearTimeout(tProxEnvio); if (proxima && proxima < 120000) tProxEnvio = setTimeout(() => sincronizar(), proxima);
+  const aindaFalha = meus().some(e => e.envio.estado === "erro");
+  if (corrigir) toast(`${corrigir === 1 ? "1 exame precisa" : corrigir + " exames precisam"} de correção. Veja em Meus exames.`);
+  else if (falhou && (manual || !estado.avisouFalha)) toast("Não foi possível enviar agora. Os exames estão guardados e o app vai tentar de novo sozinho.");
+  else if (ok && (manual || estado.avisouFalha)) toast(`${ok} ${ok === 1 ? "exame enviado" : "exames enviados"} para a planilha.`);
+  estado.avisouFalha = aindaFalha;
+  if (ok) estado.nuvemEm = 0;
 }
 function atualizarRede() {
   const on = navigator.onLine, pend = meus().filter(e => e.envio.estado !== "enviado").length;
@@ -2229,6 +2283,36 @@ function atualizarRede() {
   const cp = $("#contPend"); if (cp) { cp.hidden = !pend; cp.textContent = pend; }
   const rr = $("#rodapeRede"); if (rr) { rr.textContent = estado.enviando ? "Enviando…" : on ? "Online" : "Sem internet"; $("#rodapeTxt").textContent = pend ? `${pend} ${pend === 1 ? "exame a enviar" : "exames a enviar"}` : "Tudo enviado"; }
 }
+
+/* ---------- exames parados e cópia de segurança ---------- */
+// Exames deste aparelho que ainda não foram para a planilha há mais de 3 dias.
+const DIAS_PARADO = 3;
+const parados = () => meus().filter(e => e.envio.estado !== "enviado" && Date.now() - new Date(e.atualizadoEm || e.criadoEm || Date.now()).getTime() > DIAS_PARADO * 864e5);
+const textoParados = n => `<b>${n === 1 ? "1 exame está guardado só neste aparelho" : n + " exames estão guardados só neste aparelho"} há mais de ${DIAS_PARADO} dias.</b> Conecte-se à internet para enviar${meus().some(e => e.envio.estado === "corrigir") ? " (e corrija os marcados com \"Precisa de correção\")" : ""}. Enquanto isso, baixe uma cópia de segurança em Mais opções.`;
+function baixarCopia() {
+  const l = exames().filter(e => e.envio.estado !== "enviado");
+  if (!l.length) return toast("Não há exames esperando envio neste aparelho.");
+  const dados = {app: "odontograma", tipo: "copia-de-seguranca", versaoApp: VERSAO_APP, geradaEm: new Date().toISOString(), exames: l.map(e => Object.assign(JSON.parse(registroParaJson(e)), {dono: e.dono || ""}))};
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(dados)], {type: "application/json"}));
+  a.download = `odontograma_copia_${hoje()}.json`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast(`Cópia com ${l.length} ${l.length === 1 ? "exame" : "exames"} baixada. Guarde o arquivo em lugar seguro.`);
+}
+async function importarCopia(arq) {
+  let d; try { d = JSON.parse(await arq.text()); } catch (e) { return toast("Este arquivo não é uma cópia de segurança do Odontograma."); }
+  if (!d || d.app !== "odontograma" || !Array.isArray(d.exames)) return toast("Este arquivo não é uma cópia de segurança do Odontograma.");
+  const l = exames(), ids = new Set(l.map(e => e.id)); let novos = 0, deOutro = 0;
+  const u = (sessao() || {}).usuario || {};
+  d.exames.filter(e => e && e.id && e.dentes && e.resultado && !ids.has(e.id)).forEach(e => {
+    // Cada exame continua sendo de quem o fez: só o dono consegue enviar (os dos outros esperam o dono entrar).
+    l.push(Object.assign(completarCampos(e), {envio: {estado: "pendente", tentativas: 0}})); novos++; if (e.dono && e.dono !== u.id) deOutro++;
+  });
+  if (!novos) return toast("Todos os exames desta cópia já estão neste aparelho.");
+  if (!gravarExames(l)) return;
+  renderLista(); atualizarRede(); sincronizar(true);
+  toast(`${novos} ${novos === 1 ? "exame importado" : "exames importados"}.` + (deOutro ? ` ${deOutro} ${deOutro === 1 ? "é" : "são"} de outro profissional e ${deOutro === 1 ? "espera" : "esperam"} que ele entre neste aparelho para enviar.` : ""));
+}
+$("#copiaBaixar").addEventListener("click", baixarCopia);
+$("#copiaImportar").addEventListener("change", e => { const f = e.target.files && e.target.files[0]; if (f) importarCopia(f); e.target.value = ""; });
 
 /* ---------- navegação ---------- */
 function irAba(a) {
@@ -2389,7 +2473,7 @@ $("#lista").addEventListener("click", e => {
   const a = e.target.closest("[data-abrir]"); if (a) return a.dataset.nuvem ? abrirDaNuvem(a.dataset.abrir) : abrirExame(a.dataset.abrir);
   const x = e.target.closest("[data-excluir]"); if (x) return excluirExame(x.dataset.excluir);
   const c = e.target.closest("[data-cancelar]"); if (c) return abrirCancelar(c.dataset.cancelar);
-  const v = e.target.closest("[data-ver-local]"); if (v) { const r = (estado.listaCompleta || []).find(z => z.id === v.dataset.verLocal); if (r) { const m = $("#leitura"); m.innerHTML = htmlLeitura(r); m.hidden = false; document.body.style.overflow = "hidden"; } }
+  const v = e.target.closest("[data-ver-local]"); if (v) { const r = (estado.listaCompleta || []).find(z => z.id === v.dataset.verLocal); if (r) verLeitura(r); }
 });
 $("#enviarTudo").addEventListener("click", () => sincronizar(true));
 $("#reenviarTodos").addEventListener("click", () => {
@@ -2397,8 +2481,7 @@ $("#reenviarTodos").addEventListener("click", () => {
   if (!confirm(`Enviar de novo os ${m.length} exames seus guardados neste aparelho? Os que já estão na nuvem são substituídos, sem duplicar.`)) return;
   m.forEach(e => e.envio = {estado: "pendente", tentativas: 0}); gravarExames(l); renderLista(); sincronizar(true);
 });
-$("#csvExames").addEventListener("click", () => baixar(`exames_${hoje()}.csv`, csv([CAB_EXAME, ...(estado.listaCompleta || meus()).map(linhaExame)].map(l => l.filter((_, i) => i !== CAB_EXAME.indexOf("dados_completos_json"))))));
-$("#csvDentes").addEventListener("click", () => baixar(`dentes_${hoje()}.csv`, csv([CAB_DENTE, ...(estado.listaCompleta || meus()).flatMap(linhasDentes)])));
+$("#xlsMeus").addEventListener("click", () => baixarAnalise({meus: true}, $("#listaResumo")));
 $("#nuvemAtualizar").addEventListener("click", () => carregarNuvem(true));
 
 // configurações
@@ -2406,7 +2489,7 @@ $("#aba-config").addEventListener("input", e => { const k = e.target.dataset.cfg
 
 window.addEventListener("online", () => { atualizarRede(); sincronizar(); });
 window.addEventListener("offline", atualizarRede);
-setInterval(() => { if (meus().some(e => e.envio.estado !== "enviado")) sincronizar(); }, 120000);
+setInterval(() => { if (meus().some(pendenteDeEnvio)) sincronizar(); }, 60000);
 
 /* ===== COMPARTILHADO INICIO =====
    Código igual no app (index.html) e no servidor (Codigo.gs). É copiado pelo montar.py:
@@ -2487,8 +2570,8 @@ function exameCombina(e, f, exceto) {
   if (usa("coletivo") && (e.gerais || []).indexOf(f.coletivo) < 0) return false;
   if (usa("vig") && (e.vigilancia || []).indexOf(f.vig) < 0) return false;
   if (usa("proc")) {
-    var tem = Object.keys(e.dentes || {}).some(function (n) { var p = (e.dentes[n] || {}).procs || {}; return p[f.proc] === "indicado" || p[f.proc] === "realizado"; });
-    if (!tem) return false;
+    var pr = procsDe(e)[f.proc];
+    if (!pr || !(pr.indicado || pr.realizado)) return false;
   }
   return true;
 }
@@ -2602,14 +2685,10 @@ function agregarExames(regs, agrup, ult) {
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
     if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
-    Object.keys(e.dentes || {}).forEach(function (n) {
-      var p = (e.dentes[n] || {}).procs || {};
-      Object.keys(p).forEach(function (k) {
-        if (p[k] !== "indicado" && p[k] !== "realizado") return;
-        if (!r.procs[k]) r.procs[k] = {indicado: 0, realizado: 0};
-        r.procs[k][p[k]]++;
-        if (p[k] === "realizado") r.procsRealizados++;
-      });
+    var pe = procsDe(e);
+    Object.keys(pe).forEach(function (k) {
+      if (!r.procs[k]) r.procs[k] = {indicado: 0, realizado: 0};
+      r.procs[k].indicado += pe[k].indicado; r.procs[k].realizado += pe[k].realizado; r.procsRealizados += pe[k].realizado;
     });
     // situação das pessoas: só o último exame de cada pessoa
     if (!ult[e.id]) return;
@@ -2643,20 +2722,13 @@ function agregarExames(regs, agrup, ult) {
   return r;
 }
 
-/* ---------- linhas da planilha (abas Exames e Dentes) ---------- */
+/* ---------- nomes usados na planilha ---------- */
 var NOMES_STATUS = {presente: "Presente", nao_erupc: "Não erupcionado", esfoliado: "Esfoliado", ausente: "Ausente por outro motivo", ausente_carie: "Extraído por cárie"};
 var NOMES_FACE = {"": "Hígida", ca: "Cárie ativa", cc: "Cárie crônica", mba: "Mancha branca ativa", mbi: "Mancha branca inativa",
   rest: "Restaurada sem cárie", restc: "Restaurada com cárie", sel: "Selante"};
 var NOMES_PROC = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia por outros motivos", selante: "Selante", art: "ART (restauração atraumática)", civ: "Restauração em ionômero de vidro", resina: "Restauração em resina",
   amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado", cdf: "Cariostático (diamino fluoreto de prata)", selprov: "Selamento provisório / adequação do meio",
   pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço"};
-var CAB_EXAME = ["id_exame", "codigo_individuo", "numero_exame", "codigo_exame", "situacao_registro", "data_exame", "faixa_etaria", "idade_anos", "sexo", "nascimento",
-  "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "codigo_municipio_ibge", "terra_indigena", "codigo_terra_indigena", "codigo_polo_base", "codigo_aldeia", "aldeia_fora_da_lista", "codigo_confere_local", "local_atendimento", "profissional", "cro", "denticao", "classe_risco", "nivel_risco",
-  "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod", "dentes_cariados", "placa_visivel", "gengivite", "fluorose_moderada_severa",
-  "vigilancia_saude_bucal", "protese_superior", "protese_inferior", "usa_protese_superior", "usa_protese_inferior", "dentes_com_dor_abscesso", "procedimentos_gerais", "insumos_fornecidos", "observacoes", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
-  "motivo_cancelamento", "observacao_cancelamento", "cancelado_em", "cancelado_por", "criado_em", "atualizado_em", "usuario_id", "dados_completos_json"];
-var CAB_DENTE = ["id_exame", "codigo_individuo", "numero_exame", "situacao_registro", "data_exame", "dsei", "dente", "tipo", "situacao", "sigla",
-  "face_oclusal_incisal", "face_vestibular", "face_lingual_palatina", "face_mesial", "face_distal", "dor", "abscesso_fistula", "procedimentos_indicados", "procedimentos_realizados", "observacao"];
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
 /** @param {any} iso */
@@ -2666,7 +2738,10 @@ function codigoIndividuoDe(e) { return e.codigoIndividuo || e.codigo || ""; }
 /** @param {any} e */
 function cariadosDe(e) { var r = e.resultado || {}; return (Number((r.ceod || {}).c) || 0) + (Number((r.cpod || {}).c) || 0); }
 /** @param {any} e */
-function dentesComDor(e) { return Object.keys(e.dentes || {}).filter(function (n) { var d = e.dentes[n] || {}; return d.dor || d.abscesso; }); }
+function dentesComDor(e) {
+  if (!e.dentes) return (e.comDor || []).map(String);
+  return Object.keys(e.dentes).filter(function (n) { var d = e.dentes[n] || {}; return d.dor || d.abscesso; });
+}
 /** @param {any} e */
 function registroParaJson(e) {
   /** @type {any} */ var j = {};
@@ -2684,21 +2759,143 @@ function codigoConfereLocal(e) {
   if (!m) return "";
   return m[1] === String(e.uf || "").toUpperCase() && m[2] === parteCodigo(e.polo) && m[3] === parteCodigo(e.aldeia) ? "sim" : "não";
 }
-/** @param {any} e */
-function linhaExame(e) {
-  var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, sn = function (/** @type {any} */ b) { return b == null ? "" : b ? "sim" : "não"; };
-  return [e.id, codigoIndividuoDe(e), e.numeroExame || 1, e.codigo || "", exameValido(e) ? "válido" : "cancelado", e.dataExame || "", faixaEtaria(e.idadeAnos),
-    e.idadeAnos, (e.crianca || {}).sexo || "", (e.crianca || {}).nascimento || "", e.uf || "", e.dsei || "", e.polo || "", e.aldeia || "", e.municipio || "", e.codMunicipio || "", e.ti || "", e.codTI || "", e.codPolo || "", e.codAldeia || "",
-    e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), codigoConfereLocal(e), e.localAtendimento || "",
-    (e.profissional || {}).nome || "", (e.profissional || {}).cro || "", e.denticao || "", r.classe || "", nivelDaClasse(r.classe) || r.risco || "",
-    ce.c, ce.e, ce.o, ce.total, cp.c, cp.p, cp.o, cp.total, cariadosDe(e), sn(e.placa), sn(e.gengivite), sn(e.fluorose),
-    (e.vigilancia || []).join("; "), e.protese ? NOMES_PROTESE[e.protese.sup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.inf || ""] : "",
-    e.protese ? NOMES_PROTESE[e.protese.usoSup || ""] : "", e.protese ? NOMES_PROTESE[e.protese.usoInf || ""] : "",
-    dentesComDor(e).join(" "), (e.gerais || []).join("; "), (e.insumos || []).join("; "), e.observacoes || "",
-    v.anteriorId ? (v.conferidos && v.conferidos.length ? "compatível, com mudança conferida" : "compatível") : "1º exame",
-    (v.conferidos || []).join(" · "), v.anteriorId || "",
-    c.motivo || "", c.observacao || "", c.em || "", c.por || "", e.criadoEm || "", e.atualizadoEm || "", e.usuarioId || "", registroParaJson(e)];
+/* ---------- resumo do exame: tudo menos o detalhe de cada dente ----------
+ * O Painel, a página inicial e as listas leem só o resumo (pequeno); o exame completo é lido só quando precisa
+ * dos dentes (abrir um exame, conferir a mesma pessoa). O resumo guarda, de cada dente, só o estado (est),
+ * os dentes com dor ou abscesso (comDor) e quantos tratamentos foram indicados e realizados (procsR). */
+var COD_ESTADO = {higido: "h", nao_erupc: "n", esfoliado: "s", ausente: "a", extraido: "x", exo_carie: "e", cariado: "c", obturado: "o"};
+/** Estado de cada dente: {16: "cariado", ...}. Funciona com o exame completo ou com o resumo. @param {any} e */
+function estadosDe(e) {
+  /** @type {any} */ var o = {};
+  if (e.dentes) { Object.keys(e.dentes).forEach(function (n) { o[n] = estadoDente(e.dentes[n]); }); return o; }
+  var nums = dentesDaDenticao(e.denticao), est = String(e.est || ""), inv = {};
+  Object.keys(COD_ESTADO).forEach(function (k) { /** @type {any} */ (inv)[COD_ESTADO[k]] = k; });
+  nums.forEach(function (n, i) { var c = est.charAt(i); if (c && c !== "-") o[n] = /** @type {any} */ (inv)[c] || ""; });
+  return o;
 }
+/** Tratamentos do exame: {art: {indicado: 2, realizado: 0}, ...}. Funciona com o exame completo ou com o resumo. @param {any} e */
+function procsDe(e) {
+  if (!e.dentes) return e.procsR || {};
+  /** @type {any} */ var o = {};
+  Object.keys(e.dentes).forEach(function (n) {
+    var p = (e.dentes[n] || {}).procs || {};
+    Object.keys(p).forEach(function (k) {
+      if (p[k] !== "indicado" && p[k] !== "realizado") return;
+      if (!o[k]) o[k] = {indicado: 0, realizado: 0};
+      o[k][p[k]]++;
+    });
+  });
+  return o;
+}
+/** @param {any} e */
+function resumoDoExame(e) {
+  /** @type {any} */ var r = {};
+  Object.keys(e).forEach(function (k) { if (k !== "dentes" && k !== "observacoes" && k !== "envio" && k.charAt(0) !== "_") r[k] = e[k]; });
+  var res = e.resultado || {};
+  r.resultado = {classe: res.classe, risco: res.risco, ceod: res.ceod, cpod: res.cpod};
+  var est = estadosDe(e);
+  r.est = dentesDaDenticao(e.denticao).map(function (n) { return COD_ESTADO[est[n]] || "-"; }).join("");
+  r.comDor = dentesComDor(e).map(Number);
+  r.procsR = procsDe(e);
+  return r;
+}
+
+/* ---------- colunas da planilha e do arquivo de análise (uma linha por exame) ----------
+ * Parte 1: o exame. Parte 2: contas prontas. Parte 3: o detalhe de cada dente (só no arquivo do Excel; na
+ * planilha, o detalhe fica no exame completo). Controle: vínculo, cancelamento e datas. */
+var ORDEM_DENTES = dentesDaDenticao("mista");
+var COL_VIG = {"Abscesso dentoalveolar": "vig_abscesso_dentoalveolar", "Alteração em tecidos moles": "vig_tecidos_moles", "Dor de dente": "vig_dor_de_dente",
+  "Fendas ou fissuras lábio palatais": "vig_fendas_labio_palatais", "Fluorose dentária moderada ou severa": "vig_fluorose", "Traumatismo dentoalveolar": "vig_traumatismo", "Não identificado": "vig_nao_identificado"};
+var COL_FACE = {ca: "carie_ativa", cc: "carie_cronica", mba: "mancha_branca_ativa", mbi: "mancha_branca_inativa", rest: "restaurada_sem_carie", restc: "restaurada_com_carie", sel: "selante"};
+var COL_STATUS = {presente: "presentes", nao_erupc: "nao_erupcionados", esfoliado: "esfoliados", ausente: "ausentes_outro_motivo", ausente_carie: "extraidos_carie"};
+var CAB_P1 = ["codigo_individuo", "numero_exame", "data_exame", "situacao_registro", "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "terra_indigena",
+  "codigo_polo_base", "codigo_aldeia", "codigo_municipio_ibge", "codigo_terra_indigena", "local_atendimento", "nascimento", "idade_anos", "faixa_etaria", "sexo", "denticao",
+  "classe_risco", "nivel_risco", "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod"]
+  .concat(Object.keys(COL_VIG).map(function (k) { return COL_VIG[k]; }))
+  .concat(["protese_sup_necessita", "protese_inf_necessita", "protese_sup_usa", "protese_inf_usa", "placa_visivel", "gengivite", "procedimentos_coletivos", "insumos", "observacoes"]);
+var CAB_P2 = Object.keys(COL_STATUS).map(function (k) { return "n_dentes_" + COL_STATUS[k]; })
+  .concat([].concat.apply([], Object.keys(COL_FACE).map(function (k) { return ["n_dentes_" + COL_FACE[k], "n_faces_" + COL_FACE[k]]; })))
+  .concat(["n_dentes_dor", "n_dentes_abscesso_fistula"])
+  .concat([].concat.apply([], Object.keys(NOMES_PROC).map(function (k) { return ["n_" + k + "_indicado", "n_" + k + "_realizado"]; })));
+/** Nome das faces de cada dente: O ou I (incisal, nos anteriores) e L ou P (palatina, nos superiores). @param {any} n */
+function letrasFaces(n) { var q = Math.floor(n / 10), anterior = [1, 2, 3].indexOf(n % 10) >= 0, sup = [1, 2, 5, 6].indexOf(q) >= 0; return {O: anterior ? "I" : "O", V: "V", L: sup ? "P" : "L", M: "M", D: "D"}; }
+var CAB_P3 = [].concat.apply([], ORDEM_DENTES.map(function (n) {
+  var lf = letrasFaces(n), p = "d" + n + "_";
+  return [p + "situacao", p + "face_" + lf.O, p + "face_V", p + "face_" + lf.L, p + "face_M", p + "face_D", p + "dor", p + "abscesso", p + "trat_indicado", p + "trat_realizado", p + "obs"];
+}));
+var CAB_CONTROLE = ["id_exame", "codigo_exame", "aldeia_fora_da_lista", "codigo_confere_local", "conferencia_vinculo", "alertas_vinculo", "exame_anterior_id",
+  "motivo_cancelamento", "observacao_cancelamento", "cancelado_em", "cancelado_por", "profissional", "cro", "criado_em", "atualizado_em", "usuario_id"];
+// Planilha principal: as colunas do índice primeiro (o servidor lê só elas para achar um exame ou uma pessoa).
+var CAB_INDICE = ["id_exame", "codigo_individuo", "numero_exame", "situacao_registro", "data_exame", "dsei", "usuario_id", "criado_em", "atualizado_em", "exame_anterior_id", "codigo_exame"];
+var CAB_EXAME = CAB_INDICE.concat(CAB_P1.filter(function (k) { return CAB_INDICE.indexOf(k) < 0; }), CAB_P2,
+  CAB_CONTROLE.filter(function (k) { return CAB_INDICE.indexOf(k) < 0; }), ["resumo_json", "dados_completos_json"]);
+// Arquivo de análise (Excel): Partes 1, 2 e 3, e o controle no fim.
+var CAB_ANALISE = CAB_P1.concat(CAB_P2, CAB_P3, CAB_CONTROLE.filter(function (k) { return k !== "usuario_id"; }));
+/** Valor de cada coluna do exame, pelo nome. Com completo = false, a Parte 3 fica de fora. @param {any} e @param {boolean} [completo] */
+function valoresDoExame(e, completo) {
+  var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, pr = e.protese || {}, cr = e.crianca || {};
+  var sn = function (/** @type {any} */ b) { return b == null ? "" : b ? "sim" : "não"; };
+  var prot = function (/** @type {any} */ x) { return pr.naoAvaliado ? "não avaliado" : ({sim: "sim", nao: "não"})[x || ""] || "não avaliado"; };
+  /** @type {any} */ var o = {
+    id_exame: e.id, codigo_individuo: codigoIndividuoDe(e), numero_exame: e.numeroExame || 1, data_exame: e.dataExame || "", situacao_registro: exameValido(e) ? "válido" : "cancelado",
+    uf: e.uf || "", dsei: e.dsei || "", polo_base: e.polo || "", aldeia_comunidade: e.aldeia || "", municipio: e.municipio || "", terra_indigena: e.ti || "",
+    codigo_polo_base: e.codPolo || "", codigo_aldeia: e.codAldeia || "", codigo_municipio_ibge: e.codMunicipio || "", codigo_terra_indigena: e.codTI || "",
+    local_atendimento: e.localAtendimento || "", nascimento: cr.nascimento || "", idade_anos: e.idadeAnos, faixa_etaria: faixaEtaria(e.idadeAnos), sexo: cr.sexo || "",
+    denticao: ({mista: "mista", decidua: "decídua", permanente: "permanente"})[e.denticao] || e.denticao || "",
+    classe_risco: r.classe || "", nivel_risco: nivelDaClasse(r.classe) || r.risco || "",
+    ceod_c: e.denticao === "permanente" ? "" : ce.c, ceod_e: e.denticao === "permanente" ? "" : ce.e, ceod_o: e.denticao === "permanente" ? "" : ce.o, ceod: e.denticao === "permanente" ? "" : ce.total,
+    cpod_c: e.denticao === "decidua" ? "" : cp.c, cpod_p: e.denticao === "decidua" ? "" : cp.p, cpod_o: e.denticao === "decidua" ? "" : cp.o, cpod: e.denticao === "decidua" ? "" : cp.total,
+    protese_sup_necessita: prot(pr.sup), protese_inf_necessita: prot(pr.inf), protese_sup_usa: prot(pr.usoSup), protese_inf_usa: prot(pr.usoInf),
+    placa_visivel: sn(e.placa), gengivite: sn(e.gengivite), procedimentos_coletivos: (e.gerais || []).join("; "), insumos: (e.insumos || []).join("; "), observacoes: e.observacoes || "",
+    codigo_exame: e.codigo || "", aldeia_fora_da_lista: e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), codigo_confere_local: codigoConfereLocal(e),
+    conferencia_vinculo: v.anteriorId ? (v.conferidos && v.conferidos.length ? "compatível, com mudança conferida" : "compatível") : "1º exame",
+    alertas_vinculo: (v.conferidos || []).join(" · "), exame_anterior_id: v.anteriorId || "",
+    motivo_cancelamento: c.motivo || "", observacao_cancelamento: c.observacao || "", cancelado_em: c.em || "", cancelado_por: c.por || "",
+    profissional: (e.profissional || {}).nome || "", cro: (e.profissional || {}).cro || "", criado_em: e.criadoEm || "", atualizado_em: e.atualizadoEm || "", usuario_id: e.usuarioId || ""
+  };
+  Object.keys(COL_VIG).forEach(function (k) { o[COL_VIG[k]] = sn((e.vigilancia || []).indexOf(k) >= 0); });
+  // Parte 2: contas prontas (vêm do exame completo; no resumo, só as que ele guarda)
+  if (e.dentes) {
+    var ds = Object.keys(e.dentes).map(function (n) { return e.dentes[n] || {}; });
+    Object.keys(COL_STATUS).forEach(function (k) { o["n_dentes_" + COL_STATUS[k]] = ds.filter(function (d) { return d.status === k; }).length; });
+    Object.keys(COL_FACE).forEach(function (f) {
+      var vs = ds.map(function (d) { var fc = d.status === "presente" ? d.faces || {} : {}; return Object.keys(fc).filter(function (k) { return fc[k] === f; }).length; });
+      o["n_dentes_" + COL_FACE[f]] = vs.filter(function (x) { return x > 0; }).length;
+      o["n_faces_" + COL_FACE[f]] = vs.reduce(function (a, x) { return a + x; }, 0);
+    });
+    o.n_dentes_dor = ds.filter(function (d) { return d.status === "presente" && d.dor; }).length;
+    o.n_dentes_abscesso_fistula = ds.filter(function (d) { return d.status === "presente" && d.abscesso; }).length;
+  }
+  var pe = procsDe(e);
+  Object.keys(NOMES_PROC).forEach(function (k) { o["n_" + k + "_indicado"] = (pe[k] || {}).indicado || 0; o["n_" + k + "_realizado"] = (pe[k] || {}).realizado || 0; });
+  if (completo) {
+    ORDEM_DENTES.forEach(function (n) {
+      var d = (e.dentes || {})[n], lf = letrasFaces(n), p = "d" + n + "_", pres = !!d && d.status === "presente", fc = (d && d.faces) || {}, pp = (d && d.procs) || {};
+      var face = function (/** @type {any} */ k) { return pres ? String(NOMES_FACE[fc[k] || ""] || "").toLowerCase() : ""; };
+      var trat = function (/** @type {any} */ st) { return d ? Object.keys(NOMES_PROC).filter(function (k) { return pp[k] === st; }).map(function (k) { return NOMES_PROC[k]; }).join("; ") : ""; };
+      o[p + "situacao"] = d ? String(NOMES_STATUS[d.status] || d.status || "").toLowerCase() : "";
+      o[p + "face_" + lf.O] = face("O"); o[p + "face_V"] = face("V"); o[p + "face_" + lf.L] = face("L"); o[p + "face_M"] = face("M"); o[p + "face_D"] = face("D");
+      o[p + "dor"] = pres ? sn(d.dor) : ""; o[p + "abscesso"] = pres ? sn(d.abscesso) : "";
+      o[p + "trat_indicado"] = trat("indicado"); o[p + "trat_realizado"] = trat("realizado"); o[p + "obs"] = d ? d.obs || "" : "";
+    });
+  }
+  return o;
+}
+/** Linha da aba Exames: as colunas de cada parte, o resumo e o exame completo. @param {any} e */
+function linhaExame(e) {
+  var o = valoresDoExame(e, false);
+  o.resumo_json = JSON.stringify(resumoDoExame(e));
+  o.dados_completos_json = registroParaJson(e);
+  return CAB_EXAME.map(function (k) { return o[k] == null ? "" : o[k]; });
+}
+/** Linha do arquivo de análise (Excel): uma linha por exame, com o detalhe de cada dente. @param {any} e */
+function linhaAnalise(e) {
+  var o = valoresDoExame(e, true);
+  return CAB_ANALISE.map(function (k) { return o[k] == null ? "" : o[k]; });
+}
+// Uma linha por dente (usada na planilha de análise por dente, para gráficos dente a dente).
+var CAB_DENTE = ["id_exame", "codigo_individuo", "numero_exame", "situacao_registro", "data_exame", "dsei", "dente", "tipo", "situacao", "sigla",
+  "face_oclusal_incisal", "face_vestibular", "face_lingual_palatina", "face_mesial", "face_distal", "dor", "abscesso_fistula", "procedimentos_indicados", "procedimentos_realizados", "observacao"];
 /** @param {any} e */
 function linhasDentes(e) {
   var cod = codigoIndividuoDe(e), num = e.numeroExame || 1, sit = exameValido(e) ? "válido" : "cancelado";
@@ -2773,9 +2970,10 @@ var NOMES_ESTADO = {nao_erupc: "não erupcionado", esfoliado: "esfoliado", ausen
 /** @param {any} a @param {any} b */
 function mudancasDentes(a, b) {
   /** @type {any[]} */ var l = [];
-  var nums = Object.keys(Object.assign({}, a.dentes || {}, b.dentes || {})).map(Number).sort(function (x, y) { return x - y; });
+  var ea = estadosDe(a), eb = estadosDe(b);
+  var nums = Object.keys(Object.assign({}, ea, eb)).map(Number).sort(function (x, y) { return x - y; });
   nums.forEach(function (n) {
-    var x = estadoDente((a.dentes || {})[n]), y = estadoDente((b.dentes || {})[n]);
+    var x = ea[n] || "", y = eb[n] || "";
     if (!x || !y || x === y) return;
     var tipo = "outro";
     if (y === "cariado" && (x === "higido" || x === "nao_erupc" || x === "obturado")) tipo = "carie_nova";
@@ -3370,8 +3568,10 @@ function renderInicio() {
   const ult = examesTodos().slice(0, 5), box = $("#iniUltimos");
   box.hidden = !faz;
   if (faz) {
-    const rot = {enviado: ["Na nuvem", ""], nuvem: ["Na nuvem", ""], pendente: ["A enviar", "pend"], erro: ["Erro no envio", "erro"]};
-    box.innerHTML = `<div class="ini-cab"><h2>Últimos exames</h2><button class="link" data-ir="lista">Ver todos</button></div>` + (!ult.length ? `<p class="dica">Nenhum exame ainda. Toque em "Novo exame" para começar.</p>` :
+    const rot = {enviado: ["Na nuvem", ""], nuvem: ["Na nuvem", ""], pendente: ["A enviar", "pend"], erro: ["Tentando de novo", "pend"], corrigir: ["Precisa de correção", "erro"]};
+    const nPar = parados().length;
+    box.innerHTML = (nPar ? `<div class="aviso">${textoParados(nPar)} <button class="link" data-ir="lista">Ver em Meus exames</button></div>` : "")
+      + `<div class="ini-cab"><h2>Últimos exames</h2><button class="link" data-ir="lista">Ver todos</button></div>` + (!ult.length ? `<p class="dica">Nenhum exame ainda. Toque em "Novo exame" para começar.</p>` :
       `<div class="ini-ex-cab" aria-hidden="true"><span>Pessoa (código) e data</span><span>Classificação de risco</span><span>Envio</span><span></span></div>` +
       ult.map(e => { const n = nivelDe(e), cl = (e.resultado || {}).classe || "?", canc = !exameValido(e), rr = canc ? ["Cancelado", "erro"] : rot[e.envio.estado] || ["", ""];
         return `<button class="ini-ex" type="button" data-ini-ex="${esc(e.id)}"><span class="d">${fmtData(e.dataExame)}</span>
@@ -3533,7 +3733,8 @@ async function api(acao, dados, opc) {
   if (!c.url) throw new Error("O endereço do servidor não está configurado. Abra o app pelo link enviado pela coordenação.");
   if (!navigator.onLine) throw new Error("Sem internet agora.");
   const cred = opc.cred || (opc.publica ? null : s);
-  const corpo = Object.assign({acao, versaoApp: VERSAO_APP, link: LINK_APP}, cred ? {email: cred.email, codigo: cred.codigo} : {}, dados || {});
+  // Depois de entrar, o app usa a sessão (que vence em 15 dias sem uso); o código de acesso não fica guardado no aparelho.
+  const corpo = Object.assign({acao, versaoApp: VERSAO_APP, link: LINK_APP}, cred ? (cred.sessao ? {email: cred.email, sessao: cred.sessao} : {email: cred.email, codigo: cred.codigo}) : {}, dados || {});
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), opc.tempo || 30000);
   try {
     const r = await fetch(c.url, {method: "POST", headers: {"Content-Type": "text/plain;charset=utf-8"}, body: JSON.stringify(corpo), signal: ctrl.signal});
@@ -3557,7 +3758,7 @@ function acessoPerdido(msg) {
   renderAbas(); irAba("acesso");
 }
 // Esta versão do app precisa do Codigo.gs a partir desta versão (mostrada no /exec como "versao").
-const SERVIDOR_MIN = 33;
+const SERVIDOR_MIN = 34;
 // App e servidor têm numerações próprias: o aviso só aparece se o servidor for MAIS ANTIGO que o mínimo
 // de que este app precisa (servidor igual ou mais novo é compatível). Servidor que não informa a versão é antigo.
 function avisarServidor(v) {
@@ -3589,7 +3790,7 @@ async function verificarSessao(forcar) {
   try {
     const j = await api("entrar", {aparelho: tipoAparelho()});
     const mudou = (s.usuario || {}).perfil !== j.usuario.perfil;
-    store.set(K_SESSAO, Object.assign(s, {usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0}));
+    store.set(K_SESSAO, comSessao(Object.assign(s, {usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0}), j));
     avisarServidor(j.versao || 0);
     carregarTerritorios(j.territoriosVersao || "");
     aplicarUsuario(j.usuario); renderAbas();
@@ -3748,7 +3949,7 @@ document.addEventListener("click", async e => {
     try {
       const j = await api("confirmarRecuperacao", {recuperar: RECUPERAR_URL}, {publica: true});
       RECUPERAR_URL = "";
-      const s = sessao(); if (s && s.email === j.email) store.set(K_SESSAO, Object.assign(s, {codigo: j.codigo}));
+      const s = sessao(); if (s && s.email === j.email) { delete s.sessao; store.set(K_SESSAO, Object.assign(s, {codigo: j.codigo})); verificarSessao(true); }
       estAc.recuperado = {email: j.email, codigo: j.codigo};
       abrirModal(`<div class="painel" role="dialog" aria-modal="true" aria-labelledby="recTit" style="max-width:520px">
         <div class="p-topo"><div><h3 id="recTit">Seu novo código</h3><p>${esc(j.email)}</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>
@@ -3896,6 +4097,7 @@ async function aceitarConvite(b) {
   try {
     const j = await api("aceitarConvite", d, {publica: true});
     store.set(K_SESSAO, {email: j.email, codigo: j.codigo, usuario: j.usuario, verificadoEm: new Date().toISOString()});
+    verificarSessao(true);   // troca o código por uma sessão
     carregarTerritorios("", true);
     aplicarUsuario(j.usuario); salvarCfg({polo: d.polo}); estAc.vista = "entrar"; estAc.convite = null; estAc.msg = "";
     renderAbas(); irAba(abaInicial()); sincronizar(); carregarNuvem();
@@ -4003,10 +4205,10 @@ function contarEmails(ctx) { const i = $(`#${ctx}ConvEmails`), o = $(`#${ctx}Con
 document.addEventListener("input", e => { const m = /^(eq|adm)ConvEmails$/.exec(e.target.id || ""); if (m) contarEmails(m[1]); });
 
 // Situação do servidor: só para a coordenação, no fim da aba Administração.
-async function mostrarDiagnostico() {
+function mostrarDiagnostico() {
   const c = cfg(); if (!c.url || perfil() !== "coord" || !$("#admConteudo")) return;
   try {
-    const j = await (await fetch(c.url)).json(), d = j.instalacao;
+    const j = {versao: (estAdm.dados || {}).versaoServidor}, d = (estAdm.dados || {}).instalacao;
     const box = document.createElement("div"); box.className = "bloco"; box.id = "acDiag";
     const linha = (rot, v) => `<tr><th>${rot}</th><td>${v === "ok" ? "✓ ok" : esc(v || "–")}</td></tr>`;
     box.innerHTML = `<h3>Situação do servidor</h3><p class="dica" style="margin:4px 0 10px">Para conferir a instalação. Versão do servidor: ${esc(j.versao || "antiga")} · versão do app: ${VERSAO_APP}.</p>` +
@@ -4041,7 +4243,7 @@ $("#acessoConteudo").addEventListener("click", async e => {
     b.disabled = true;
     try {
       const j = await api("entrar", {aparelho: tipoAparelho()}, {cred: {email, codigo}});
-      store.set(K_SESSAO, {email, codigo, usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0});
+      store.set(K_SESSAO, comSessao({email, codigo, usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0}, j));
       avisarServidor(j.versao || 0);
       carregarTerritorios(j.territoriosVersao || "", true);
       aplicarUsuario(j.usuario); estAc.msg = "";
@@ -4102,8 +4304,8 @@ async function carregarNuvem(manual) {
   try { const j = await api("meusExames"); estado.nuvem = j.exames || []; if (estado.aba === "lista") renderLista(); if (estado.aba === "inicio") renderInicio(); if (manual) toast("Lista atualizada com os exames da nuvem."); }
   catch (err) { if (manual) toast(err.message); }
 }
-function abrirDaNuvem(id) {
-  const r = (estado.nuvem || []).find(e => e.id === id); if (!r) return;
+async function abrirDaNuvem(id) {
+  const r = await completo((estado.nuvem || []).find(e => e.id === id)); if (!r) return;
   const l = exames(); if (!l.some(e => e.id === id)) { l.push(Object.assign(clone(r), {dono: sessao().usuario.id, envio: {estado: "enviado", em: r.atualizadoEm, tentativas: 0}})); gravarExames(l); }
   abrirExame(id);
 }
@@ -4221,14 +4423,83 @@ $("#eqConteudo").addEventListener("click", async e => {
 /* ---------- população da SESAI (coordenação) ---------- */
 // O Excel é lido aqui no navegador (o leitor só é baixado quando a coordenação usa este botão)
 // e só o resumo por aldeia, sexo e faixa etária vai para a planilha.
+// Leitor e gerador de Excel (ExcelJS 4.4.0, guardado no próprio repositório (exceljs.min.js), sem depender de outro site).
 let xlsxCarregando = null;
-function carregarLeitorExcel() {
-  if (window.XLSX) return Promise.resolve(window.XLSX);
+function carregarExcel() {
+  if (window.ExcelJS) return Promise.resolve(window.ExcelJS);
   return xlsxCarregando || (xlsxCarregando = new Promise((ok, erro) => {
-    const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
-    s.onload = () => ok(window.XLSX); s.onerror = () => { xlsxCarregando = null; erro(new Error("Não foi possível carregar o leitor de Excel. Confira a internet e tente de novo.")); };
+    const s = document.createElement("script"); s.src = "exceljs.min.js";
+    s.onload = () => ok(window.ExcelJS); s.onerror = () => { xlsxCarregando = null; erro(new Error("Não foi possível abrir o leitor de Excel. Confira a internet e tente de novo.")); };
     document.head.appendChild(s);
   }));
+}
+// Valor de uma célula lida pelo ExcelJS (fórmula, texto formatado e link viram o valor simples).
+const valorCelula = v => v == null ? "" : v instanceof Date ? v : typeof v === "object" ? (v.result != null ? v.result : v.richText ? v.richText.map(t => t.text).join("") : v.text != null ? v.text : "") : v;
+// Lê a primeira aba de uma planilha .xlsx (ou um .csv) como linhas de valores.
+async function lerPlanilha(arq) {
+  if (/\.csv$/i.test(arq.name)) {
+    const t = (await arq.text()).replace(/^\ufeff/, ""), sep = (t.split("\n")[0].match(/;/g) || []).length >= (t.split("\n")[0].match(/,/g) || []).length ? ";" : ",";
+    return t.split(/\r?\n/).filter(l => l.trim()).map(l => { const out = []; let cur = "", q = false;
+      for (let i = 0; i < l.length; i++) { const c = l[i]; if (q) { if (c === '"' && l[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; } else if (c === '"') q = true; else if (c === sep) { out.push(cur); cur = ""; } else cur += c; }
+      out.push(cur); return out.map(x => x !== "" && !isNaN(Number(x.replace(",", "."))) && /^-?[\d.,]+$/.test(x) ? Number(x.replace(/\./g, "").replace(",", ".")) : x); });
+  }
+  if (!/\.xlsx$/i.test(arq.name)) throw new Error("Este formato não é aceito. Abra a planilha no Excel e salve como .xlsx (Pasta de Trabalho do Excel).");
+  const ExcelJS = await carregarExcel(), wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await arq.arrayBuffer());
+  const ws = wb.worksheets[0], n = ws.columnCount, linhas = [];
+  ws.eachRow({includeEmpty: true}, row => { linhas.push(Array.from({length: n}, (_, j) => valorCelula(row.getCell(j + 1).value))); });
+  return linhas;
+}
+// Arquivo de análise em Excel: uma linha por exame, com as três partes (exame, contas prontas e cada dente).
+async function gerarExcelAnalise(cab, linhas, nomeArq) {
+  const ExcelJS = await carregarExcel(), wb = new ExcelJS.Workbook(), ws = wb.addWorksheet("Dados", {views: [{state: "frozen", xSplit: 3, ySplit: 2}]});
+  const cor = {1: "FFDCE9F7", 2: "FFFCEBC8", 3: "FFECEEF1", 4: "FFF2F2F2"}, parte = k => CAB_P1.includes(k) ? 1 : CAB_P2.includes(k) ? 2 : CAB_P3.includes(k) ? 3 : 4;
+  const grupo = k => { const p = parte(k); return p === 1 ? "PARTE 1 · O EXAME" : p === 2 ? "PARTE 2 · CONTAS PRONTAS" : p === 3 ? "PARTE 3 · DENTE " + k.match(/^d(\d+)_/)[1] : "CONTROLE"; };
+  ws.addRow(cab.map(grupo)); ws.addRow(cab);
+  let ini = 1;
+  for (let j = 2; j <= cab.length + 1; j++) {
+    if (j <= cab.length && grupo(cab[j - 1]) === grupo(cab[ini - 1])) continue;
+    if (j - 1 > ini) ws.mergeCells(1, ini, 1, j - 1);
+    ini = j;
+  }
+  cab.forEach((k, i) => { const p = parte(k), f = {type: "pattern", pattern: "solid", fgColor: {argb: cor[p]}};
+    [1, 2].forEach(r => { const c = ws.getCell(r, i + 1); c.fill = f; c.font = {name: "Arial", size: 10, bold: true}; c.alignment = {horizontal: "center", vertical: "middle", wrapText: r === 2}; });
+    ws.getColumn(i + 1).width = p === 3 ? (/trat_/.test(k) ? 24 : /_obs$/.test(k) ? 20 : 14) : p === 2 ? 14 : ({codigo_individuo: 24, procedimentos_coletivos: 36, insumos: 30, observacoes: 32, faixa_etaria: 24}[k] || 14); });
+  ws.getRow(2).height = 34;
+  // Textos ficam como texto (o Excel não executa fórmulas em células de texto).
+  linhas.forEach(l => ws.addRow(l.map(v => v === "" || v == null ? null : v)));
+  ws.getRows(3, linhas.length || 1)?.forEach(r => { r.font = {name: "Arial", size: 10}; });
+  const dic = wb.addWorksheet("Leia primeiro");
+  [["COMO LER ESTE ARQUIVO"], ["Uma linha por exame. A mesma pessoa com dois exames aparece em duas linhas, com o mesmo codigo_individuo e numero_exame 1, 2…"],
+   ["Parte 1 (azul): o exame. Parte 2 (amarelo): contas prontas, para somar e fazer média. Parte 3 (cinza): cada dente, com 11 colunas, na ordem do odontograma. Controle: vínculo, cancelamento e datas."],
+   ["Dente que não existe naquela dentição fica com as colunas vazias. Faces, dor e abscesso só são preenchidos no dente presente. Mais de um tratamento no mesmo dente fica separado por \";\"."],
+   ["Exames cancelados aparecem com situacao_registro = cancelado: filtre por \"válido\" para as análises."],
+   ["O significado de cada coluna está na aba Dicionário da planilha do Google."], [""], ["Gerado pelo app em " + fmtDataHora(new Date().toISOString()) + "."]]
+    .forEach((l, i) => { const r = dic.addRow(l); r.font = {name: "Arial", size: i ? 10 : 12, bold: !i}; });
+  dic.getColumn(1).width = 140;
+  const buf = await wb.xlsx.writeBuffer();
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([buf], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+  a.download = nomeArq; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+// Baixa os dados para análise em páginas (o servidor manda 200 exames por vez) e monta o Excel no aparelho.
+async function baixarAnalise(filtro, aviso) {
+  const diga = t => { if (aviso) aviso.textContent = t; };
+  try {
+    diga("Abrindo o gerador de Excel…"); await carregarExcel();
+    let pag = 0, cab = CAB_ANALISE, linhas = [];
+    if (navigator.onLine && cfg().url) {
+      while (pag != null) { diga(`Buscando os exames na planilha${pag ? ` (${linhas.length} até agora)` : ""}…`); const j = await api("dadosAnalise", Object.assign({pagina: pag}, filtro), {tempo: 120000}); if (j.cabecalho) cab = j.cabecalho; linhas = linhas.concat(j.linhas || []); pag = j.proxima; }
+    }
+    if (filtro.meus) {
+      // Exames deste aparelho que ainda não foram para a planilha também entram.
+      const ids = new Set(linhas.map(l => l[cab.indexOf("id_exame")]));
+      meus().filter(e => !ids.has(e.id) && e.dentes).forEach(e => linhas.push(linhaAnalise(e)));
+    }
+    if (!linhas.length) return diga("Nenhum exame para baixar com esse filtro.");
+    diga(`Montando o arquivo com ${linhas.length} ${linhas.length === 1 ? "exame" : "exames"}…`);
+    await gerarExcelAnalise(cab, linhas, `odontograma_${filtro.meus ? "meus_exames" : "analise"}_${hoje()}.xlsx`);
+    diga(`Arquivo baixado: ${linhas.length} ${linhas.length === 1 ? "exame" : "exames"}.`);
+  } catch (err) { diga(err.message || String(err)); }
 }
 function blocoPopulacao(p) {
   const atual = !p || p.vazio ? `<p class="cad-status falta" style="margin-top:10px">Ainda não foi enviada. Sem ela, polo e aldeia são digitados à mão no exame e o Painel não mostra a cobertura.</p>`
@@ -4237,19 +4508,16 @@ function blocoPopulacao(p) {
   return `<div class="bloco pop-bloco"><div class="bloco-topo"><h2>População e aldeias da SESAI</h2></div>
     <p class="dica" style="margin:4px 0 0">Com a planilha da população indígena da SESAI, o exame passa a ter as listas de polos e aldeias, e o Painel mostra quantas pessoas de cada lugar já foram examinadas. Envie a planilha nova uma vez por ano, quando a SESAI atualizar a população.</p>
     ${atual}
-    <div class="acoes-l"><label class="sec botao-arq">${!p || p.vazio ? "Enviar a planilha da população" : "Atualizar população"}<input type="file" id="admPopArq" accept=".xlsx,.xls,.csv"></label>
+    <div class="acoes-l"><label class="sec botao-arq">${!p || p.vazio ? "Enviar a planilha da população" : "Atualizar população"}<input type="file" id="admPopArq" accept=".xlsx,.csv"></label>
       <a class="link" href="https://infoms.saude.gov.br/extensions/sesai_pop_indigena/sesai_pop_indigena.html" target="_blank" rel="noopener">Onde baixar a planilha</a></div>
     <p class="dica" id="admPopStatus" aria-live="polite"></p></div>`;
 }
 async function enviarPopulacao(arq) {
   const st = $("#admPopStatus"), diga = t => { if (st) st.textContent = t; };
   try {
-    diga("Abrindo o leitor de Excel…");
-    const XLSX = await carregarLeitorExcel();
     diga(`Lendo ${arq.name}… pode levar alguns segundos.`);
     await new Promise(r => setTimeout(r, 30));
-    const wb = XLSX.read(await arq.arrayBuffer(), {dense: true});
-    const linhas = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {header: 1, raw: true, defval: ""});
+    const linhas = await lerPlanilha(arq);
     const p = montarPopulacao(linhas, DSEIS);
     const nD = Object.keys(p.dseis).length, nP = Object.keys(p.polos).length, nA = Object.keys(p.aldeias).length;
     diga(`Planilha lida: população de ${p.ano}, ${fmtN(p.pessoas)} pessoas em ${fmtN(nA)} aldeias.`);
@@ -4269,6 +4537,41 @@ async function carregarAdmin() {
   try { estAdm.dados = await api("admin"); st.textContent = "Atualizado agora."; renderAdmin(); }
   catch (err) { st.textContent = err.message; }
 }
+// Espaço da planilha (só a coordenação titular): aparece a partir de 50%.
+function blocoEspaco(e) {
+  if (!e || e.pct < 50) return "";
+  const cor = e.pct >= 90 ? "var(--sesai-vermelho)" : e.pct >= 75 ? "var(--sesai-amarelo)" : "var(--accent)";
+  const texto = e.pct >= 100 ? "A planilha não aceita mais exames. Os exames ficam guardados nos celulares até a planilha nova ficar pronta."
+    : e.pct >= 90 ? "Urgente: combine com a equipe técnica a criação de uma planilha nova." : e.pct >= 75 ? "Planeje com a equipe técnica a criação de uma planilha nova antes de chegar a 90%." : "Só para acompanhar.";
+  return `<div class="bloco" style="border-left:5px solid ${cor}"><h3>A planilha está com ${e.pct}% do espaço usado</h3>
+    <p class="dica" style="margin:4px 0 0">Cabem ainda cerca de <b>${fmtN(e.cabem)} exames</b>${e.mesesAteEncher != null ? e.mesesAteEncher > 120 ? ". No ritmo dos últimos 30 dias, ela leva mais de 10 anos para encher" : `. No ritmo dos últimos 30 dias, ela enche em cerca de <b>${String(Math.round(e.mesesAteEncher * 10) / 10).replace(".", ",")} meses</b>` : ""}. ${texto}</p></div>`;
+}
+// Erros recentes (só a coordenação titular): o motivo em linguagem simples e o que fazer.
+function blocoErros(r) {
+  if (!r || !r.grupos.length) return "";
+  return `<div class="bloco" id="admErros" style="border-left:5px solid var(--sesai-amarelo)"><div class="bloco-topo"><h2>Erros recentes · últimos 7 dias</h2></div>
+    <p class="dica" style="margin:0 0 10px">${r.total24h ? `<b>${r.total24h} ${r.total24h === 1 ? "erro" : "erros"} nas últimas 24 horas.</b> ` : ""}Os exames não se perdem: ficam guardados nos celulares e o app tenta de novo sozinho.</p>
+    ${r.grupos.map((g, i) => `<details class="item"><summary><span style="min-width:0"><b>${esc(g.titulo)}</b><span class="it-sub">${esc(g.motivo)}</span><span class="it-sub"><b>O que fazer:</b> ${esc(g.fazer)}</span></span>
+      <span class="estado pendente" style="justify-self:end;white-space:nowrap">${g.vezes} ${g.vezes === 1 ? "vez" : "vezes"}</span></summary>
+      <div style="padding:6px 2px 10px"><p class="dica">${g.primeiro === g.ultimo ? `Em ${esc(dataHoraErro(g.primeiro))}` : `De ${esc(dataHoraErro(g.primeiro))} a ${esc(dataHoraErro(g.ultimo))}`}. Últimos casos:</p>
+      <ul class="totais">${g.exemplos.map(x => `<li>${esc(x.data.split("-").reverse().join("/"))} ${esc(x.hora)} · ${esc(x.quem || "sistema")} · ${esc(x.acao)}</li>`).join("")}</ul>
+      <button class="sec mini" data-copiar-erro="${i}">Copiar detalhe técnico</button></div></details>`).join("")}
+    <div class="acoes-l"><button class="link" id="admLimparErros">Entendi, limpar a lista</button></div></div>`;
+}
+const dataHoraErro = t => { const m = /^(\d{4})-(\d{2})-(\d{2}) ?(.*)$/.exec(String(t || "")); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}`.trim() : String(t || ""); };
+// Dados para análise: arquivo do Excel com uma linha por exame (as três partes).
+function blocoAnalise() {
+  return `<div class="bloco"><h3>Dados para análise</h3><p class="dica" style="margin:4px 0 10px">Arquivo do Excel com uma linha por exame: o exame, as contas prontas e cada dente. Escolha o período (ou deixe em branco para todos).</p>
+    <div class="grade"><label class="campo">De<input type="date" id="admAnDe"></label><label class="campo">Até<input type="date" id="admAnAte"></label>
+    <label class="campo">DSEI<select id="admAnDsei"><option value="">Todos</option>${DSEIS.map(x => `<option>${esc(x)}</option>`).join("")}</select></label></div>
+    <div class="acoes-l"><button class="prim" id="admAnBaixar">Baixar dados para análise (Excel)</button></div><p class="dica" id="admAnStatus" aria-live="polite"></p></div>`;
+}
+document.addEventListener("click", async e => {
+  if (e.target.id === "admAnBaixar") { e.target.disabled = true; await baixarAnalise({de: $("#admAnDe").value, ate: $("#admAnAte").value, dsei: $("#admAnDsei").value}, $("#admAnStatus")); e.target.disabled = false; return; }
+  const c = e.target.closest("[data-copiar-erro]");
+  if (c) { const g = ((estAdm.dados || {}).erros || {}).grupos[Number(c.dataset.copiarErro)] || {}; return copiarTexto(g.exemplos.map(x => `${x.data} ${x.hora} · ${x.acao} · ${x.quem}\n${x.detalhe}`).join("\n\n")); }
+  if (e.target.id === "admLimparErros") { e.target.disabled = true; try { await api("limparErros"); toast("Lista de erros limpa."); carregarAdmin(); } catch (err) { toast(err.message); e.target.disabled = false; } }
+});
 // "2026-10-29T13:33:22.924Z · ação · erro" → data e hora de Brasília.
 function textoFalha(t) { const m = /^(\S+Z)(.*)$/.exec(String(t || "")); return m ? fmtDataHora(m[1]) + m[2] : String(t || ""); }
 document.addEventListener("click", async e => {
@@ -4339,10 +4642,10 @@ function renderAdmin() {
       <div id="admReorgPrevia"></div>
       <div class="acoes-l"><button class="sec" data-reorg="previa">Ver o que vai mudar</button><button class="prim" data-reorg="fazer" hidden>Fazer o backup e atualizar a planilha</button></div></div>`
     : `<div class="aviso">A planilha está esperando uma atualização que só a coordenação titular pode confirmar, na Administração.</div>`) : "";
-  const senha = d.senhaCurta ? `<div class="aviso">A senha da coordenação titular tem menos de 12 caracteres. Para proteger o acesso, troque por uma senha longa em Propriedades do script (CHAVE_COORDENACAO) e publique uma nova versão.</div>` : "";
+  const senha = "";
   const aud = d.auditoria && d.auditoria.falhas ? `<div class="aviso-servidor" style="padding:12px 14px;border-radius:10px"><b>${d.auditoria.falhas} ${d.auditoria.falhas === 1 ? "registro" : "registros"} de acesso não ${d.auditoria.falhas === 1 ? "pôde" : "puderam"} ser gravado${d.auditoria.falhas === 1 ? "" : "s"} na aba Acessos.</b> O atendimento continuou normalmente, mas a trilha de auditoria ficou incompleta. Última falha: ${esc(textoFalha(d.auditoria.ultima))}. Isso costuma acontecer só quando duas pessoas usam o app no mesmo instante em que a aba Acessos está sendo recriada (depois de publicar o servidor ou reorganizar a planilha).${d.titular ? ` <button class="sec mini" type="button" id="limparAuditoria" style="margin-left:6px">Entendi, limpar aviso</button>` : ""}</div>` : "";
   setTimeout(mostrarDiagnostico, 0);
-  $("#admConteudo").innerHTML = reorg + senha + aud + kpis + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
+  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
   if ($("#admRtDsei")) preencherDsei($("#admRtDsei"), "", "");
   if ($("#admCoordDsei")) preencherDsei($("#admCoordDsei"), "", "");
 }
