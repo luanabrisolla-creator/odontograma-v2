@@ -26,7 +26,7 @@ parte("instalação");
 r = G.get();
 T("servidor informa a versão", r.ok && typeof r.versao === "number" && r.versao >= 28, r.versao);
 T("planilha vazia foi organizada sozinha no primeiro uso", G.ctx.formatoAtual(), G.est.props.FORMATO_PLANILHA);
-T("abas principais na ordem", aba("Exames").length && G.est.order.slice(0, 6).join() === "Exames,Dentes,Acessos,Uso,Usuarios,Dicionário", G.est.order);
+T("abas principais na ordem", aba("Exames").length && G.est.order.slice(0, 5).join() === "Exames,Acessos,Uso,Usuarios,Dicionário" && !G.est.sheets.Dentes, G.est.order);
 T("backup feito antes da organização", G.est.backups.length >= 1);
 
 /* ---------------------------------------------------------------- cadastro e perfis */
@@ -140,7 +140,7 @@ Object.keys(G.est.cache).forEach(k => { if (k.includes(C.email)) G.est.cache[k].
 T("titular volta a entrar depois do tempo", P(C, { acao: "entrar" }).ok);
 G.est.props.CHAVE_COORDENACAO = "curta123";
 r = P({ email: C.email, codigo: "curta123" }, { acao: "admin" });
-T("Administração avisa quando a senha da titular tem menos de 12 caracteres", r.ok && r.senhaCurta === true, r.senhaCurta);
+T("senha da titular com menos de 12 caracteres não entra, e a mensagem diz como resolver", !r.ok && /pelo menos 12 caracteres/.test(r.erro) && /Propriedades do script/.test(r.erro), r);
 G.est.props.CHAVE_COORDENACAO = S.SENHA_TITULAR;
 T("senha longa: sem aviso", P(C, { acao: "admin" }).senhaCurta === false);
 
@@ -241,22 +241,27 @@ T("CPO-D: só o extraído por cárie entra em P", g.cpod.p === 1 && g.cpod.total
 T("ceo-d: exodontia devido à cárie (indicada ou realizada) entra em e, uma vez por dente", g.ceod.e === 2 && g.ceod.c === 0, g.ceod);
 T("ceo-d: decíduo extraído por cárie, esfoliado e exodontia por outros motivos não contam", g.ceod.total === 3, g.ceod);
 T("ceo-d: mancha branca com restauração conta como o", g.ceod.o === 1, g.ceod);
-const dIdx = n => aba("Dentes").find(l => l[0] === "IDX1" && String(l[col("Dentes", "dente")]) === String(n)) || [];
-T("planilha Dentes: esfoliado com sigla Es", dIdx(53)[col("Dentes", "situacao")] === "Esfoliado" && dIdx(53)[col("Dentes", "sigla")] === "Es", dIdx(53));
-T("planilha Dentes: exodontia devido à cárie em procedimentos indicados", /Exodontia devido à cárie/.test(dIdx(16)[col("Dentes", "procedimentos_indicados")]), dIdx(16));
-T("planilha Dentes: face restaurada aparece como \"Restaurada sem cárie\"", dIdx(46)[col("Dentes", "face_mesial")] === "Restaurada sem cárie", dIdx(46));
+// Arquivo de análise (uma linha por exame, com cada dente): montado a partir do exame completo gravado.
+const an = id => { const l = G.ctx.linhaAnalise(jsonEx(id)), o = {}; G.ctx.CAB_ANALISE.forEach((k, i) => o[k] = l[i]); return o; };
+const a1 = r.ok ? an("IDX1") : {};
+T("análise: dente esfoliado aparece como esfoliado, sem faces", a1.d53_situacao === "esfoliado" && a1.d53_face_I === "", [a1.d53_situacao, a1.d53_face_I]);
+T("análise: exodontia devido à cárie em tratamento indicado do dente", a1.d16_trat_indicado === "Exodontia devido à cárie", a1.d16_trat_indicado);
+T("análise: face restaurada aparece como \"restaurada sem cárie\"", a1.d46_face_M === "restaurada sem cárie" && a1.d46_face_O === "cárie ativa", [a1.d46_face_M, a1.d46_face_O]);
+T("análise: contas prontas batem com os dentes", a1.n_exo_carie_indicado === 2 && a1.n_exo_carie_realizado === 2 && a1.n_dentes_extraidos_carie === 2 && a1.n_dentes_esfoliados === 1, [a1.n_exo_carie_indicado, a1.n_exo_carie_realizado, a1.n_dentes_extraidos_carie]);
+T("análise: faces L ou P conforme a arcada e O ou I conforme o dente", "d16_face_P" in a1 && "d46_face_L" in a1 && "d11_face_I" in a1 && "d55_face_P" in a1 && "d85_face_L" in a1);
+T("planilha: uma linha por exame (sem aba Dentes) e contas prontas nas colunas", !G.est.sheets.Dentes && linhaEx("IDX1")[col("Exames", "n_exo_carie_indicado")] === 2, linhaEx("IDX1")[col("Exames", "n_exo_carie_indicado")]);
 // Dor e abscesso separados; a vigilância vem dos dentes (o servidor confere).
 const fx = exame({ id: "IDX2", sufixo: "NDCESAB3", vig: ["Não identificado"], mud: { 46: { dor: true }, 36: { abscesso: true } } });
 r = P(ANA, { acao: "enviarExame", registro: fx });
 const jx = r.ok ? jsonEx("IDX2") : {};
 T("dor e abscesso no dente levam à classe F", r.ok && jx.resultado.classe === "F", r.ok ? jx.resultado : r);
 T("a vigilância gravada traz \"Dor de dente\" e \"Abscesso dentoalveolar\" vindos dos dentes, sem \"Não identificado\"", r.ok && jx.vigilancia.join("|") === "Dor de dente|Abscesso dentoalveolar", jx.vigilancia);
-const dx = n => aba("Dentes").find(l => l[0] === "IDX2" && String(l[col("Dentes", "dente")]) === String(n)) || [];
-T("planilha Dentes: colunas dor e abscesso_fistula separadas", dx(46)[col("Dentes", "dor")] === "sim" && dx(46)[col("Dentes", "abscesso_fistula")] === "não" && dx(36)[col("Dentes", "abscesso_fistula")] === "sim");
+const a2 = r.ok ? an("IDX2") : {};
+T("análise: dor e abscesso separados em cada dente", a2.d46_dor === "sim" && a2.d46_abscesso === "não" && a2.d36_abscesso === "sim" && a2.n_dentes_dor === 1 && a2.n_dentes_abscesso_fistula === 1, [a2.d46_dor, a2.d46_abscesso, a2.d36_abscesso]);
 r = P(ANA, { acao: "enviarExame", registro: exame({ id: "IDX3", sufixo: "NDCESAB4", protese: { sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: true } }) });
-T("prótese \"não foi possível avaliar\" é aceita e vai como Não avaliado", r.ok && linhaEx("IDX3")[col("Exames", "usa_protese_superior")] === "Não avaliado" && linhaEx("IDX3")[col("Exames", "protese_inferior")] === "Não avaliado", r);
+T("prótese \"não foi possível avaliar\" é aceita e vai como Não avaliado", r.ok && linhaEx("IDX3")[col("Exames", "protese_sup_usa")] === "não avaliado" && linhaEx("IDX3")[col("Exames", "protese_inf_necessita")] === "não avaliado", r);
 r = P(ANA, { acao: "enviarExame", registro: exame({ id: "IDX4", sufixo: "NDCESAB5", protese: { sup: "sim", inf: "nao", usoSup: "nao", usoInf: "sim", naoAvaliado: false } }) });
-T("prótese: necessidade e uso por arcada nas colunas certas", r.ok && linhaEx("IDX4")[col("Exames", "protese_superior")] === "Sim" && linhaEx("IDX4")[col("Exames", "usa_protese_superior")] === "Não" && linhaEx("IDX4")[col("Exames", "usa_protese_inferior")] === "Sim", r);
+T("prótese: necessidade e uso por arcada nas colunas certas", r.ok && linhaEx("IDX4")[col("Exames", "protese_sup_necessita")] === "sim" && linhaEx("IDX4")[col("Exames", "protese_sup_usa")] === "não" && linhaEx("IDX4")[col("Exames", "protese_inf_usa")] === "sim", r);
 T("divergência de classe registrada nos Acessos", aba("Acessos").some(l => l[7] === "Resultado recalculado"));
 
 /* ---------------------------------------------------------------- código de acompanhamento */
@@ -411,8 +416,114 @@ r = P(C, { acao: "limparAvisoAuditoria" });
 T("a titular limpa o aviso", r.ok && P(C, { acao: "admin" }).auditoria.falhas === 0, r);
 T("a limpeza fica registrada em Acessos", aba("Acessos").some(l => l[7] === "Limpou aviso de auditoria" && /2 registros/.test(l[8])));
 
+/* ---------------------------------------------------------------- versão 37: envio em lote e fila */
+parte("lote e fila");
+const lote = Array.from({ length: 12 }, (_, i) => exame({ id: "LT" + i, sufixo: "QTRA" + "ABCDEFGHJKMN"[i] + "XX2" }));
+r = P(ANA, { acao: "enviarExames", registros: lote });
+T("lote: o servidor aceita até 10 exames por pedido e responde um resultado para cada", r.ok && r.resultados.length === 10 && r.resultados.every(x => x.ok), r.resultados && r.resultados.filter(x => !x.ok));
+T("lote: os 10 foram gravados, cada um numa linha", ["LT0", "LT5", "LT9"].every(id => linhaEx(id)) && !linhaEx("LT10"));
+const ruimLote = exame({ id: "LTRUIM", sufixo: "QTRRUMX2", dsei: "Leste de Roraima", uf: "RR" });
+r = P(ANA, { acao: "enviarExames", registros: [exame({ id: "LTBOM", sufixo: "QTRBMWX2" }), ruimLote] });
+T("lote: um exame recusado não impede os outros", r.ok && r.resultados[0].ok && !r.resultados[1].ok && r.resultados[1].dseiInvalido, r.resultados);
+const nLinhas = aba("Exames").length;
+r = P(ANA, { acao: "enviarExames", registros: [exame({ id: "LT0", sufixo: "QTRAAXX2" })] });
+T("lote: reenviar o mesmo exame atualiza a mesma linha (não cria outra)", r.ok && r.resultados[0].ok && aba("Exames").length === nLinhas, [nLinhas, aba("Exames").length]);
+G.est.travaOcupada = true;
+r = P(ANA, { acao: "enviarExames", registros: [exame({ id: "LTOCUP", sufixo: "QTRQCUP2" })] });
+G.est.travaOcupada = false;
+T("fila cheia: o servidor responde \"ocupado\" na hora, com o tempo para tentar de novo", !r.ok && r.ocupado && r.passageiro && r.tenteEm >= 5 && !linhaEx("LTOCUP"), r);
+const extra = exame({ id: "LTEXTRA", sufixo: "QTREXTR2" }); extra.nome = "Maria da Silva"; extra.dentes[16].paciente = "x"; extra.crianca.mae = "Joana";
+r = P(ANA, { acao: "enviarExame", registro: extra });
+const je = r.ok ? jsonEx("LTEXTRA") : {};
+T("campos fora da lista são descartados (nome, mãe, campo estranho num dente)", r.ok && !("nome" in je) && !("mae" in je.crianca) && !("paciente" in je.dentes[16]), r);
+T("o descarte fica anotado em Acessos", aba("Acessos").some(l => l[7] === "Campos descartados de um exame" && /LTEXTRA/.test(l[8]) && /dente 16\.paciente/.test(l[8])));
+r = P(ANA, { acao: "meusExames" });
+T("Meus exames traz só o resumo (sem os dentes), para ser leve", r.ok && r.exames.length && r.exames.every(x => !x.dentes && x.est && x.procsR), r.exames && r.exames[0] && Object.keys(r.exames[0]));
+r = P(ANA, { acao: "verExame", id: "LT3" });
+T("ao abrir um exame, ele vem completo (com os dentes)", r.ok && r.exame.dentes && Object.keys(r.exame.dentes).length === 52 && !("_linha" in r.exame), r.ok && Object.keys(r.exame));
+
+/* ---------------------------------------------------------------- sessão */
+parte("sessão");
+r = P(ANA, { acao: "entrar", aparelho: "teste" });
+const SES = { email: ANA.email, sessao: r.sessao };
+T("ao entrar com o código, o app recebe uma sessão", r.ok && /^[0-9a-f]{80}$/.test(r.sessao) && r.diasSessao === 15, r);
+T("a planilha guarda só o hash da sessão", !JSON.stringify(G.est.sheets).includes(r.sessao) && aba("_sessoes").length >= 2);
+T("com a sessão, o app usa o servidor sem mandar o código", P(SES, { acao: "inicio" }).ok);
+T("ao entrar pela sessão, não cria outra sessão", !P(SES, { acao: "entrar" }).sessao);
+T("sessão com outro e-mail não vale", !P({ email: BRUNO.email, sessao: SES.sessao }, { acao: "inicio" }).ok);
+const lin = aba("_sessoes").findIndex(l => l[1] === S.idDe("ana@teste.org") && l[6] === "teste");
+aba("_sessoes")[lin][5] = new Date(Date.now() - 16 * 864e5).toISOString();
+r = P(SES, { acao: "inicio" });
+T("sessão sem uso há mais de 15 dias vence, com mensagem clara", !r.ok && r.semAcesso && r.sessaoVencida && /15 dias/.test(r.erro) && /continuam/.test(r.erro), r);
+aba("_sessoes")[lin][5] = new Date(Date.now() - 14 * 864e5).toISOString();
+T("com 14 dias sem uso, ainda vale (e o uso renova a contagem)", P(SES, { acao: "inicio" }).ok && new Date(aba("_sessoes")[lin][5]) > new Date(Date.now() - 864e5));
+P(RT, { acao: "novoCodigo", id: S.idDe("ana@teste.org") });
+T("um código novo para a pessoa derruba as sessões antigas", !P(SES, { acao: "inicio" }).ok);
+const novoCodAna = S.codigoDoEmail("ana@teste.org"); ANA.codigo = novoCodAna;
+r = P(C, { acao: "entrar" }); const SESC = { email: C.email, sessao: r.sessao };
+T("a coordenação titular também recebe sessão", r.ok && P(SESC, { acao: "admin" }).ok);
+G.est.props.CHAVE_COORDENACAO = "outra-senha-bem-longa-2026";
+T("trocar a senha da titular derruba as sessões dela", !P(SESC, { acao: "admin" }).ok);
+G.est.props.CHAVE_COORDENACAO = S.SENHA_TITULAR;
+
+/* ---------------------------------------------------------------- erros explicados, espaço e tarefa diária */
+parte("erros e espaço");
+T("o endereço /exec mostra só a versão", Object.keys(G.get()).join() === "ok,versao" && G.get().versao >= 34, G.get());
+const realPainel = G.ctx.calcularPainel;
+G.ctx.calcularPainel = () => { throw new Error("Exception: Service Spreadsheets timed out while accessing document with id 1xYzAbC"); };
+const mailsAntes = G.est.mails.length;
+G.est.cache = {};
+r = P(ANA, { acao: "painel", dsei: "Leste de Roraima" });
+T("o profissional vê só uma mensagem simples, sem o detalhe técnico", !r.ok && r.passageiro && !/Spreadsheets|1xYz|Exception/.test(r.erro), r.erro);
+r = P(C, { acao: "admin" });
+const ge = r.ok && r.erros && r.erros.grupos.find(x => x.tipo === "google_lento");
+T("Administração (titular) mostra o motivo explicado e o que fazer", !!ge && /demorou/.test(ge.titulo) && ge.fazer && ge.exemplos[0].detalhe.includes("timed out"), r.erros);
+T("a titular recebe um e-mail explicando o erro", G.est.mails.length === mailsAntes + 1 && /Motivo:/.test(G.est.mails[G.est.mails.length - 1].body));
+P(ANA, { acao: "painel", dsei: "Xavante" });
+T("no máximo um e-mail a cada 6 horas", G.est.mails.length === mailsAntes + 1);
+G.ctx.calcularPainel = realPainel;
+T("outra pessoa da coordenação não vê o quadro de erros nem o espaço", P(PAULA, { acao: "admin" }).erros === null && P(PAULA, { acao: "admin" }).espaco === null);
+T("a titular limpa a lista de erros", P(C, { acao: "limparErros" }).ok && P(C, { acao: "admin" }).erros.grupos.length === 0);
+T("tipos de erro reconhecidos", ["Lock timeout: another process was holding the lock", "Service invoked too many times for one day: email.", "Exceeded maximum execution time",
+  "You do not have permission to call SpreadsheetApp", "The number of columns in the data does not match the number of columns in the range"].map(G.ctx.tipoDoErro).join() === "fila,cota_email,google_lento,autorizacao,planilha_alterada");
+r = P(C, { acao: "admin" });
+T("Administração mostra o espaço usado, quantos exames ainda cabem e a situação do servidor", r.espaco && r.espaco.pct >= 0 && r.espaco.cabem > 0 && r.instalacao && r.instalacao.chave === "ok" && r.versaoServidor === G.get().versao, r.espaco);
+T("a tarefa diária é criada sozinha", G.est.triggers.some(t => t.fn === "tarefaDiaria"));
+const ex0 = G.est.max.Exames || { r: 1000 };
+G.est.max.Usuarios = { r: 5000, c: 40 };
+const velho = aba("Acessos")[1].slice(); velho[0] = "2024-01-02";
+aba("Acessos").push(velho);
+const nAc = aba("Acessos").length;
+G.ctx.tarefaDiaria();
+T("tarefa diária: corta as linhas e colunas vazias", G.est.max.Usuarios.r <= aba("Usuarios").length + 50 && G.est.max.Usuarios.c < 40, G.est.max.Usuarios);
+const arq = Object.values(G.est.extras)[0];
+T("tarefa diária: Acessos com mais de 12 meses vão para a planilha de arquivo (nada se perde)", aba("Acessos").length === nAc - 1 && arq && arq.abas.Acessos.some(l => l[0] === "2024-01-02"), [nAc, aba("Acessos").length]);
+G.est.max.Exames = { r: 60000, c: 2 };   // 60 mil linhas × 113 colunas: a planilha passa da metade
+G.ctx.conferirEspaco();
+const mE = G.est.mails[G.est.mails.length - 1];
+T("aviso de espaço: e-mail quando passa de uma faixa (50%, 60%...)", /espaço usado/.test(mE.subject) && /Cabem ainda/.test(mE.body), mE.subject);
+const nM = G.est.mails.length; G.ctx.conferirEspaco();
+T("cada faixa avisa uma vez só", G.est.mails.length === nM);
+G.est.max.Exames = ex0;
+
+/* ---------------------------------------------------------------- dados para análise */
+parte("dados para análise");
+r = P(C, { acao: "dadosAnalise", pagina: 0 });
+T("coordenação: arquivo de análise com o cabeçalho das três partes e uma linha por exame", r.ok && r.cabecalho.length === G.ctx.CAB_ANALISE.length && r.linhas.length > 10 && r.linhas.every(l => l.length === r.cabecalho.length), r.ok && r.linhas.length);
+const iLT = r.cabecalho.indexOf("id_exame"), iD16 = r.cabecalho.indexOf("d16_situacao");
+T("cada linha traz o detalhe de cada dente", r.linhas.some(l => l[iLT] === "LT1" && l[iD16] === "presente"));
+r = P(ANA, { acao: "dadosAnalise", pagina: 0 });
+T("profissional: só os próprios exames", r.ok && r.linhas.every(l => r.cabecalho[0] === "codigo_individuo") && !r.linhas.some(l => /^PN/.test(l[iLT])), r.linhas.map(l => l[iLT]).slice(0, 5));
+r = P(C, { acao: "dadosAnalise", pagina: 0, de: "2030-01-01" });
+T("filtro por período", r.ok && r.linhas.length === 0);
+T("baixar dados fica registrado em Acessos", aba("Acessos").some(l => l[7] === "Baixou dados para análise"));
+
 /* ---------------------------------------------------------------- geral */
 parte("geral");
+G.ctx.escreverDicionario(G.ctx.planilha());
+const dic = aba("Dicionário").filter(l => l[0] === "Exames").map(l => String(l[1])).join(" · ");
+const semDic = G.ctx.CAB_EXAME.filter(k => !dic.split(" · ").includes(k) && !(/^vig_/.test(k) && dic.includes(k)) && !/^n_/.test(k));
+T("o Dicionário explica todas as colunas da aba Exames", !semDic.length && dic.includes("n_<tratamento>_indicado"), semDic);
 T("nenhuma célula gravada como fórmula em todo o teste", G.est.formulas.length === 0, G.est.formulas.slice(0, 5));
 T("nenhuma senha ou código de acesso gravado em texto na planilha", !JSON.stringify(G.est.sheets).includes(S.SENHA_TITULAR) && !JSON.stringify(G.est.sheets).includes(ANA.codigo));
 

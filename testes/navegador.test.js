@@ -216,7 +216,7 @@ for (let i = 0; i < 8; i++) {
   const l35 = aba("Exames").find(l => l[1] === cod35), j35 = l35 ? JSON.parse(l35.at(-1)) : null;
   T("o exame chega à planilha", !!j35, cod35);
   T("planilha: vigilância com a dor do odontograma e a fluorose marcada", j35 && j35.vigilancia.includes("Dor de dente") && j35.vigilancia.includes("Fluorose dentária moderada ou severa") && !j35.vigilancia.includes("Não identificado"), j35 && j35.vigilancia);
-  T("planilha: prótese com necessidade e uso", l35 && l35[col("Exames", "protese_superior")] === "Sim" && l35[col("Exames", "usa_protese_superior")] === "Não", l35 && [l35[col("Exames", "protese_superior")], l35[col("Exames", "usa_protese_superior")]]);
+  T("planilha: prótese com necessidade e uso", l35 && l35[col("Exames", "protese_sup_necessita")] === "sim" && l35[col("Exames", "protese_sup_usa")] === "não", l35 && [l35[col("Exames", "protese_sup_necessita")], l35[col("Exames", "protese_sup_usa")]]);
   T("planilha: CPO-D com o 46 em C e o 36 em P", j35 && j35.resultado.cpod.c === 1 && j35.resultado.cpod.p === 1, j35 && j35.resultado.cpod);
   await pg.waitForTimeout(200);
   T("no mesmo dia, o próximo exame sugere o local do anterior", await etapa(pg) === 0 && await vis("#sugLocal .sug-local"));
@@ -326,6 +326,93 @@ for (let i = 0; i < 8; i++) {
   await pg.fill("#acEmail", S.CARLA.email); await pg.click("#acReenviar"); await pg.waitForTimeout(800);
   const m = G.est.mails.filter(x => x.to === S.CARLA.email).pop();
   T("o link do e-mail é o endereço oficial, não o da página aberta", m && m.body.includes("https://luanabrisolla-creator.github.io/odontograma-v2/?recuperar=") && !m.body.includes("localhost"), m && m.body);
+  await ctx.close();
+
+  /* ------------------------------------------------ versão 37: sessão, envio em lote, erros e cópia de segurança */
+  parte("envio e sessão");
+  ({ ctx, pg } = await pagina(true));
+  await entrar(pg, S.ANA);
+  const ses = await pg.evaluate(() => JSON.parse(localStorage.getItem("odonto.sessao.v1")));
+  T("depois de entrar, o aparelho guarda a sessão e não o código de acesso", ses && /^[0-9a-f]{80}$/.test(ses.sessao) && !("codigo" in ses), ses && Object.keys(ses));
+  // Três exames guardados no aparelho (como se feitos sem internet), enviados de uma vez.
+  const regs = [0, 1, 2].map(i => Object.assign(exame({ id: "BV" + i, sufixo: "BVZ" + "ABC"[i] + "QXR2" }), { dono: S.idDe("ana@teste.org"), envio: { estado: "pendente", tentativas: 0 } }));
+  const pedidos = []; pg.on("request", q => { if (/script\.google\.com/.test(q.url()) && q.method() === "POST") pedidos.push(JSON.parse(q.postData()).acao); });
+  await pg.evaluate(l => { localStorage.setItem("odonto.exames.v1", JSON.stringify(l)); }, regs);
+  await pg.evaluate(() => sincronizar(true)); await pg.waitForTimeout(1200);
+  const est = await pg.evaluate(() => exames().map(e => e.envio.estado));
+  T("os exames vão num pedido só (envio em lote) e ficam como enviados", pedidos.filter(x => x === "enviarExames").length === 1 && est.every(x => x === "enviado") && ["BV0", "BV1", "BV2"].every(id => aba("Exames").some(l => l[0] === id)), [pedidos, est]);
+  // Servidor ocupado: o exame espera, sem avisar a cada tentativa.
+  await pg.evaluate(l => { localStorage.setItem("odonto.exames.v1", JSON.stringify(l)); }, [Object.assign(exame({ id: "BV9", sufixo: "BVZJQXR2" }), { dono: S.idDe("ana@teste.org"), envio: { estado: "pendente", tentativas: 0 } })]);
+  G.est.travaOcupada = true;
+  await pg.evaluate(() => { estado.avisouFalha = false; sincronizar(); }); await pg.waitForTimeout(800);
+  const e9 = await pg.evaluate(() => exames()[0].envio);
+  T("servidor ocupado: o exame fica guardado, marcado para tentar de novo em alguns segundos", e9.estado === "erro" && new Date(e9.proxima) - Date.now() < 30000, e9);
+  T("o aviso aparece uma vez, dizendo que o app tenta de novo sozinho", /tentar de novo sozinho/.test(await toast(pg)));
+  await pg.evaluate(() => { document.getElementById("toast").hidden = true; document.getElementById("toast").textContent = ""; sincronizar(); }); await pg.waitForTimeout(600);
+  T("na tentativa seguinte, sem aviso repetido", !(await pg.isVisible("#toast")) || !/tentar de novo/.test(await toast(pg)));
+  G.est.travaOcupada = false;
+  await pg.evaluate(() => sincronizar(true)); await pg.waitForTimeout(800);
+  T("quando finalmente sai, avisa que foi enviado", (await pg.evaluate(() => exames()[0].envio.estado)) === "enviado" && /enviado/.test(await toast(pg)), await toast(pg));
+  // Recusado pelo servidor (DSEI de outro cadastro): para de tentar e pede correção.
+  await pg.evaluate(l => { localStorage.setItem("odonto.exames.v1", JSON.stringify(l)); }, [Object.assign(exame({ id: "BVX", sufixo: "BVZKQXR2", dsei: "Leste de Roraima" }), { dono: S.idDe("ana@teste.org"), envio: { estado: "pendente", tentativas: 0 } })]);
+  await pg.evaluate(() => sincronizar(true)); await pg.waitForTimeout(800);
+  const ex = await pg.evaluate(() => exames()[0].envio);
+  T("exame recusado fica como \"Precisa de correção\", com o motivo", ex.estado === "corrigir" && /DSEI/.test(ex.erro), ex);
+  pedidos.length = 0; await pg.evaluate(() => sincronizar()); await pg.waitForTimeout(400);
+  T("e o app para de tentar enviar esse exame sozinho", !pedidos.includes("enviarExames"), pedidos);
+  await irAba(pg, "lista"); await pg.waitForTimeout(300);
+  T("Meus exames mostra \"Precisa de correção\" e o porquê", /Precisa de correção/.test(await pg.textContent("#lista")) && /Por que:/.test(await pg.textContent("#lista")));
+  // Exame parado há mais de 3 dias: aviso e cópia de segurança.
+  await pg.evaluate(() => { const l = exames(); l[0].atualizadoEm = new Date(Date.now() - 4 * 864e5).toISOString(); localStorage.setItem("odonto.exames.v1", JSON.stringify(l)); renderLista(); });
+  T("aviso de exame guardado há mais de 3 dias", /há mais de 3 dias/.test(await pg.textContent("#avisoParados")) && await pg.isVisible("#avisoParados"));
+  await pg.click("details.mais summary");
+  const [dl] = await Promise.all([pg.waitForEvent("download"), pg.click("#copiaBaixar")]);
+  const copia = JSON.parse(fs.readFileSync(await dl.path(), "utf8"));
+  T("cópia de segurança: arquivo com os exames não enviados (com o dono de cada um)", copia.app === "odontograma" && copia.exames.length === 1 && copia.exames[0].id === "BVX" && copia.exames[0].dono === S.idDe("ana@teste.org") && copia.exames[0].dentes, copia.exames && copia.exames.length);
+  const caminhoCopia = path.join(require("os").tmpdir(), "odontograma_copia_teste.json"); await dl.saveAs(caminhoCopia);
+  T("arquivo CSV: texto que começa com = vira texto (não fórmula)", await pg.evaluate(() => csv([["=HIPERLINK(1)", "-2", 5, -3]])).then(t => t.includes("'=HIPERLINK(1)") && t.includes("'-2") && t.includes(";-3")));
+  const [dx] = await Promise.all([pg.waitForEvent("download", { timeout: 20000 }), pg.click("#xlsMeus")]);
+  T("Baixar meus exames gera um arquivo do Excel", /\.xlsx$/.test(dx.suggestedFilename()) && fs.statSync(await dx.path()).size > 5000, dx.suggestedFilename());
+  const ExcelJS = require(path.join(raiz, "exceljs.min.js")), wbx = new ExcelJS.Workbook();
+  await wbx.xlsx.load(fs.readFileSync(await dx.path()));
+  const wsx = wbx.getWorksheet("Dados"), cabx = wsx.getRow(2).values.slice(1), lin = wsx.getRow(3).values.slice(1);
+  T("Excel: uma linha por exame, com as três partes e cada dente", cabx.includes("d16_situacao") && cabx.includes("n_art_indicado") && cabx[0] === "codigo_individuo" && wsx.rowCount >= 4 && lin.length > 100, [cabx.slice(0, 3), wsx.rowCount]);
+  T("sem erros na página", !pg.erros.length, pg.erros);
+  await ctx.close();
+  // Importar a cópia num aparelho novo.
+  ({ ctx, pg } = await pagina(true));
+  await entrar(pg, S.ANA);
+  await irAba(pg, "lista"); await pg.click("details.mais summary");
+  await pg.setInputFiles("#copiaImportar", caminhoCopia); await pg.waitForTimeout(1200);
+  T("importar a cópia num aparelho novo devolve os exames", (await pg.evaluate(() => exames().map(e => e.id))).includes("BVX"));
+  // Abrir da nuvem: a lista traz só o resumo; ao abrir, o exame completo vem do servidor.
+  await pg.evaluate(() => carregarNuvem(true)); await pg.waitForTimeout(800);
+  const res = await pg.evaluate(() => (estado.nuvem || []).find(e => e.id === "BV1"));
+  T("a lista da nuvem traz só o resumo do exame", res && !res.dentes && res.est);
+  await pg.evaluate(() => abrirDaNuvem("BV1")); await pg.waitForTimeout(800);
+  T("ao abrir um exame da nuvem, ele vem completo", await pg.evaluate(() => estado.ex.id === "BV1" && Object.keys(estado.ex.dentes).length === 52), await pg.evaluate(() => estado.ex.id));
+  T("sem erros na página (importar e abrir da nuvem)", !pg.erros.length, pg.erros);
+  await ctx.close();
+  // Sessão vencida: o app pede o código de novo e mantém os exames.
+  ({ ctx, pg } = await pagina(true));
+  await entrar(pg, S.BRUNO);
+  const sesB = await pg.evaluate(() => JSON.parse(localStorage.getItem("odonto.sessao.v1")).sessao);
+  const iB = aba("_sessoes").findIndex(l => l[1] === S.idDe("bruno@teste.org") && l[0] && l[5]);
+  aba("_sessoes").forEach(l => { if (l[1] === S.idDe("bruno@teste.org")) l[5] = new Date(Date.now() - 20 * 864e5).toISOString(); });
+  await pg.evaluate(l => { localStorage.setItem("odonto.exames.v1", JSON.stringify(l)); }, [Object.assign(exame({ id: "BVB", sufixo: "BVZMQXR2" }), { dono: S.idDe("bruno@teste.org"), envio: { estado: "pendente", tentativas: 0 } })]);
+  await pg.evaluate(() => sincronizar(true)); await pg.waitForTimeout(1000);
+  T("sessão vencida: o app volta para a tela de entrada com a explicação", !!sesB && iB >= 0 && /15 dias/.test(await pg.textContent("body")) && await pg.evaluate(() => !sessao()), await pg.evaluate(() => estAc.msg));
+  T("e o exame guardado continua no aparelho", (await pg.evaluate(() => exames().map(e => e.id))).includes("BVB"));
+  await ctx.close();
+  // Administração (titular): espaço, erros explicados e dados para análise.
+  ({ ctx, pg } = await pagina(false));
+  await entrar(pg, S.C);
+  await irAba(pg, "admin"); await pg.waitForTimeout(1200);
+  T("Administração tem \"Baixar dados para análise\"", await pg.isVisible("#admAnBaixar"));
+  T("Administração mostra a situação do servidor", /Situação do servidor/.test(await pg.textContent("#admConteudo")) && /✓ ok/.test(await pg.textContent("#admConteudo")));
+  const [da] = await Promise.all([pg.waitForEvent("download", { timeout: 30000 }), pg.click("#admAnBaixar")]);
+  T("dados para análise: arquivo do Excel com todos os exames", /analise.*\.xlsx$/.test(da.suggestedFilename()), da.suggestedFilename());
+  T("sem erros na Administração", !pg.erros.length, pg.erros);
   await ctx.close();
 
   await b.close(); srv.close();

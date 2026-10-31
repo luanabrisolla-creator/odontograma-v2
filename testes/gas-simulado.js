@@ -9,6 +9,8 @@ function criar(opcoes) {
   const rows = n => est.sheets[n];
   const ehFormula = v => typeof v === "string" && /^[=+\-@]/.test(v) && v.length > 1;
   const gravar = (nome, r, c, v) => { if (ehFormula(v)) est.formulas.push({ aba: nome, linha: r, coluna: c, valor: v }); return v; };
+  est.max = {};
+  const maxDe = n => (est.max[n] = est.max[n] || { r: 1000, c: 26 });
   function aba(nome0) {
     const self = {
       _nome: nome0,
@@ -30,7 +32,11 @@ function criar(opcoes) {
       },
       appendRow: l => { const R = rows(self._nome); const n = self.getLastRow(); R.length = n; R.push(l.map((x, j) => gravar(self._nome, n + 1, j + 1, x instanceof Date ? x.toISOString() : x))); return self; },
       insertRowAfter: i => { rows(self._nome).splice(i, 0, []); return self; },
-      deleteRows: (i, n) => { rows(self._nome).splice(i - 1, n); return self; },
+      deleteRows: (i, n) => { rows(self._nome).splice(i - 1, n); const m = maxDe(self._nome); m.r = Math.max(1, m.r - n); return self; },
+      // Como no Google: a aba nasce com 1000 linhas e 26 colunas (contam no limite de células mesmo vazias).
+      getMaxRows: () => Math.max(maxDe(self._nome).r, rows(self._nome).length),
+      getMaxColumns: () => { let c = maxDe(self._nome).c; for (const l of rows(self._nome)) if (l.length > c) c = l.length; return c; },
+      deleteColumns: (i, n) => { const m = maxDe(self._nome); m.c = Math.max(1, m.c - n); rows(self._nome).forEach(l => l.splice(i - 1, n)); return self; },
       setFrozenRows: () => self
     };
     return self;
@@ -44,17 +50,29 @@ function criar(opcoes) {
     setActiveSheet: a => { planilha._ativa = a.getName(); return a; },
     moveActiveSheet: pos => { const n = planilha._ativa; est.order = est.order.filter(x => x !== n); est.order.splice(pos - 1, 0, n); }
   };
+  est.extras = {};
+  // Planilha separada (ex.: arquivo de acessos): guarda as abas em est.extras[id].abas.
+  function criarExtra(nome, id) {
+    const abas = {};
+    const mk = n => ({ getName: () => n, getLastRow: () => abas[n].length, getLastColumn: () => Math.max(0, ...abas[n].map(l => l.length)),
+      getRange: (r, c, nr, nc) => ({ getValues: () => Array.from({ length: nr || 1 }, (_, i) => Array.from({ length: nc || 1 }, (_, j) => (abas[n][r - 1 + i] || [])[c - 1 + j] ?? "")),
+        setValues: v => { v.forEach((l, i) => { while (abas[n].length < r + i) abas[n].push([]); l.forEach((x, j) => { abas[n][r - 1 + i][c - 1 + j] = x; }); }); return { setFontWeight() {} }; }, setFontWeight() {} }),
+      setFrozenRows() {}, appendRow: l => { abas[n].push(l); } });
+    return { nome, abas, getId: () => id, getSheetByName: n => abas[n] ? mk(n) : null, insertSheet: n => { abas[n] = []; return mk(n); }, getSheets: () => Object.keys(abas).map(mk), deleteSheet() {} };
+  }
   const iter = l => { let i = 0; return { hasNext: () => i < l.length, next: () => l[i++] }; };
   const pastas = {};
   const pasta = nome => (pastas[nome] = pastas[nome] || { nome, arquivos: [], setSharing() {}, setDescription() {}, getFiles: () => iter(pastas[nome].arquivos.filter(f => !f.lixo)) });
   const ctx = {
-    SpreadsheetApp: { getActiveSpreadsheet: () => planilha },
+    SpreadsheetApp: { getActiveSpreadsheet: () => planilha,
+      create: nome => { const id = "planilha-" + (Object.keys(est.extras).length + 1); est.extras[id] = criarExtra(nome, id); return est.extras[id]; },
+      openById: id => { if (!est.extras[id]) throw new Error("planilha não encontrada"); return est.extras[id]; } },
     PropertiesService: { getScriptProperties: () => ({
       getProperty: k => est.props[k] == null ? null : String(est.props[k]),
       setProperty: (k, v) => { est.props[k] = String(v); },
       deleteProperty: k => { delete est.props[k]; },
       getProperties: () => Object.assign({}, est.props) }) },
-    LockService: { getScriptLock: () => ({ waitLock() {}, tryLock: () => true, releaseLock() {} }) },
+    LockService: { getScriptLock: () => ({ waitLock() {}, tryLock: () => !est.travaOcupada, releaseLock() {} }) },
     CacheService: { getScriptCache: () => ({
       get: k => { const x = est.cache[k]; return x && x.exp > Date.now() ? x.v : null; },
       put: (k, v, t) => { est.cache[k] = { v: String(v), exp: Date.now() + (t || 600) * 1000 }; },
@@ -64,7 +82,7 @@ function criar(opcoes) {
       Access: { PRIVATE: "PRIVATE" }, Permission: { NONE: "NONE" },
       getFoldersByName: n => iter(pastas[n] ? [pastas[n]] : []),
       createFolder: n => pasta(n),
-      getFileById: () => ({ makeCopy: (nome, p) => {
+      getFileById: () => ({ moveTo() {}, makeCopy: (nome, p) => {
         if (est.falharBackup) throw new Error("Drive indisponível (simulado)");
         const f = { nome, criado: new Date(), lixo: false, getName: () => nome, getDateCreated: () => f.criado, setTrashed: v => { f.lixo = v; } };
         p.arquivos.push(f); est.backups.push({ nome, copia: JSON.parse(JSON.stringify(est.sheets)) }); return f; } })
