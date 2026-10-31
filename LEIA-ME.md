@@ -1,7 +1,19 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 38 · servidor 37 · formato da planilha 25**.
+Versão atual: **app 38 · servidor 38 · formato da planilha 25**.
+
+## Servidor 38: planilha de análise sem perder a ligação com o Looker Studio
+
+- A planilha de análise passa a ser reescrita **dentro das mesmas abas**. Antes, cada atualização criava abas novas e apagava as antigas; o Looker Studio guarda o número interno de cada aba e mostrava "A planilha à qual você está tentando se conectar não existe mais".
+- Durante a atualização, a aba Sobre mostra "Atualização em andamento"; se essa linha continuar lá, a atualização não terminou (veja Erros recentes).
+- O botão "Atualizar agora" diz o motivo quando não consegue (por exemplo, falta autorizar no Apps Script) e o que fazer.
+
+**Como instalar o servidor 38:**
+1. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":38`.
+2. **GitHub, na raiz:** `Codigo.gs` e `LEIA-ME.md`. **Dentro de `testes`:** `servidor.test.js` e `gas-simulado.js`.
+3. **App:** Administração > Planilha de análise > **Atualizar agora**.
+4. **Looker Studio, uma vez só:** em cada fonte (Exames e Dentes), Recurso > Gerenciar fontes de dados adicionadas > Editar > **Editar conexão** > a mesma planilha e a mesma aba > **Reconectar** > Aplicar. Os gráficos continuam iguais.
 
 ## Versão 38: exame numa página só e planilha de análise (Looker Studio)
 
@@ -24,7 +36,7 @@ Versão atual: **app 38 · servidor 37 · formato da planilha 25**.
 - **Legenda do odontograma** em três colunas iguais (Dente, Faces, Marcas), com todos os ícones do mesmo tamanho e as linhas com o mesmo espaçamento.
 
 **Como instalar a 38:**
-1. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":37`.
+1. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":38` (a partir do servidor 38).
 2. **GitHub, na raiz:** `index.html`, `sw.js`, `Codigo.gs` e `LEIA-ME.md`.
 3. **GitHub, dentro de `testes`:** `servidor.test.js`, `navegador.test.js` e `gas-simulado.js`.
 4. **Actions:** ✓ verde. **Celular:** feche e abra o app com internet; em Conta deve aparecer "app versão 38 · servidor versão 37".
@@ -149,7 +161,7 @@ Use sempre **a mesma conta Google** em todos os passos (confira a foto no canto 
 4. Volte ao **Editor** (ícone `< >`). Na lista ao lado de **Executar**, escolha **testarInstalacao** e clique em **Executar**. Autorize: Revisar permissões > sua conta > Avançado > Acessar > Permitir. Deve aparecer **TUDO CERTO**.
 5. Escolha **ativarBackupSemanal** e clique em **Executar**, uma vez só. Toda segunda-feira de madrugada vai uma cópia da planilha para a pasta **Odontograma - backups** do Drive. As 8 mais recentes ficam guardadas.
 6. **Implantar > Nova implantação** > engrenagem > **App da Web**. Executar como: **Eu**. Quem pode acessar: **Qualquer pessoa**. Clique em **Implantar** e copie o endereço que termina em `/exec`.
-7. Abra esse endereço no navegador. Deve aparecer `"versao":37`. A situação completa da instalação aparece em Administração.
+7. Abra esse endereço no navegador. Deve aparecer `"versao":38`. A situação completa da instalação aparece em Administração.
 
 **B. App no GitHub**
 8. Crie um repositório e envie todos os arquivos da tabela acima, com os nomes exatos (sem "(1)").
@@ -244,7 +256,7 @@ As abas que começam com `_` são de uso interno do servidor: não mexa nelas.
 
 A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
-- **258 verificações do servidor**, num simulador do Apps Script e sem dados reais;
+- **262 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
 - **134 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
@@ -268,6 +280,7 @@ São dados de saúde, considerados sensíveis. O app não coleta nome, Cartão S
 
 ## Histórico resumido
 
+- **Servidor 38:** planilha de análise reescrita nas mesmas abas (o Looker Studio não perde a ligação).
 - **38 (servidor 37):** planilha de análise para o Looker Studio, refeita toda madrugada; exame numa página só, com partes liberadas aos poucos; resumo de cada dente; botão "Salvar e enviar"; janela no centro depois de salvar; legenda em três colunas.
 - **37.1 (servidores 35 e 36):** sessões guardadas separadas (sem perder entradas com muita gente ao mesmo tempo); cópia rápida dos exames e envio numa escrita só; aba Uso atualizada de madrugada; fila que não lota o limite do Google.
 - **37:** uma linha por exame (sem aba Dentes) e arquivo de análise em Excel; envio em lote com fila organizada; acesso que vence em 15 dias; erros explicados e avisos de espaço para a coordenação titular; cópia de segurança dos exames.

@@ -62,7 +62,7 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 37;
+const VERSAO = 38;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -101,7 +101,7 @@ function testarInstalacao() {
   let conta = '';
   try { conta = normEmail(Session.getEffectiveUser().getEmail()); } catch (x) { conta = ''; }
   if (conta) Logger.log('Conta Google em uso agora: ' + conta + (emailConfigurado() && conta !== normEmail(emailCfg()) ? '  ATENÇÃO: é diferente do EMAIL_COORDENACAO. Use a mesma conta (ou corrija em Propriedades do script).' : ''));
-  Logger.log('Senha da coordenação: ' + (chaveConfigurada() ? 'cadastrada' : (chaveCfg() ? 'MUITO CURTA: use pelo menos 6 caracteres' : 'FALTA CADASTRAR: Configurações do projeto > Propriedades do script > CHAVE_COORDENACAO')));
+  Logger.log('Senha da coordenação: ' + (chaveConfigurada() ? 'cadastrada' : (chaveCfg() ? 'MUITO CURTA: use pelo menos ' + SENHA_MINIMA + ' caracteres' : 'FALTA CADASTRAR: Configurações do projeto > Propriedades do script > CHAVE_COORDENACAO')));
   Logger.log('Planilha: ' + (d.planilha === 'ok' ? SpreadsheetApp.getActiveSpreadsheet().getName() : d.planilha));
   Logger.log('Envio de e-mails: ' + (d.email_envio === 'ok' ? MailApp.getRemainingDailyQuota() + ' e-mails disponíveis hoje' : d.email_envio));
   const login = autenticar({ email: emailCfg(), codigo: chaveCfg() });
@@ -234,7 +234,9 @@ function arquivarAcessos() {
  * - aba Dentes: uma linha por dente de cada exame válido (todos os dentes da dentição registrada);
  * - aba Sobre: quando foi atualizada e quantos exames e dentes tem.
  * O Looker Studio lê esta cópia, nunca a planilha do app: assim ele não atrapalha os envios e a cópia pode ser
- * refeita a qualquer momento. No fim, o servidor confere se os números batem com a planilha do app. */
+ * refeita a qualquer momento. No fim, o servidor confere se os números batem com a planilha do app.
+ * As abas são sempre as MESMAS (o conteúdo é reescrito dentro delas): o Looker guarda o número interno de cada aba
+ * e perderia a ligação se a aba fosse apagada e criada de novo. */
 const ANALISE_NOME = 'Odontograma - análise';
 // (CAB_EXAME vem do trecho compartilhado, no fim do arquivo: por isso é calculado na hora)
 function cabAnExames() { return CAB_EXAME.filter(function (k) { return k !== 'resumo_json' && k !== 'dados_completos_json'; }); }
@@ -290,11 +292,12 @@ function atualizarAnalise() {
     est.erro = 'A planilha de análise ficaria com ' + celulas + ' células, acima do limite. A versão anterior foi mantida.';
     guardarEstadoAnalise(est); throw new Error('planilha de análise: ' + est.erro);
   }
-  const ss = planilhaAnalise();
-  reescreverAba(ss, 'Exames', cabAnExames(), exames, 0);
-  reescreverAba(ss, 'Dentes', CAB_AN_DENTES, dentes, 1);
+  const ss = planilhaAnalise(), comeco = new Date();
+  escreverAbaNoLugar(ss, 'Sobre', ['item', 'valor'], [['Situação', 'Atualização em andamento (começou em ' + fmtDia(comeco) + ' ' + fmtHora(comeco) + '). Se esta linha continuar aqui, a atualização não terminou: veja Erros recentes na Administração do app.']], 2);
+  escreverAbaNoLugar(ss, 'Exames', cabAnExames(), exames, 0);
+  escreverAbaNoLugar(ss, 'Dentes', CAB_AN_DENTES, dentes, 1);
   const agora = new Date();
-  reescreverAba(ss, 'Sobre', ['item', 'valor'], [
+  escreverAbaNoLugar(ss, 'Sobre', ['item', 'valor'], [
     ['O que é', 'Cópia dos exames válidos do Odontograma para análise (Looker Studio, Excel). Refeita toda madrugada: não edite, as mudanças se perdem.'],
     ['Atualizada em (horário de Brasília)', fmtDia(agora) + ' ' + fmtHora(agora)],
     ['Exames válidos', String(exames.length)], ['Linhas de dentes', String(dentes.length)],
@@ -303,7 +306,6 @@ function atualizarAnalise() {
     ['Dentes', 'Uma linha por dente de cada exame (todos os dentes da dentição registrada). Use id_exame para ligar com a aba Exames.']
   ], 2);
   ss.getSheets().forEach(function (a) { if (['Exames', 'Dentes', 'Sobre'].indexOf(a.getName()) < 0 && ss.getSheets().length > 3) { try { ss.deleteSheet(a); } catch (x) {} } });
-  cortarVaziosEm(ss);
   SpreadsheetApp.flush();
   // Conferência: o que ficou na planilha de análise bate com a planilha do app?
   const nEx = ss.getSheetByName('Exames').getLastRow() - 1, nDe = ss.getSheetByName('Dentes').getLastRow() - 1;
@@ -315,22 +317,36 @@ function atualizarAnalise() {
   if (!est.ok) throw new Error('planilha de análise: ' + est.erro);
   return est;
 }
+/** Reescreve o conteúdo de uma aba sem apagá-la (o Looker continua ligado a ela). @param {any} ss @param {string} nome @param {any[]} cab @param {any[][]} linhas @param {number} posicao */
+function escreverAbaNoLugar(ss, nome, cab, linhas, posicao) {
+  let a = ss.getSheetByName(nome);
+  if (!a) { a = ss.insertSheet(nome); try { ss.setActiveSheet(a); ss.moveActiveSheet(posicao + 1); } catch (x) {} }
+  const nl = Math.max(linhas.length + 1, 2), nc = cab.length;
+  if (a.getMaxRows() < nl) a.insertRowsAfter(a.getMaxRows(), nl - a.getMaxRows());
+  if (a.getMaxColumns() < nc) a.insertColumnsAfter(a.getMaxColumns(), nc - a.getMaxColumns());
+  a.getRange(1, 1, 1, nc).setValues([cab]).setFontWeight('bold');
+  a.setFrozenRows(1);
+  if (!linhas.length) a.getRange(2, 1, 1, nc).clearContent();
+  for (let i = 0; i < linhas.length; i += 4000) {
+    const bloco = linhas.slice(i, i + 4000).map(function (l) { const x = linhaSegura(l); while (x.length < nc) x.push(''); return x.slice(0, nc); });
+    a.getRange(2 + i, 1, bloco.length, nc).setValues(bloco);
+  }
+  // O que sobrou da versão anterior (linhas abaixo e colunas à direita) sai.
+  if (a.getMaxRows() > nl) a.deleteRows(nl + 1, a.getMaxRows() - nl);
+  if (a.getMaxColumns() > nc) a.deleteColumns(nc + 1, a.getMaxColumns() - nc);
+}
 /** @param {any} est */
 function guardarEstadoAnalise(est) { PropertiesService.getScriptProperties().setProperty('ANALISE_ESTADO', JSON.stringify(est)); }
 function estadoAnalise() { try { return JSON.parse(propriedade('ANALISE_ESTADO') || 'null'); } catch (x) { return null; } }
-/** Corta linhas e colunas vazias de uma planilha (para a de análise não gastar espaço à toa). @param {any} ss */
-function cortarVaziosEm(ss) {
-  ss.getSheets().forEach(function (a) {
-    const lr = Math.max(a.getLastRow(), 2), lc = Math.max(a.getLastColumn(), 1), mr = a.getMaxRows(), mc = a.getMaxColumns();
-    if (mr > lr) a.deleteRows(lr + 1, mr - lr);
-    if (mc > lc) a.deleteColumns(lc + 1, mc - lc);
-  });
-}
 /** @param {any} d @param {any} u */
 function atualizarAnalisePelaTitular(d, u) {
   if (!u.titular) return { ok: false, erro: 'Só a coordenação titular atualiza a planilha de análise.' };
   try { return { ok: true, analise: atualizarAnalise() }; }
-  catch (err) { const e = registrarErro(err, 'atualizar planilha de análise', u); return { ok: false, erro: e.mensagem, analise: estadoAnalise() }; }
+  catch (err) {
+    // Para a titular, a mensagem diz o motivo e o que fazer (ex.: falta autorizar no editor do Apps Script).
+    const e = registrarErro(err, 'atualizar planilha de análise', u), t = TIPOS_ERRO[e.tipo] || TIPOS_ERRO.nao_identificado;
+    return { ok: false, erro: t.titulo + '. ' + (e.tipo === 'autorizacao' ? 'No Apps Script, escolha atualizarPlanilhaAnalise, clique em Executar e autorize.' : t.fazer), analise: estadoAnalise() || {} };
+  }
 }
 // Rode no editor para criar ou refazer a planilha de análise agora.
 function atualizarPlanilhaAnalise() {
