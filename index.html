@@ -62,6 +62,7 @@ input:disabled,select:disabled{background:var(--surface-2);color:var(--ink);opac
 .prim:disabled{opacity:.5;cursor:not-allowed}
 .sec{background:var(--surface);color:var(--ink);border:1px solid var(--line);padding:10px 16px;cursor:pointer;min-height:44px}
 .sec:disabled{opacity:.5;cursor:not-allowed}
+a.sec{display:inline-flex;align-items:center;text-decoration:none;border-radius:12px}
 .link{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer;font-size:.875rem}
 .perigo{color:var(--carie)}
 
@@ -749,13 +750,15 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .seg.pequeno button[data-val="realizado"][aria-pressed="true"]{background:var(--sesai-verde)}
 
 /* etapas do exame: cada uma com uma cor da Saúde Indígena */
-.etapa:nth-child(1){--cor:var(--sesai-verde)}.etapa:nth-child(2){--cor:var(--sesai-azul)}.etapa:nth-child(3){--cor:var(--sesai-vermelho)}.etapa:nth-child(4){--cor:#B88A00}
+.etapa:nth-child(1){--cor:var(--sesai-verde)}.etapa:nth-child(2){--cor:var(--sesai-azul)}.etapa:nth-child(3){--cor:var(--sesai-vermelho)}.etapa:nth-child(4){--cor:#B88A00}.etapa:nth-child(5){--cor:#0E7C86}.etapa:nth-child(6){--cor:var(--marinho)}
 .etapa.feita i{background:var(--cor);color:#fff}
 .etapa.atual i{background:#fff;color:var(--cor)}
 #blocoLocal{border-top:5px solid var(--sesai-verde)}
 #blocoInd{border-top:5px solid var(--sesai-azul)}
 #blocoOdonto{border-top:5px solid var(--sesai-vermelho)}
-#blocoCond,#blocoCond~.bloco{border-top:5px solid var(--sesai-amarelo)}
+#blocoCond,#blocoProtese{border-top:5px solid var(--sesai-amarelo)}
+#blocoGerais{border-top:5px solid #0E7C86}
+#blocoRevisao{border-top:5px solid var(--marinho)}
 
 /* exame numa página só: partes ainda bloqueadas ficam em cinza, com cadeado */
 #aba-exame .bloco{scroll-margin-top:96px}
@@ -4722,6 +4725,18 @@ function blocoErros(r) {
 }
 const dataHoraErro = t => { const m = /^(\d{4})-(\d{2})-(\d{2}) ?(.*)$/.exec(String(t || "")); return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}`.trim() : String(t || ""); };
 // Dados para análise: arquivo do Excel com uma linha por exame (as três partes).
+// Planilha de análise (só a coordenação titular): a cópia que o Looker Studio lê, refeita toda madrugada.
+function blocoPlanAnalise(a) {
+  if (a == null) return "";
+  const st = !a.em ? `<p class="dica" style="margin:4px 0 0">Ainda não foi criada. Toque em <b>Criar agora</b> (ou espere a tarefa da madrugada).</p>`
+    : `<p class="dica" style="margin:4px 0 0">Atualizada em <b>${esc(fmtDataHora(a.em))}</b> · ${fmtN(a.exames || 0)} exames · ${fmtN(a.dentes || 0)} linhas de dentes · ${a.pct || 0}% do espaço</p>`
+      + (a.ok ? "" : `<p class="dica" style="margin:6px 0 0;color:var(--erro-ink)"><b>Não foi atualizada:</b> ${esc(a.erro || "veja em Erros recentes")}</p>`);
+  return `<div class="bloco"><h3>Planilha de análise (Looker Studio)</h3>
+    <p class="dica" style="margin:4px 0 0">Cópia dos exames válidos, com uma linha por exame e uma linha por dente, refeita toda madrugada. É ela que o Looker Studio lê; a planilha do app não é tocada.</p>
+    ${st}
+    <div class="acoes-l" style="margin-top:10px">${a.url ? `<a class="sec" href="${esc(a.url)}" target="_blank" rel="noopener">Abrir planilha</a>` : ""}<button class="prim" id="admPlanAnalise">${a.em ? "Atualizar agora" : "Criar agora"}</button></div>
+    <p class="dica" id="admPlanStatus" aria-live="polite"></p></div>`;
+}
 function blocoAnalise() {
   return `<div class="bloco"><h3>Dados para análise</h3><p class="dica" style="margin:4px 0 10px">Arquivo do Excel com uma linha por exame: o exame, as contas prontas e cada dente. Escolha o período (ou deixe em branco para todos).</p>
     <div class="grade"><label class="campo">De<input type="date" id="admAnDe"></label><label class="campo">Até<input type="date" id="admAnAte"></label>
@@ -4729,6 +4744,12 @@ function blocoAnalise() {
     <div class="acoes-l"><button class="prim" id="admAnBaixar">Baixar dados para análise (Excel)</button></div><p class="dica" id="admAnStatus" aria-live="polite"></p></div>`;
 }
 document.addEventListener("click", async e => {
+  if (e.target.id === "admPlanAnalise") {
+    e.target.disabled = true; $("#admPlanStatus").textContent = "Atualizando… pode levar alguns minutos.";
+    try { const j = await api("atualizarAnalise", {}, {tempo: 360000}); toast(`Planilha de análise atualizada: ${fmtN(j.analise.exames)} exames.`); carregarAdmin(); }
+    catch (err) { $("#admPlanStatus").textContent = err.message; e.target.disabled = false; }
+    return;
+  }
   if (e.target.id === "admAnBaixar") { e.target.disabled = true; await baixarAnalise({de: $("#admAnDe").value, ate: $("#admAnAte").value, dsei: $("#admAnDsei").value}, $("#admAnStatus")); e.target.disabled = false; return; }
   const c = e.target.closest("[data-copiar-erro]");
   if (c) { const g = ((estAdm.dados || {}).erros || {}).grupos[Number(c.dataset.copiarErro)] || {}; return copiarTexto(g.exemplos.map(x => `${x.data} ${x.hora} · ${x.acao} · ${x.quem}\n${x.detalhe}`).join("\n\n")); }
@@ -4807,7 +4828,7 @@ function renderAdmin() {
   const senha = "";
   const aud = d.auditoria && d.auditoria.falhas ? `<div class="aviso-servidor" style="padding:12px 14px;border-radius:10px"><b>${d.auditoria.falhas} ${d.auditoria.falhas === 1 ? "registro" : "registros"} de acesso não ${d.auditoria.falhas === 1 ? "pôde" : "puderam"} ser gravado${d.auditoria.falhas === 1 ? "" : "s"} na aba Acessos.</b> O atendimento continuou normalmente, mas a trilha de auditoria ficou incompleta. Última falha: ${esc(textoFalha(d.auditoria.ultima))}. Isso costuma acontecer só quando duas pessoas usam o app no mesmo instante em que a aba Acessos está sendo recriada (depois de publicar o servidor ou reorganizar a planilha).${d.titular ? ` <button class="sec mini" type="button" id="limparAuditoria" style="margin-left:6px">Entendi, limpar aviso</button>` : ""}</div>` : "";
   setTimeout(mostrarDiagnostico, 0);
-  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
+  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + blocoPlanAnalise(d.analise) + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
   if ($("#admRtDsei")) preencherDsei($("#admRtDsei"), "", "");
   if ($("#admCoordDsei")) preencherDsei($("#admCoordDsei"), "", "");
 }

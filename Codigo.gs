@@ -62,7 +62,7 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 36;
+const VERSAO = 37;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -170,6 +170,7 @@ function tarefaDiaria() {
   try { r.espaco = conferirEspaco(); } catch (x) { registrarErro(x, 'tarefaDiaria: espaço', null); }
   try { r.uso = recalcularUso(planilha(), lerResumos()); } catch (x) { registrarErro(x, 'tarefaDiaria: aba Uso', null); }
   try { lerIndice(); } catch (x) {}
+  try { r.analise = atualizarAnalise().exames; } catch (x) { registrarErro(x, 'tarefaDiaria: planilha de análise', null); }
   PropertiesService.getScriptProperties().setProperty('TAREFA_DIARIA_EM', new Date().toISOString());
   return r;
 }
@@ -226,6 +227,117 @@ function arquivarAcessos() {
   return velhos.length;
 }
 
+/* ---------- planilha de análise (para o Looker Studio) ----------
+ * Uma planilha separada, "Odontograma - análise", na pasta de backups e só da coordenação titular, refeita toda
+ * madrugada pela tarefa diária (e pelo botão "Atualizar agora" da Administração):
+ * - aba Exames: uma linha por exame válido, com as mesmas colunas da aba Exames do app, sem as duas colunas do sistema;
+ * - aba Dentes: uma linha por dente de cada exame válido (todos os dentes da dentição registrada);
+ * - aba Sobre: quando foi atualizada e quantos exames e dentes tem.
+ * O Looker Studio lê esta cópia, nunca a planilha do app: assim ele não atrapalha os envios e a cópia pode ser
+ * refeita a qualquer momento. No fim, o servidor confere se os números batem com a planilha do app. */
+const ANALISE_NOME = 'Odontograma - análise';
+// (CAB_EXAME vem do trecho compartilhado, no fim do arquivo: por isso é calculado na hora)
+function cabAnExames() { return CAB_EXAME.filter(function (k) { return k !== 'resumo_json' && k !== 'dados_completos_json'; }); }
+const CAB_AN_DENTES = ['id_exame', 'codigo_individuo', 'numero_exame', 'data_exame', 'dsei', 'polo_base', 'aldeia_comunidade', 'faixa_etaria', 'sexo', 'idade_anos',
+  'dente', 'tipo', 'situacao', 'sigla', 'tem_carie', 'faces_com_carie', 'face_oclusal_incisal', 'face_vestibular', 'face_lingual_palatina', 'face_mesial', 'face_distal', 'dor', 'abscesso_fistula',
+  'procedimentos_indicados', 'procedimentos_realizados', 'observacao'];
+const ANALISE_LIMITE = 9000000; // o Google aceita 10 milhões de células; deixa folga
+/** Todos os exames válidos, completos (com os dentes), lidos da planilha do app em blocos. */
+function examesValidosCompletos() {
+  const aba = abaExames(), n = aba.getLastRow() - 1, col = colEx().dados_completos_json; /** @type {any} */ const porId = {};
+  for (let i = 0; i < n; i += 1000) {
+    aba.getRange(2 + i, col, Math.min(1000, n - i), 1).getValues().forEach(function (v, k) {
+      const r = parseExame(v[0], 2 + i + k);
+      if (r && (!porId[r.id] || String(r.atualizadoEm || '') > String(porId[r.id].atualizadoEm || ''))) porId[r.id] = r;
+    });
+  }
+  const l = Object.keys(porId).map(function (k) { return porId[k]; });
+  // Número do exame de cada pessoa igual ao da planilha do app (pela ordem dos exames válidos).
+  const num = {}; lerResumos().forEach(function (r) { num[r.id] = r.numeroExame; });
+  return l.filter(exameValido).map(function (r) { if (num[r.id]) r.numeroExame = num[r.id]; return r; })
+    .sort(function (a, b) { return String(a.dataExame).localeCompare(String(b.dataExame)) || String(a.id).localeCompare(String(b.id)); });
+}
+/** @param {any} e */
+function linhasDentesAnalise(e) {
+  const o = valoresDoExame(e, false);
+  return linhasDentes(e).map(function (l) {
+    /** @type {any} */ const d = {}; CAB_DENTE.forEach(function (k, i) { d[k] = l[i]; });
+    // Contas prontas para o Looker: faces com cárie (ativa, crônica ou restaurada com cárie) neste dente.
+    const x = (e.dentes || {})[l[CAB_DENTE.indexOf('dente')]] || {}, fs = x.status === 'presente' ? x.faces || {} : {};
+    d.faces_com_carie = ['O', 'V', 'L', 'M', 'D'].filter(function (f) { return ['ca', 'cc', 'restc'].indexOf(fs[f]) >= 0; }).length;
+    d.tem_carie = d.faces_com_carie > 0 ? 'sim' : 'não';
+    return CAB_AN_DENTES.map(function (k) { return k in d ? d[k] : o[k] == null ? '' : o[k]; });
+  });
+}
+function planilhaAnalise() {
+  let id = propriedade('ANALISE_ID'), ss = null;
+  try { if (id) ss = SpreadsheetApp.openById(id); } catch (x) { ss = null; }
+  if (!ss) {
+    ss = SpreadsheetApp.create(ANALISE_NOME);
+    try { const pastas = DriveApp.getFoldersByName(PASTA_BACKUP); const pasta = pastas.hasNext() ? pastas.next() : DriveApp.createFolder(PASTA_BACKUP); DriveApp.getFileById(ss.getId()).moveTo(pasta); } catch (x) {}
+    PropertiesService.getScriptProperties().setProperty('ANALISE_ID', ss.getId());
+  }
+  return ss;
+}
+/** Refaz a planilha de análise e confere. Devolve o estado (também guardado em ANALISE_ESTADO). */
+function atualizarAnalise() {
+  const inicio = Date.now(), regs = examesValidosCompletos();
+  const exames = regs.map(function (e) { const o = valoresDoExame(e, false); return cabAnExames().map(function (k) { return o[k] == null ? '' : o[k]; }); });
+  /** @type {any[]} */ let dentes = []; regs.forEach(function (e) { dentes = dentes.concat(linhasDentesAnalise(e)); });
+  const celulas = (exames.length + 1) * cabAnExames().length + (dentes.length + 1) * CAB_AN_DENTES.length;
+  /** @type {any} */ const est = { em: new Date().toISOString(), exames: exames.length, dentes: dentes.length, celulas: celulas, pct: Math.floor(celulas / ANALISE_LIMITE * 100), ok: false };
+  if (celulas > ANALISE_LIMITE) {
+    est.erro = 'A planilha de análise ficaria com ' + celulas + ' células, acima do limite. A versão anterior foi mantida.';
+    guardarEstadoAnalise(est); throw new Error('planilha de análise: ' + est.erro);
+  }
+  const ss = planilhaAnalise();
+  reescreverAba(ss, 'Exames', cabAnExames(), exames, 0);
+  reescreverAba(ss, 'Dentes', CAB_AN_DENTES, dentes, 1);
+  const agora = new Date();
+  reescreverAba(ss, 'Sobre', ['item', 'valor'], [
+    ['O que é', 'Cópia dos exames válidos do Odontograma para análise (Looker Studio, Excel). Refeita toda madrugada: não edite, as mudanças se perdem.'],
+    ['Atualizada em (horário de Brasília)', fmtDia(agora) + ' ' + fmtHora(agora)],
+    ['Exames válidos', String(exames.length)], ['Linhas de dentes', String(dentes.length)],
+    ['Espaço usado', est.pct + '% (o Google aceita até 10 milhões de células)'],
+    ['Exames', 'Uma linha por exame válido. As colunas são as mesmas da aba Exames do app; o Dicionário do app explica cada uma.'],
+    ['Dentes', 'Uma linha por dente de cada exame (todos os dentes da dentição registrada). Use id_exame para ligar com a aba Exames.']
+  ], 2);
+  ss.getSheets().forEach(function (a) { if (['Exames', 'Dentes', 'Sobre'].indexOf(a.getName()) < 0 && ss.getSheets().length > 3) { try { ss.deleteSheet(a); } catch (x) {} } });
+  cortarVaziosEm(ss);
+  SpreadsheetApp.flush();
+  // Conferência: o que ficou na planilha de análise bate com a planilha do app?
+  const nEx = ss.getSheetByName('Exames').getLastRow() - 1, nDe = ss.getSheetByName('Dentes').getLastRow() - 1;
+  const validos = lerIndice().filter(function (r) { return r.situacao !== 'cancelado'; }).length;
+  est.url = ss.getUrl(); est.segundos = Math.round((Date.now() - inicio) / 1000);
+  est.ok = nEx === exames.length && nDe === dentes.length && exames.length === validos;
+  if (!est.ok) est.erro = 'Conferência: planilha de análise com ' + nEx + ' exames e ' + nDe + ' dentes; esperado ' + validos + ' exames válidos e ' + dentes.length + ' dentes.';
+  guardarEstadoAnalise(est);
+  if (!est.ok) throw new Error('planilha de análise: ' + est.erro);
+  return est;
+}
+/** @param {any} est */
+function guardarEstadoAnalise(est) { PropertiesService.getScriptProperties().setProperty('ANALISE_ESTADO', JSON.stringify(est)); }
+function estadoAnalise() { try { return JSON.parse(propriedade('ANALISE_ESTADO') || 'null'); } catch (x) { return null; } }
+/** Corta linhas e colunas vazias de uma planilha (para a de análise não gastar espaço à toa). @param {any} ss */
+function cortarVaziosEm(ss) {
+  ss.getSheets().forEach(function (a) {
+    const lr = Math.max(a.getLastRow(), 2), lc = Math.max(a.getLastColumn(), 1), mr = a.getMaxRows(), mc = a.getMaxColumns();
+    if (mr > lr) a.deleteRows(lr + 1, mr - lr);
+    if (mc > lc) a.deleteColumns(lc + 1, mc - lc);
+  });
+}
+/** @param {any} d @param {any} u */
+function atualizarAnalisePelaTitular(d, u) {
+  if (!u.titular) return { ok: false, erro: 'Só a coordenação titular atualiza a planilha de análise.' };
+  try { return { ok: true, analise: atualizarAnalise() }; }
+  catch (err) { const e = registrarErro(err, 'atualizar planilha de análise', u); return { ok: false, erro: e.mensagem, analise: estadoAnalise() }; }
+}
+// Rode no editor para criar ou refazer a planilha de análise agora.
+function atualizarPlanilhaAnalise() {
+  const r = atualizarAnalise();
+  Logger.log('Planilha de análise atualizada: ' + r.exames + ' exames, ' + r.dentes + ' linhas de dentes, ' + r.pct + '% do espaço, em ' + r.segundos + ' s.\n' + r.url);
+}
+
 /* ---------- erros: explicados para a coordenação titular ----------
  * O profissional vê só uma mensagem simples. O detalhe técnico fica na aba _erros, a Administração mostra o motivo em
  * linguagem simples e o que fazer, e a coordenação titular recebe um e-mail (no máximo um a cada 6 horas). */
@@ -238,10 +350,12 @@ const TIPOS_ERRO = {
   planilha_alterada: { titulo: 'A planilha foi alterada à mão', motivo: 'Uma aba foi renomeada, uma coluna foi apagada ou o cabeçalho mudou.', fazer: 'Desfazer a mudança (na planilha: Arquivo > Histórico de versões).' },
   limite_planilha: { titulo: 'A planilha está perto do limite', motivo: 'O Google aceita até 10 milhões de células por planilha.', fazer: 'Avise a equipe técnica para planejar uma planilha nova.' },
   autorizacao: { titulo: 'Falta autorização do Google', motivo: 'O código novo foi colado, mas ainda não foi autorizado.', fazer: 'No Apps Script, rode testarInstalacao, autorize e publique pelo lápis.' },
+  analise: { titulo: 'A planilha de análise não foi atualizada', motivo: 'A cópia para o Looker Studio ("Odontograma - análise") não foi refeita ou os números não bateram com a planilha do app.', fazer: 'Em Administração, toque em "Atualizar agora". Se continuar, copie o detalhe e mande para a equipe técnica. Os exames do app não foram afetados.' },
   nao_identificado: { titulo: 'Erro não identificado', motivo: 'Algo inesperado aconteceu no servidor.', fazer: 'Copie o detalhe técnico e mande para a equipe técnica.' }
 };
 /** @param {string} t */
 function tipoDoErro(t) {
+  if (/planilha de análise/i.test(t)) return 'analise';
   if (/lock|trava|bloqueio/i.test(t)) return 'fila';
   if (/too many times|muitas vezes|quota|cota/i.test(t)) return /mail|e-mail|email/i.test(t) ? 'cota_email' : 'cota';
   if (/10000000|10\.000\.000|células|cells.*limit|limit.*cells/i.test(t)) return 'limite_planilha';
@@ -428,8 +542,9 @@ function reescreverAba(ss, nome, cab, linhas, posicao) {
   }
   const velha = ss.getSheetByName(nome); if (velha) ss.deleteSheet(velha);
   nova.setName(nome);
-  if (MEMO) { if (MEMO.abas) delete MEMO.abas[nome]; if (nome === 'Exames') { MEMO.abaEx = null; MEMO.indice = null; MEMO.resumos = null; MEMO.completos = null; MEMO.proxLinha = null; MEMO.emendas = {}; MEMO.escrevendo = false; } }
-  if (nome === 'Exames') { marcarVersaoDados(); esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+'); }
+  const principal = (function () { try { return ss.getId() === planilha().getId(); } catch (x) { return true; } })();
+  if (MEMO && principal) { if (MEMO.abas) delete MEMO.abas[nome]; if (nome === 'Exames') { MEMO.abaEx = null; MEMO.indice = null; MEMO.resumos = null; MEMO.completos = null; MEMO.proxLinha = null; MEMO.emendas = {}; MEMO.escrevendo = false; } }
+  if (nome === 'Exames' && principal) { marcarVersaoDados(); esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+'); }
   if (posicao != null) { try { ss.setActiveSheet(nova); ss.moveActiveSheet(posicao + 1); } catch (x) {} }
   return nova;
 }
@@ -599,6 +714,7 @@ const ACOES = {
   enviarExames:   { escreve: true, fn: enviarExames },
   dadosAnalise:   { fn: dadosAnalise },
   limparErros:    { perfis: ['coord'], escreve: true, fn: limparErros },
+  atualizarAnalise: { perfis: ['coord'], fn: atualizarAnalisePelaTitular },
   painel:         { fn: painel },
   meusExames:     { fn: meusExames },
   verExame:       { fn: verExame },
@@ -1922,7 +2038,7 @@ function admin(d, u) {
   return { ok: true, usuarios: us.map(publico), acessos: acessos, dseisRT: dseisRT, qtdEquipe: qtdEquipe, titular: !!u.titular, convites: listaConvites(u, ''), populacao: populacaoInfo(d, u),
     reorganizacaoPendente: !formatoAtual(), senhaCurta: !!u.titular && chaveCfg().length < SENHA_MINIMA,
     instalacao: diagnostico(), versaoServidor: VERSAO,
-    erros: u.titular ? errosRecentes() : null, espaco: u.titular ? espacoPlanilha() : null,
+    erros: u.titular ? errosRecentes() : null, espaco: u.titular ? espacoPlanilha() : null, analise: u.titular ? (estadoAnalise() || {}) : null,
     tarefaDiaria: u.titular ? { criada: (function () { try { return !garantirTarefaDiaria(); } catch (x) { return false; } })(), ultima: propriedade('TAREFA_DIARIA_EM') || '' } : null,
     auditoria: { falhas: Number(propriedade('AUDITORIA_FALHAS') || 0), ultima: propriedade('AUDITORIA_ULTIMA') || '' } };
 }

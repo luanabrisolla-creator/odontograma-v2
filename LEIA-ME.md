@@ -1,11 +1,19 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 38 · servidor 36 · formato da planilha 25**.
+Versão atual: **app 38 · servidor 37 · formato da planilha 25**.
 
-## Versão 38: exame numa página só
+## Versão 38: exame numa página só e planilha de análise (Looker Studio)
 
-Só o app muda (o servidor continua o 36, e a planilha não muda).
+### Planilha de análise (servidor 37)
+- O servidor cria e mantém uma planilha separada, **"Odontograma - análise"**, na pasta "Odontograma - backups" do Drive. Ela é só da conta dona da planilha (a coordenação titular).
+- Abas: **Exames** (uma linha por exame válido, com as mesmas colunas da aba Exames do app, sem as duas colunas do sistema), **Dentes** (uma linha por dente de cada exame válido: situação, faces, dor, abscesso, tratamentos indicados e realizados, observação, mais `tem_carie` e `faces_com_carie`; cada linha traz também id do exame, data, DSEI, polo, aldeia, faixa etária, sexo e idade) e **Sobre** (quando foi atualizada e quantos exames tem).
+- É refeita **toda madrugada** pela tarefa diária e pelo botão **Atualizar agora** em Administração (só a titular). No fim, o servidor confere se o número de exames bate com a planilha do app; se não bater, aparece em Erros recentes. A versão anterior só é trocada quando a nova está completa.
+- O **Looker Studio lê esta cópia**, nunca a planilha do app: ele não atrapalha os envios dos dentistas.
+- Espaço: com todos os dentes, um exame de dentição mista ocupa 52 linhas na aba Dentes; a planilha de análise comporta cerca de 6 mil exames de dentição mista (mais, se houver exames de dentição decídua ou permanente). A Administração mostra o espaço usado.
+- No editor do Apps Script, `atualizarPlanilhaAnalise` refaz a planilha na hora e mostra o endereço dela no registro.
+
+### Exame numa página só (app 38)
 - **O exame fica todo numa página, de cima para baixo**, sem o botão "Continuar". As partes que ainda não podem ser preenchidas aparecem em cinza, com um cadeado e o que falta completar antes. Ao completar uma parte, a próxima fica colorida e a página desce sozinha até ela.
 - **Vigilância e prótese** são liberadas junto com o odontograma. Depois do odontograma a página **não** desce sozinha: o profissional confere a dentição (mista, incompleta) e segue quando quiser.
 - O que já foi liberado continua liberado, mesmo se a pessoa voltar e apagar uma resposta. A exceção é a idade: o odontograma é montado pela idade, então **mudar a data de nascimento depois de marcar dentes faz o odontograma voltar do início** (dentição e dentes esperados pela idade nova, nada marcado). Antes, o app pede confirmação; se o profissional cancelar, a data antiga e os dentes marcados ficam. O resto do exame (local, indivíduo, vigilância, prótese e condições) continua como está.
@@ -15,10 +23,12 @@ Só o app muda (o servidor continua o 36, e a planilha não muda).
 - Depois de salvar, uma **janela no centro da tela** mostra o código, a classe e o que aconteceu com o envio (enviando, enviado, sem internet, ou se a planilha não aceitou e por quê). A janela se atualiza sozinha quando o envio termina.
 - **Legenda do odontograma** em três colunas iguais (Dente, Faces, Marcas), com todos os ícones do mesmo tamanho e as linhas com o mesmo espaçamento.
 
-**Como instalar a 38:** só o GitHub (o Apps Script não muda).
-1. **GitHub, na raiz:** `index.html`, `sw.js` e `LEIA-ME.md`.
-2. **GitHub, dentro de `testes`:** `navegador.test.js`.
-3. **Actions:** ✓ verde. **Celular:** feche e abra o app com internet; em Conta deve aparecer "app versão 38 · servidor versão 36".
+**Como instalar a 38:**
+1. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":37`.
+2. **GitHub, na raiz:** `index.html`, `sw.js`, `Codigo.gs` e `LEIA-ME.md`.
+3. **GitHub, dentro de `testes`:** `servidor.test.js`, `navegador.test.js` e `gas-simulado.js`.
+4. **Actions:** ✓ verde. **Celular:** feche e abra o app com internet; em Conta deve aparecer "app versão 38 · servidor versão 37".
+5. **Administração > Planilha de análise > Criar agora.** Depois, conecte o Looker Studio à planilha "Odontograma - análise".
 
 ## Servidores 35 e 36 (versão 37.1): correção do teste de carga
 
@@ -139,7 +149,7 @@ Use sempre **a mesma conta Google** em todos os passos (confira a foto no canto 
 4. Volte ao **Editor** (ícone `< >`). Na lista ao lado de **Executar**, escolha **testarInstalacao** e clique em **Executar**. Autorize: Revisar permissões > sua conta > Avançado > Acessar > Permitir. Deve aparecer **TUDO CERTO**.
 5. Escolha **ativarBackupSemanal** e clique em **Executar**, uma vez só. Toda segunda-feira de madrugada vai uma cópia da planilha para a pasta **Odontograma - backups** do Drive. As 8 mais recentes ficam guardadas.
 6. **Implantar > Nova implantação** > engrenagem > **App da Web**. Executar como: **Eu**. Quem pode acessar: **Qualquer pessoa**. Clique em **Implantar** e copie o endereço que termina em `/exec`.
-7. Abra esse endereço no navegador. Deve aparecer `"versao":36`. A situação completa da instalação aparece em Administração.
+7. Abra esse endereço no navegador. Deve aparecer `"versao":37`. A situação completa da instalação aparece em Administração.
 
 **B. App no GitHub**
 8. Crie um repositório e envie todos os arquivos da tabela acima, com os nomes exatos (sem "(1)").
@@ -234,9 +244,9 @@ As abas que começam com `_` são de uso interno do servidor: não mexa nelas.
 
 A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
-- **243 verificações do servidor**, num simulador do Apps Script e sem dados reais;
+- **258 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
-- **132 verificações no navegador**, com os fluxos principais, no horário de Brasília.
+- **134 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
 Todas as datas e horas, no app e no servidor, usam o horário de Brasília (`America/Sao_Paulo`), qualquer que seja o fuso do aparelho.
 
@@ -258,7 +268,7 @@ São dados de saúde, considerados sensíveis. O app não coleta nome, Cartão S
 
 ## Histórico resumido
 
-- **38:** exame numa página só, com partes liberadas aos poucos; resumo de cada dente; botão "Salvar e enviar"; janela no centro depois de salvar; legenda em três colunas.
+- **38 (servidor 37):** planilha de análise para o Looker Studio, refeita toda madrugada; exame numa página só, com partes liberadas aos poucos; resumo de cada dente; botão "Salvar e enviar"; janela no centro depois de salvar; legenda em três colunas.
 - **37.1 (servidores 35 e 36):** sessões guardadas separadas (sem perder entradas com muita gente ao mesmo tempo); cópia rápida dos exames e envio numa escrita só; aba Uso atualizada de madrugada; fila que não lota o limite do Google.
 - **37:** uma linha por exame (sem aba Dentes) e arquivo de análise em Excel; envio em lote com fila organizada; acesso que vence em 15 dias; erros explicados e avisos de espaço para a coordenação titular; cópia de segurança dos exames.
 - **36:** limpeza do código, sem mudar o uso. A aba Uso mantém os contadores quando a planilha é reorganizada.
