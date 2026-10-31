@@ -42,6 +42,12 @@ icones.forEach(f => ok(existe(f), `O manifest usa ${f}, mas o arquivo não está
 [...html.matchAll(/<link[^>]+rel="icon"[^>]+href="([^"]+)"/g)].forEach(m => ok(existe(m[1]), `O index.html usa o ícone ${m[1]}, que não está no repositório.`));
 [...html.matchAll(/fetch\("([a-z0-9._-]+\.(?:json|webp|png))"\)|url\(([a-z0-9._-]+\.(?:webp|png|jpg))\)/g)].forEach(m => { const f = m[1] || m[2]; ok(existe(f), `O index.html usa ${f}, que não está no repositório.`); });
 
+[...html.matchAll(/s\.src = "([a-z0-9._\/-]+\.js)"/g)].forEach(m => ok(existe(m[1]), `O index.html carrega ${m[1]}, que não está no repositório.`));
+// O modo sem internet só guarda a página que tiver a marca do app.
+const marca = (sw.match(/const MARCA = '([^']+)'/) || [])[1];
+ok(marca && html.includes(marca), "O sw.js confere uma marca que não está no index.html: o celular nunca guardaria a versão nova.");
+ok(!/cdn\.jsdelivr|unpkg\.com|cdnjs/.test(html), "O index.html carrega um programa de outro site: guarde-o no próprio repositório.");
+
 // 5. Código compartilhado igual nos dois lados
 const comp = t => { const i = t.indexOf("/* ===== COMPARTILHADO INICIO ====="), j = t.indexOf("/* ===== COMPARTILHADO FIM ===== */"); return i < 0 || j < 0 ? null : t.slice(i, j); };
 const a = comp(html), b = comp(gs);
