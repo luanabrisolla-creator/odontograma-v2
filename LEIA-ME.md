@@ -1,7 +1,25 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 37 · servidor 34 · formato da planilha 25**.
+Versão atual: **app 37 · servidor 36 · formato da planilha 25**.
+
+## Servidores 35 e 36 (versão 37.1): correção do teste de carga
+
+O teste de carga com 50 profissionais mostrou dois problemas. Os dois foram corrigidos só no servidor (o app continua o mesmo, versão 37).
+
+- **Entradas perdidas com muita gente ao mesmo tempo.** As sessões ficavam numa aba da planilha e, com várias pessoas entrando no mesmo segundo, uma gravação apagava a outra. Agora cada sessão fica guardada separada, nas Propriedades do script (`sessao_...`), e a aba `_sessoes` sai.
+- **Cada envio demorava uns 9 segundos.** Quase tudo era ler a aba Exames inteira (7 s com 5.690 exames) e atualizar a aba Uso (1,7 s). Agora:
+  - o servidor guarda uma **cópia rápida** do índice e dos resumos dos exames e do cadastro de usuários na memória do Google, e só lê a planilha quando essa cópia não existe. Cada envio acrescenta à cópia só o que mudou;
+  - os exames novos de um envio vão para a planilha **numa escrita só**, antes de o app receber o "deu certo" (se a escrita falhar, o app recebe erro passageiro e manda de novo);
+  - a aba **Uso** passa a ser atualizada **uma vez por dia**, pela tarefa diária. Durante o dia, os números de cada pessoa ficam guardados nas Propriedades do script (`uso_...`).
+- **A cópia rápida nunca substitui a planilha.** Ela é descartada e refeita sozinha quando alguém edita a aba Exames ou Usuarios na tela, quando uma linha é apagada à mão, quando um envio é interrompido no meio e, por garantia, toda madrugada. Antes de escrever por cima de um exame, o servidor confere na planilha se a linha é mesmo daquele exame.
+- **Servidor 36: fila mais educada com 100 celulares ao mesmo tempo.** O Google roda no máximo 30 pedidos ao mesmo tempo nesta conta, e quem espera na fila ocupa uma dessas vagas. Com 100 profissionais, as vagas lotavam e alguns pedidos eram recusados pelo Google ("falha de rede"). Agora o servidor espera no máximo 4 segundos (antes 6) e manda o app tentar de novo em 15 a 45 segundos, sorteado (antes 5 a 15). A fila esvazia no mesmo tempo; cada profissional pode esperar alguns segundos a mais pela confirmação.
+- Mexer à mão na aba Usuarios (por exemplo, mudar um status) vale na hora pela edição na tela. Se a mudança for feita de outro jeito (por um programa), vale em até 10 minutos.
+
+**Como instalar o servidor 36:**
+1. **Apps Script:** cole o `Codigo.gs` inteiro, salve e publique **pelo lápis** (Implantar > Gerenciar implantações > lápis > Nova versão > Implantar). Confira o /exec: `"versao":36`.
+2. **GitHub:** na raiz, `Codigo.gs` e `LEIA-ME.md`. Dentro de `testes`: `servidor.test.js`, `navegador.test.js` e `gas-simulado.js`.
+3. **Actions:** ✓ verde. **Celular:** "app versão 37 · servidor versão 36".
 
 ## Versão 37: planilha nova, envio mais rápido e mais segurança
 
@@ -104,7 +122,7 @@ Use sempre **a mesma conta Google** em todos os passos (confira a foto no canto 
 4. Volte ao **Editor** (ícone `< >`). Na lista ao lado de **Executar**, escolha **testarInstalacao** e clique em **Executar**. Autorize: Revisar permissões > sua conta > Avançado > Acessar > Permitir. Deve aparecer **TUDO CERTO**.
 5. Escolha **ativarBackupSemanal** e clique em **Executar**, uma vez só. Toda segunda-feira de madrugada vai uma cópia da planilha para a pasta **Odontograma - backups** do Drive. As 8 mais recentes ficam guardadas.
 6. **Implantar > Nova implantação** > engrenagem > **App da Web**. Executar como: **Eu**. Quem pode acessar: **Qualquer pessoa**. Clique em **Implantar** e copie o endereço que termina em `/exec`.
-7. Abra esse endereço no navegador. Deve aparecer `"versao":34`. A situação completa da instalação aparece em Administração.
+7. Abra esse endereço no navegador. Deve aparecer `"versao":36`. A situação completa da instalação aparece em Administração.
 
 **B. App no GitHub**
 8. Crie um repositório e envie todos os arquivos da tabela acima, com os nomes exatos (sem "(1)").
@@ -187,7 +205,7 @@ O Painel mostra só números somados, nunca exames de uma pessoa. Quando um reco
 |---|---|
 | Exames | Uma linha por exame (sem identificação da pessoa): o exame, as contas prontas, o resumo e o exame completo (com cada dente) |
 | Acessos | Registro do que cada pessoa fez (auditoria), do mais recente para o mais antigo |
-| Uso | Uma linha por pessoa com acesso: entradas, consultas e exames |
+| Uso | Uma linha por pessoa com acesso: entradas, consultas e exames (atualizada toda madrugada) |
 | Usuarios, Convites | Cadastros e convites |
 | Dicionário | O que significa cada coluna |
 | Acoes | Ações do Dia B |
@@ -199,7 +217,7 @@ As abas que começam com `_` são de uso interno do servidor: não mexa nelas.
 
 A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
-- **217 verificações do servidor**, num simulador do Apps Script e sem dados reais;
+- **243 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
 - **113 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
@@ -223,6 +241,7 @@ São dados de saúde, considerados sensíveis. O app não coleta nome, Cartão S
 
 ## Histórico resumido
 
+- **37.1 (servidores 35 e 36):** sessões guardadas separadas (sem perder entradas com muita gente ao mesmo tempo); cópia rápida dos exames e envio numa escrita só; aba Uso atualizada de madrugada; fila que não lota o limite do Google.
 - **37:** uma linha por exame (sem aba Dentes) e arquivo de análise em Excel; envio em lote com fila organizada; acesso que vence em 15 dias; erros explicados e avisos de espaço para a coordenação titular; cópia de segurança dos exames.
 - **36:** limpeza do código, sem mudar o uso. A aba Uso mantém os contadores quando a planilha é reorganizada.
 - **35:** exame em etapas; odontograma novo (situação do dente, faces, sinais e tratamento separados); prótese; dor e abscesso separados; horário de Brasília em tudo; botão para limpar o aviso de auditoria.

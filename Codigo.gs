@@ -40,7 +40,12 @@ const PASTA_BACKUP = 'Odontograma - backups';
 // Configuração guardada fora do código (Propriedades do script).
 /** @param {string} nome */
 function propriedade(nome) {
-  try { return String(PropertiesService.getScriptProperties().getProperty(nome) || '').trim(); } catch (x) { return ''; }
+  // E-mail e senha da coordenação não mudam durante um pedido: lidos uma vez só (o Google limita as leituras por dia).
+  const fixo = nome === 'EMAIL_COORDENACAO' || nome === 'CHAVE_COORDENACAO', m = MEMO;
+  if (fixo && m && m.prop && nome in m.prop) return m.prop[nome];
+  let v = ''; try { v = String(PropertiesService.getScriptProperties().getProperty(nome) || '').trim(); } catch (x) { return ''; }
+  if (fixo && m) (m.prop = m.prop || {})[nome] = v;
+  return v;
 }
 function emailCfg() { return propriedade('EMAIL_COORDENACAO'); }
 function chaveCfg() { return propriedade('CHAVE_COORDENACAO'); }
@@ -57,7 +62,7 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 34;
+const VERSAO = 36;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -156,11 +161,15 @@ function garantirTarefaDiaria() {
   return !tem;
 }
 function tarefaDiaria() {
-  const r = { espaco: null, cortadas: 0, arquivados: 0, sessoes: 0 };
+  /** @type {any} */ const r = { espaco: null, cortadas: 0, arquivados: 0, sessoes: 0, uso: 0 };
+  // Refaz as cópias rápidas a partir da planilha (por garantia, uma vez por dia).
+  MEMO = null; marcarVersaoDados(); cadastrosMudaram(); esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+');
   try { r.cortadas = cortarVazios(); } catch (x) { registrarErro(x, 'tarefaDiaria: cortar vazios', null); }
   try { r.arquivados = arquivarAcessos(); } catch (x) { registrarErro(x, 'tarefaDiaria: arquivar Acessos', null); }
   try { r.sessoes = limparSessoes(); } catch (x) { registrarErro(x, 'tarefaDiaria: sessões', null); }
   try { r.espaco = conferirEspaco(); } catch (x) { registrarErro(x, 'tarefaDiaria: espaço', null); }
+  try { r.uso = recalcularUso(planilha(), lerResumos()); } catch (x) { registrarErro(x, 'tarefaDiaria: aba Uso', null); }
+  try { lerIndice(); } catch (x) {}
   PropertiesService.getScriptProperties().setProperty('TAREFA_DIARIA_EM', new Date().toISOString());
   return r;
 }
@@ -301,16 +310,20 @@ function dadosAnalise(d, u) {
 
 /* ---------- 3. formato da planilha e reorganização ---------- */
 // Quando o FORMATO muda (colunas novas), a planilha é reorganizada uma vez, sempre com backup antes.
-function formatoAtual() { return propriedade('FORMATO_PLANILHA') === FORMATO; }
+function formatoAtual() {
+  if (MEMO && MEMO.formatoOk) return true;
+  const ok = propriedade('FORMATO_PLANILHA') === FORMATO; if (ok && MEMO) MEMO.formatoOk = true;
+  return ok;
+}
 // Rode no editor para reorganizar agora (faz backup antes, e cancela se o backup falhar). Com a planilha vazia
 // acontece sozinha; com exames, a coordenação titular confirma na Administração depois de ver o relatório.
 function reorganizarPlanilha() {
-  const t = LockService.getScriptLock(); t.waitLock(30000);
+  const t = LockService.getScriptLock(); t.waitLock(30000); COM_TRAVA = true;
   try {
     const r = reorganizarAgora();
     Logger.log('Planilha reorganizada: ' + r.exames + ' exames, ' + r.acessos + ' eventos em Acessos, ' + r.uso + ' pessoas em Uso.');
     Logger.log('Backup feito antes: ' + r.backup + ' · exames com resultado recalculado: ' + ((r.relatorio || {}).mudam || 0));
-  } finally { t.releaseLock(); }
+  } finally { concluirGravacao(); COM_TRAVA = false; t.releaseLock(); }
 }
 /* Relatório do que a reorganização muda nos exames: para cada exame, a classe e o ceo-d/CPO-D gravados
  * comparados com o que o servidor calcula pela regra atual. Não grava nada. */
@@ -415,7 +428,8 @@ function reescreverAba(ss, nome, cab, linhas, posicao) {
   }
   const velha = ss.getSheetByName(nome); if (velha) ss.deleteSheet(velha);
   nova.setName(nome);
-  if (MEMO) { if (MEMO.abas) delete MEMO.abas[nome]; if (nome === 'Exames') { MEMO.abaEx = null; MEMO.indice = null; MEMO.resumos = null; MEMO.completos = null; MEMO.proxLinha = null; } }
+  if (MEMO) { if (MEMO.abas) delete MEMO.abas[nome]; if (nome === 'Exames') { MEMO.abaEx = null; MEMO.indice = null; MEMO.resumos = null; MEMO.completos = null; MEMO.proxLinha = null; MEMO.emendas = {}; MEMO.escrevendo = false; } }
+  if (nome === 'Exames') { marcarVersaoDados(); esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+'); }
   if (posicao != null) { try { ss.setActiveSheet(nova); ss.moveActiveSheet(posicao + 1); } catch (x) {} }
   return nova;
 }
@@ -454,6 +468,17 @@ function recalcularUso(ss, regs) {
   if (abaU && abaU.getLastRow() > 1) abaU.getRange(2, 1, abaU.getLastRow() - 1, CAB_USO.length).getValues().forEach(function (l) {
     porId[String(l[0])] = { ultimo: l[5] instanceof Date ? l[5].toISOString() : String(l[5] || ''), mes: Number(l[6]) || 0, mesRef: String(l[7] || ''), entradas: Number(l[8]) || 0, consultas: Number(l[9]) || 0 };
   });
+  // Soma as entradas e consultas guardadas como contador desde a última vez.
+  const pr = PropertiesService.getScriptProperties(), props = pr.getProperties(), mesAtual = fmtDia(new Date()).slice(0, 7), usados = [];
+  Object.keys(props).forEach(function (k) {
+    if (k.indexOf(PREFIXO_USO) !== 0) return;
+    /** @type {any} */ let p = {}; try { p = JSON.parse(props[k]); } catch (x) {}
+    const id = k.slice(PREFIXO_USO.length), o = porId[id] = porId[id] || { ultimo: '', mes: 0, mesRef: mesAtual, entradas: 0, consultas: 0 };
+    if (o.mesRef !== mesAtual) { o.mesRef = mesAtual; o.mes = 0; }
+    o.entradas += p.e || 0; o.consultas += p.c || 0; o.mes += (p.em || {})[mesAtual] || 0;
+    if (String(p.ult || '') > String(o.ultimo || '')) o.ultimo = p.ult;
+    usados.push(k);
+  });
   const us = lerUsuarios().filter(function (x) { return x.status === 'ativo' || x.status === 'desativado'; });
   const pessoas = us.slice();
   if (emailConfigurado()) pessoas.unshift({ id: 'coord', nome: 'Coordenação', email: emailCoord(), perfil: 'coord', dsei: '', ultimo_acesso: '' });
@@ -468,32 +493,26 @@ function recalcularUso(ss, regs) {
     return [x.id, x.nome, x.email, perfilTexto(x), x.dsei || '', acesso, o.mesRef === mes ? o.mes : 0, mes, o.entradas, o.consultas, validos.length, meus.length - validos.length, ult];
   });
   reescreverAba(ss, 'Uso', CAB_USO, linhas, 2);
+  usados.forEach(function (k) { pr.deleteProperty(k); });
   return linhas.length;
 }
+/* A aba Uso não é mais regravada a cada pedido (isso custava quase 2 segundos por envio): entradas e consultas viram
+ * um contador leve (uma propriedade por pessoa) e a aba é refeita de madrugada, na tarefa diária, com os exames contados
+ * a partir da aba Exames. */
+const PREFIXO_USO = 'uso_';
 /** @param {any} u @param {any} tipo */
 function atualizarUso(u, tipo) {
-  if (!u || !u.id) return;
-  const aba = obterAba(planilha(), 'Uso', CAB_USO);
-  const n = aba.getLastRow() - 1;
-  const v = n > 0 ? aba.getRange(2, 1, n, CAB_USO.length).getValues() : [];
-  let i = v.findIndex(function (l) { return String(l[0]) === String(u.id); });
-  const agora = new Date(), mes = fmtDia(agora).slice(0, 7);
-  /** @type {any[]} */ let l = i >= 0 ? v[i] : [u.id, u.nome || '', u.email || '', perfilTexto(u), u.dsei || '', '', 0, mes, 0, 0, 0, 0, ''];
-  l[1] = u.nome || l[1]; l[2] = u.email || l[2]; l[3] = perfilTexto(u); l[4] = u.dsei || '';
-  if (tipo === 'entrada' || tipo === 'consulta') l[5] = fmtDia(agora) + ' ' + fmtHora(agora);
-  if (String(l[7]) !== mes) { l[7] = mes; l[6] = 0; }
-  if (tipo === 'entrada') { l[6] = (Number(l[6]) || 0) + 1; l[8] = (Number(l[8]) || 0) + 1; }
-  if (tipo === 'consulta') l[9] = (Number(l[9]) || 0) + 1;
-  if (tipo && typeof tipo === 'object') { l[10] = tipo.validos; l[11] = tipo.cancelados; l[12] = tipo.ultimo; }
-  if (i >= 0) aba.getRange(i + 2, 1, 1, CAB_USO.length).setValues([linhaSegura(l)]);
-  else aba.appendRow(linhaSegura(l));
+  if (!u || !u.id || (tipo !== 'entrada' && tipo !== 'consulta')) return;
+  const pr = PropertiesService.getScriptProperties(), k = PREFIXO_USO + u.id, agora = new Date(), mes = fmtDia(agora).slice(0, 7);
+  /** @type {any} */ let o = {}; try { o = JSON.parse(pr.getProperty(k) || '{}'); } catch (x) {}
+  o.e = (o.e || 0) + (tipo === 'entrada' ? 1 : 0); o.c = (o.c || 0) + (tipo === 'consulta' ? 1 : 0);
+  o.em = o.em || {}; if (tipo === 'entrada') o.em[mes] = (o.em[mes] || 0) + 1;
+  o.ult = fmtDia(agora) + ' ' + fmtHora(agora);
+  pr.setProperty(k, JSON.stringify(o));
 }
+// Exames contados na tarefa diária (recalcularUso), não a cada envio.
 /** @param {any} u @param {any[]} regs */
-function atualizarUsoExames(u, regs) {
-  const meus = regs.filter(function (r) { return ehDoUsuario(r, u); }), validos = meus.filter(exameValido);
-  const ult = validos.reduce(function (m, r) { return String(r.dataExame || '') > m ? String(r.dataExame || '') : m; }, '');
-  try { atualizarUso(u, /** @type {any} */ ({ validos: validos.length, cancelados: meus.length - validos.length, ultimo: ult })); } catch (x) {}
-}
+function atualizarUsoExames(u, regs) {}
 
 
 /* ---------- 5. entrada dos pedidos: cada pedido do app chega aqui (doPost) ---------- */
@@ -511,19 +530,20 @@ function doPost(e) {
   //   confirmar na Administração. Enquanto isso, só leituras funcionam; os exames esperam guardados no aparelho.
   let pendente = false;
   if (!formatoAtual()) {
-    const tf = LockService.getScriptLock(); tf.waitLock(30000);
+    const tf = LockService.getScriptLock(); tf.waitLock(30000); COM_TRAVA = true;
     try {
       // Confere de novo já com a trava: outra requisição pode ter acabado de reorganizar.
       if (!formatoAtual()) { if (!lerExames().length) reorganizarAgora(); else pendente = true; }
-    } catch (err) { return saida({ ok: false, passageiro: true, erro: registrarErro(err, 'reorganizar', null).mensagem }); } finally { tf.releaseLock(); }
+    } catch (err) { return saida({ ok: false, passageiro: true, erro: registrarErro(err, 'reorganizar', null).mensagem }); } finally { concluirGravacao(); COM_TRAVA = false; tf.releaseLock(); }
   }
   if (pendente && A.escreve && !A.reorganiza) return saida({ ok: false, manutencao: true, erro: 'A planilha está esperando uma atualização da coordenação. Nada foi perdido: os exames ficam guardados no aparelho e serão enviados quando a coordenação concluir. Tente de novo mais tarde.' });
   // Quem grava passa pela trava, um de cada vez. Em vez de deixar o celular esperando até 30 segundos (e entupir a fila),
   // o servidor espera no máximo ESPERA_TRAVA_MS e responde "ocupado": o app tenta de novo sozinho, cada um num tempo diferente.
   const trava = A.escreve ? LockService.getScriptLock() : null;
-  if (trava && !trava.tryLock(ESPERA_TRAVA_MS)) return saida({ ok: false, ocupado: true, passageiro: true, tenteEm: 5 + Math.floor(Math.random() * 10),
+  if (trava && !trava.tryLock(ESPERA_TRAVA_MS)) return saida({ ok: false, ocupado: true, passageiro: true, tenteEm: TENTE_EM_MIN + Math.floor(Math.random() * (TENTE_EM_MAX - TENTE_EM_MIN + 1)),
     erro: 'O servidor está ocupado com outros envios. O app vai tentar de novo sozinho em alguns segundos.' });
-  MEMO = null;
+  const prop0 = MEMO && MEMO.prop; MEMO = null; if (prop0) memo().prop = prop0;
+  COM_TRAVA = !!trava;
   /** @type {any} */ let quem = null;
   try {
     if (A.publica) {
@@ -553,14 +573,20 @@ function doPost(e) {
     if (bloqueado) { try { CacheService.getScriptCache().remove('lim:falha:' + emailL); } catch (x) {} }
     if (pendente) u._reorganizacaoPendente = true;
     if (A.perfis && A.perfis.indexOf(u.perfil) < 0) return saida({ ok: false, erro: 'Seu perfil não tem permissão para isso.' });
-    return saida(A.fn(d, u));
+    const resposta = A.fn(d, u);
+    escreverPendentes(); // os exames novos vão para a planilha ANTES de o app saber que deram certo
+    return saida(resposta);
   } catch (err) {
     return saida({ ok: false, passageiro: true, erro: registrarErro(err, d.acao, quem).mensagem });
   } finally {
-    if (trava) trava.releaseLock();
+    concluirGravacao();
+    if (trava) { COM_TRAVA = false; trava.releaseLock(); }
   }
 }
-const ESPERA_TRAVA_MS = 6000;
+// O Google roda no máximo 30 pedidos ao mesmo tempo nesta conta, e quem espera a trava ocupa uma dessas vagas.
+// Por isso a espera é curta e o "tente de novo" é sorteado entre 15 e 45 s: com 100 celulares ao mesmo tempo,
+// ficam uns 12 esperando (e não mais de 30). O servidor continua gravando sem parar, então a fila esvazia no mesmo tempo.
+const ESPERA_TRAVA_MS = 4000, TENTE_EM_MIN = 15, TENTE_EM_MAX = 45;
 
 const ACOES = {
   pedirAcesso:    { publica: true, escreve: true, fn: pedirAcesso },
@@ -617,15 +643,66 @@ function emailCoord() {
 }
 // A mesma planilha (e as mesmas abas) durante o pedido inteiro: evita perguntar ao Google de novo a cada passo.
 function planilha() { const m = memo(); return m.ss || (m.ss = SpreadsheetApp.getActiveSpreadsheet()); }
-function lerUsuarios() {
-  const aba = obterAba(planilha(), 'Usuarios', CAB_USUARIOS);
-  if (aba.getLastRow() < 2) return [];
-  return aba.getRange(2, 1, aba.getLastRow() - 1, CAB_USUARIOS.length).getValues().map(function (l, i) {
-    const u = { _linha: i + 2 };
-    CAB_USUARIOS.forEach(function (k, j) { u[k] = l[j] instanceof Date ? l[j].toISOString() : String(l[j]); });
-    return u;
-  }).filter(function (u) { return u.id; });
+/* ---------- memória rápida do Google (CacheService) para listas grandes ----------
+ * Cada valor guardado tem até 100 KB: uma lista maior vai em pedaços. Quem grava escreve os pedaços novos com outro
+ * nome e só no fim troca o ponteiro, então quem estiver lendo ao mesmo tempo nunca pega pedaços misturados.
+ * A memória pode se apagar a qualquer momento (o Google limpa): aí a lista é lida de novo da planilha. */
+/** @param {string} nome @param {any} valor @param {number} seg */
+function guardarNaMemoria(nome, valor, seg) {
+  try {
+    let txt = JSON.stringify(valor), z = 0;
+    // Listas grandes vão comprimidas (cabem 3 a 5 vezes mais).
+    if (txt.length > 50000) { try { txt = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(txt, 'application/json')).getBytes()); z = 1; } catch (x) {} }
+    const tok = Utilities.getUuid().slice(0, 8), c = CacheService.getScriptCache(); /** @type {any} */ const m = {};
+    let n = 0; for (let i = 0; i < txt.length || n === 0; i += 90000, n++) m[nome + ':' + tok + ':' + n] = txt.slice(i, i + 90000);
+    if (n > PEDACOS_MAX) { c.remove(nome); return false; }
+    const ks = Object.keys(m); for (let i = 0; i < ks.length; i += 20) { /** @type {any} */ const b = {}; ks.slice(i, i + 20).forEach(function (k) { b[k] = m[k]; }); c.putAll(b, seg); }
+    c.put(nome, tok + ':' + n + ':' + z, seg);
+    return true;
+  } catch (x) { try { CacheService.getScriptCache().remove(nome); } catch (y) {} return false; }
 }
+const PEDACOS_MAX = 150;
+/** @param {string} nome */
+function lerDaMemoria(nome) {
+  try {
+    const c = CacheService.getScriptCache(), p = c.get(nome); if (!p) return null;
+    const q = p.split(':'), tok = q[0], n = Number(q[1]), ks = []; for (let i = 0; i < n; i++) ks.push(nome + ':' + tok + ':' + i);
+    /** @type {any} */ const g = {}; for (let i = 0; i < ks.length; i += 50) Object.assign(g, c.getAll(ks.slice(i, i + 50)));
+    if (ks.some(function (k) { return g[k] == null; })) return null;
+    let txt = ks.map(function (k) { return g[k]; }).join('');
+    if (q[2] === '1') txt = Utilities.ungzip(Utilities.newBlob(Utilities.base64Decode(txt), 'application/x-gzip')).getDataAsString();
+    return JSON.parse(txt);
+  } catch (x) { return null; }
+}
+/** @param {string} nome */
+function esquecerDaMemoria(nome) { try { CacheService.getScriptCache().remove(nome); } catch (x) {} }
+
+// Cadastros: lidos da memória rápida (cada pedido confere o acesso); a planilha só é lida quando a memória está vazia.
+function lerUsuarios() {
+  const m = memo(); if (m.usuarios) return m.usuarios;
+  let l = lerDaMemoria('usuarios');
+  if (!l) {
+    const aba = obterAba(planilha(), 'Usuarios', CAB_USUARIOS);
+    l = aba.getLastRow() < 2 ? [] : aba.getRange(2, 1, aba.getLastRow() - 1, CAB_USUARIOS.length).getValues().map(function (v, i) {
+      /** @type {any} */ const u = { _linha: i + 2 };
+      CAB_USUARIOS.forEach(function (k, j) { u[k] = v[j] instanceof Date ? v[j].toISOString() : String(v[j]); });
+      return u;
+    }).filter(function (u) { return u.id; });
+    guardarNaMemoria('usuarios', l, 600);
+  }
+  return (m.usuarios = l);
+}
+// Alguém mexeu à mão na planilha (o Google chama esta função sozinho a cada edição feita na tela):
+// as cópias rápidas deixam de valer e são refeitas da planilha no próximo pedido.
+/** @param {any} e */
+function onEdit(e) {
+  try {
+    const nome = e && e.range ? e.range.getSheet().getName() : '';
+    if (nome === 'Exames') { marcarVersaoDados(); esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+'); }
+    if (nome === 'Usuarios') esquecerDaMemoria('usuarios');
+  } catch (x) {}
+}
+function cadastrosMudaram() { esquecerDaMemoria('usuarios'); if (MEMO) MEMO.usuarios = null; }
 /** @param {any} u */
 function salvarUsuario(u) {
   const aba = obterAba(planilha(), 'Usuarios', CAB_USUARIOS);
@@ -633,6 +710,7 @@ function salvarUsuario(u) {
   const linha = linhaSegura(CAB_USUARIOS.map(function (k) { return u[k] == null ? '' : u[k]; }));
   if (u._linha) aba.getRange(u._linha, 1, 1, linha.length).setValues([linha]);
   else { aba.appendRow(linha); u._linha = aba.getLastRow(); }
+  cadastrosMudaram();
 }
 /** @param {any} u */
 function publico(u) {
@@ -674,68 +752,77 @@ function marcarAcesso(u) {
   // ou um código novo feitos no mesmo instante por outra pessoa.
   if (String(u.ultimo_acesso).slice(0, 10) !== hoje) {
     u.ultimo_acesso = new Date().toISOString();
-    try { obterAba(planilha(), 'Usuarios', CAB_USUARIOS).getRange(u._linha, CAB_USUARIOS.indexOf('ultimo_acesso') + 1, 1, 1).setValues([[u.ultimo_acesso]]); } catch (x) {}
+    try { obterAba(planilha(), 'Usuarios', CAB_USUARIOS).getRange(u._linha, CAB_USUARIOS.indexOf('ultimo_acesso') + 1, 1, 1).setValues([[u.ultimo_acesso]]); cadastrosMudaram(); } catch (x) {}
   }
   return u;
 }
 /* ---------- sessões: o acesso vence depois de DIAS_SESSAO dias sem usar o app ----------
  * Ao entrar com o e-mail e o código, o app recebe uma sessão (um texto sorteado) e passa a usá-la no lugar do código.
- * A planilha guarda só o "hash" da sessão. A sessão deixa de valer quando: passa DIAS_SESSAO dias sem uso, o acesso é
+ * Cada sessão fica numa propriedade própria do script (chave "sessao_" + hash): muitas pessoas entrando no mesmo
+ * segundo não se atrapalham (numa aba da planilha, linhas gravadas ao mesmo tempo podiam cair uma sobre a outra).
+ * Só o "hash" da sessão é guardado. A sessão deixa de valer quando: passa DIAS_SESSAO dias sem uso, o acesso é
  * desativado, um código novo é gerado para a pessoa ou a senha da coordenação titular é trocada. */
-const DIAS_SESSAO = 15;
-const ABA_SESSOES = '_sessoes', CAB_SESSOES = ['sessao_hash', 'usuario_id', 'email', 'codigo_hash', 'criada_em', 'ultimo_uso', 'aparelho'];
+const DIAS_SESSAO = 15, PREFIXO_SESSAO = 'sessao_';
 /** @param {string} t */
 function hashSessao(t) { return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, 'sessao:' + t).map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join(''); }
 /** @param {any} u @param {any} aparelho */
 function criarSessao(u, aparelho) {
   const t = gerarToken() + gerarToken(), agora = new Date().toISOString();
-  // O hash do código (base64) pode começar com + ou =: linhaSegura impede que a planilha o leia como fórmula.
-  obterAba(planilha(), ABA_SESSOES, CAB_SESSOES).appendRow(linhaSegura([hashSessao(t), u.id, normEmail(u.email), u.id === 'coord' ? hashCodigo(chaveCfg()) : u.codigo_hash, agora, agora, String(aparelho || '').slice(0, 60)]));
+  PropertiesService.getScriptProperties().setProperty(PREFIXO_SESSAO + hashSessao(t), JSON.stringify({ u: u.id, e: normEmail(u.email),
+    c: u.id === 'coord' ? hashCodigo(chaveCfg()) : u.codigo_hash, criada: agora, uso: agora, ap: String(aparelho || '').slice(0, 40) }));
   return t;
 }
 /** @param {string} email @param {string} t */
 function validarSessao(email, t) {
-  const aba = obterAba(planilha(), ABA_SESSOES, CAB_SESSOES), n = aba.getLastRow() - 1;
-  if (n < 1 || !t) return null;
-  const h = hashSessao(t), v = aba.getRange(2, 1, n, CAB_SESSOES.length).getValues();
-  let i = -1; for (let k = 0; k < v.length; k++) if (v[k][0] === h) { i = k; break; }
-  if (i < 0 || normEmail(v[i][2]) !== email) return null;
-  const ult = v[i][5] instanceof Date ? v[i][5] : new Date(String(v[i][5]));
+  if (!t) return null;
+  const chave = PREFIXO_SESSAO + hashSessao(t), txt = propriedade(chave);
+  if (!txt) return null;
+  /** @type {any} */ let s; try { s = JSON.parse(txt); } catch (x) { return null; }
+  if (normEmail(s.e) !== email) return null;
+  const ult = new Date(s.uso);
   if (isNaN(ult.getTime()) || Date.now() - ult.getTime() > DIAS_SESSAO * 864e5) { memo().sessaoVencida = true; return null; }
   /** @type {any} */ let u;
-  if (v[i][1] === 'coord') u = email === emailCoord() && chaveConfigurada() && hashCodigo(chaveCfg()) === v[i][3] ? titular(email) : null;
-  else u = lerUsuarios().filter(function (x) { return x.id === v[i][1] && x.status === 'ativo' && normEmail(x.email) === email && x.codigo_hash === v[i][3]; })[0];
+  if (s.u === 'coord') u = email === emailCoord() && chaveConfigurada() && hashCodigo(chaveCfg()) === s.c ? titular(email) : null;
+  else u = lerUsuarios().filter(function (x) { return x.id === s.u && x.status === 'ativo' && normEmail(x.email) === email && x.codigo_hash === s.c; })[0];
   if (!u) return null;
-  if (fmtDia(ult) !== hojeIso()) { try { aba.getRange(i + 2, 6, 1, 1).setValues([[new Date().toISOString()]]); } catch (x) {} }
+  if (fmtDia(ult) !== hojeIso()) { try { s.uso = new Date().toISOString(); PropertiesService.getScriptProperties().setProperty(chave, JSON.stringify(s)); } catch (x) {} }
   return u.id === 'coord' ? u : marcarAcesso(u);
 }
 // Limpeza (tarefa diária): apaga as sessões vencidas.
 function limparSessoes() {
-  const aba = planilha().getSheetByName(ABA_SESSOES); if (!aba || aba.getLastRow() < 2) return 0;
-  const v = aba.getRange(2, 1, aba.getLastRow() - 1, CAB_SESSOES.length).getValues();
-  const vivas = v.filter(function (l) { const t = new Date(l[5] instanceof Date ? l[5].getTime() : String(l[5])).getTime(); return !isNaN(t) && Date.now() - t <= DIAS_SESSAO * 864e5; });
-  if (vivas.length === v.length) return 0;
-  reescreverAba(planilha(), ABA_SESSOES, CAB_SESSOES, vivas, null);
-  return v.length - vivas.length;
+  const pr = PropertiesService.getScriptProperties(), todas = pr.getProperties();
+  let n = 0;
+  Object.keys(todas).forEach(function (k) {
+    if (k.indexOf(PREFIXO_SESSAO) !== 0) return;
+    let uso = 0; try { uso = new Date(JSON.parse(todas[k]).uso).getTime(); } catch (x) {}
+    if (!uso || Date.now() - uso > DIAS_SESSAO * 864e5) { pr.deleteProperty(k); n++; }
+  });
+  const velha = planilha().getSheetByName('_sessoes'); if (velha) planilha().deleteSheet(velha);   // formato da versão 37
+  return n;
 }
 /** @param {any} u @param {any} acao @param {any} detalhe */
 function registrar(u, acao, detalhe) {
   if (MIGRANDO) return;
   try {
     if (ROTINA[acao]) return atualizarUso(u, ROTINA[acao]);
-    const aba = obterAba(planilha(), 'Acessos', CAB_ACESSOS), agora = new Date();
+    const agora = new Date();
     const linha = linhaSegura([fmtDia(agora), fmtHora(agora), u.nome || '', u.email || '', perfilTexto(u), u.dsei || '', TIPO_ACAO[acao] || 'Outro', acao, detalhe || '']);
+    // Durante um envio de exames, as linhas vão juntas no fim do pedido (uma escrita só).
+    if (MEMO && MEMO.escrevendo && MEMO.registros) { MEMO.registros.push(linha); return; }
+    const aba = obterAba(planilha(), 'Acessos', CAB_ACESSOS);
     // Mais recente em cima.
     aba.insertRowAfter(1);
     aba.getRange(2, 1, 1, linha.length).setValues([linha]);
-  } catch (x) {
-    // O atendimento continua, mas a falha fica contada e aparece para a coordenação na Administração.
-    try {
-      const pr = PropertiesService.getScriptProperties();
-      pr.setProperty('AUDITORIA_FALHAS', String(Number(pr.getProperty('AUDITORIA_FALHAS') || 0) + 1));
-      pr.setProperty('AUDITORIA_ULTIMA', new Date().toISOString() + ' · ' + acao + ' · ' + String(x).slice(0, 200));
-    } catch (y) {}
-  }
+  } catch (x) { contarFalhaAuditoria(acao, x); }
+}
+// O atendimento continua, mas a falha fica contada e aparece para a coordenação na Administração.
+/** @param {string} acao @param {any} x */
+function contarFalhaAuditoria(acao, x) {
+  try {
+    const pr = PropertiesService.getScriptProperties();
+    pr.setProperty('AUDITORIA_FALHAS', String(Number(pr.getProperty('AUDITORIA_FALHAS') || 0) + 1));
+    pr.setProperty('AUDITORIA_ULTIMA', new Date().toISOString() + ' · ' + acao + ' · ' + String(x).slice(0, 200));
+  } catch (y) {}
 }
 /** @param {any} dsei */
 function rtsDo(dsei) { return lerUsuarios().filter(function (x) { return ehRT(x) && x.status === 'ativo' && x.dsei === dsei; }); }
@@ -915,6 +1002,7 @@ function exameReferencia(daPessoa, reg) {
  * - lerCompletos(linhas): o exame completo, só das linhas que precisam dos dentes.
  * Tudo fica guardado durante o pedido (MEMO), então ler duas vezes não custa nada. */
 /** @type {any} */ let MEMO = null;
+let COM_TRAVA = false; // este pedido está com a trava (ninguém mais grava exames enquanto isso)
 function memo() { return MEMO || (MEMO = {}); }
 // Posição de cada coluna (o trecho compartilhado, com CAB_EXAME, fica no fim do arquivo: por isso é calculado na hora).
 /** @type {any} */ let COL_EX_ = null;
@@ -922,8 +1010,72 @@ function colEx() { if (!COL_EX_) { COL_EX_ = {}; CAB_EXAME.forEach(function (k, 
 function abaExames() { const m = memo(); return m.abaEx || (m.abaEx = obterAba(planilha(), 'Exames', CAB_EXAME)); }
 /** @param {any} v */
 function textoCelula(v) { return v instanceof Date ? (v.getHours() || v.getMinutes() ? v.toISOString() : fmtDia(v)) : String(v == null ? '' : v); }
+/* ---------- cópia rápida do índice e dos resumos ----------
+ * Ler milhares de linhas da aba Exames leva segundos no Google (o teste de carga mediu 7 s para 5.690 exames).
+ * Por isso o servidor guarda uma cópia do índice e dos resumos na memória rápida do Google e só lê a planilha
+ * quando essa cópia não existe. A cópia tem duas partes:
+ * - a base (a lista inteira, grande, refeita de vez em quando);
+ * - as emendas (só os exames que mudaram depois da base; pequenas, regravadas a cada envio).
+ * Só quem está com a trava grava a cópia (quem grava exames, ou quem conseguiu a trava para refazer a base), então
+ * ela nunca fica pela metade. Quem só lê usa a cópia que estiver lá: no pior caso, está um envio atrasada.
+ * Qualquer dúvida e a cópia é descartada e refeita da planilha: linha apagada à mão (a aba fica com menos linhas
+ * do que a cópia), edição feita na tela (onEdit), envio interrompido no meio, e uma vez por dia na tarefa diária. */
+/** @param {any} r */
+function empacotarIndice(r) { return [r.id, r.codigoIndividuo, r.numeroExame, r.situacao === 'cancelado' ? 1 : 0, r.dataExame, r.dsei, r.usuarioId, r.criadoEm, r.atualizadoEm, r.anteriorId, r.codigo, r._linha]; }
+/** @param {any[]} v */
+function desempacotarIndice(v) {
+  return { id: v[0], codigoIndividuo: v[1], numeroExame: v[2], situacao: v[3] ? 'cancelado' : 'valido', dataExame: v[4], dsei: v[5], usuarioId: v[6],
+    criadoEm: v[7], atualizadoEm: v[8], anteriorId: v[9], codigo: v[10], _linha: v[11], vinculo: v[9] ? { anteriorId: v[9], codigoIndividuo: v[1] } : null };
+}
+/** @type {any} */ const ID_NA_COPIA = { indice: function (/** @type {any} */ x) { return x[0]; }, resumos: function (/** @type {any} */ x) { return x.id; } };
+const EMENDAS_MAX = 300; // passou disso, as emendas entram na base
+const BASE_VELHA_MS = 3 * 3600 * 1000; // a memória do Google guarda por até 6 h: a base é regravada antes de sumir
+/** @param {any} e */
+function juntarNaBase(e) { return Object.keys(e.itens).length > EMENDAS_MAX || Date.now() - (e.criada || 0) > BASE_VELHA_MS; }
+/** As emendas guardadas, se ainda valem (a aba não perdeu linhas). @param {string} nome */
+function emendasDaCopia(nome) {
+  const e = lerDaMemoria(nome + '+'), m = memo();
+  if (!e) return null;
+  if (m.ultLinha == null) m.ultLinha = abaExames().getLastRow(); // uma consulta por pedido
+  return m.ultLinha >= e.n ? e : null;
+}
+/** A lista guardada (base + emendas), ou null. @param {string} nome */
+function copiaDosExames(nome) {
+  const e = emendasDaCopia(nome); if (!e) return null;
+  const b = lerDaMemoria(nome); if (!b || b.id !== e.base) return null;
+  const m = memo(); (m.emendas = m.emendas || {})[nome] = e;
+  const it = e.itens, ks = Object.keys(it); if (!ks.length) return b.l;
+  const l = b.l.filter(function (/** @type {any} */ x) { return !(ID_NA_COPIA[nome](x) in it); });
+  ks.forEach(function (k) { if (it[k]) l.push(it[k]); });
+  return l;
+}
+/** Guarda uma base nova (com emendas vazias). Só com a trava. @param {string} nome @param {any[]} l */
+function guardarBase(nome, l) {
+  const id = Utilities.getUuid(), m = memo(); m.emendas = m.emendas || {};
+  /** @type {any} */ const e = { base: id, n: abaExames().getLastRow(), itens: {}, criada: Date.now() };
+  const ok = guardarNaMemoria(nome, { id: id, l: l }, 21600) && guardarNaMemoria(nome + '+', e, 21600);
+  if (!ok) esquecerDaMemoria(nome + '+');
+  m.emendas[nome] = ok ? e : null;
+  try { CacheService.getScriptCache().remove('refazer:' + nome); } catch (x) {}
+}
+/** Lê da planilha. Se der para pegar a trava na hora (ninguém gravando), aproveita e guarda a base nova;
+ * senão, deixa o pedido para o próximo envio refazer. @param {string} nome @param {() => any[]} ler @param {(l: any[]) => any[]} empacotar */
+function lerEGuardar(nome, ler, empacotar) {
+  if (COM_TRAVA) { const l = ler(); if (!memo().escrevendo) guardarBase(nome, empacotar(l)); return l; }
+  const t = LockService.getScriptLock();
+  if (!t.tryLock(0)) { try { CacheService.getScriptCache().put('refazer:' + nome, '1', 21600); } catch (x) {} return ler(); }
+  COM_TRAVA = true;
+  try { const l = ler(); guardarBase(nome, empacotar(l)); return l; } finally { COM_TRAVA = false; t.releaseLock(); }
+}
 function lerIndice() {
   const m = memo(); if (m.indice) return m.indice;
+  m.emendas = m.emendas || {};
+  const c = m.escrevendo ? null : copiaDosExames('indice');
+  if (c) { m.indice = c.map(desempacotarIndice); m.indiceDaCopia = true; return m.indice; }
+  m.indice = lerEGuardar('indice', lerIndiceDaPlanilha, function (l) { return l.map(empacotarIndice); });
+  return m.indice;
+}
+function lerIndiceDaPlanilha() {
   const aba = abaExames(), n = aba.getLastRow() - 1;
   /** @type {any[]} */ const l = [];
   if (n > 0) aba.getRange(2, 1, n, CAB_INDICE.length).getValues().forEach(function (v, i) {
@@ -933,13 +1085,15 @@ function lerIndice() {
       anteriorId: String(v[9] || ''), codigo: String(v[10] || ''), _linha: i + 2,
       vinculo: v[9] ? { anteriorId: String(v[9]), codigoIndividuo: String(v[1]) } : null });
   });
-  m.indice = l; return l;
+  return l;
 }
 /** @param {string} id */
 function linhaDoExame(id) { const x = lerIndice().filter(function (r) { return r.id === id; })[0]; return x ? x._linha : 0; }
 /** Lê uma coluna só das linhas pedidas, juntando as linhas seguidas num pedido só. @param {number[]} linhas @param {number} col */
 function lerCelulas(linhas, col) {
-  const aba = abaExames(), ord = linhas.slice().sort(function (a, b) { return a - b; }); /** @type {any} */ const out = {};
+  /** @type {any} */ const out = {}, pend = memo().pendentes || {};
+  linhas = linhas.filter(function (l) { if (pend[l]) { out[l] = pend[l][col - 1]; return false; } return true; });
+  const aba = abaExames(), ord = linhas.slice().sort(function (a, b) { return a - b; });
   for (let i = 0; i < ord.length;) {
     let j = i; while (j + 1 < ord.length && ord[j + 1] === ord[j] + 1) j++;
     aba.getRange(ord[i], col, ord[j] - ord[i] + 1, 1).getValues().forEach(function (v, k) { out[ord[i] + k] = v[0]; });
@@ -964,26 +1118,119 @@ function lerExameCompleto(id) { const l = linhaDoExame(id); return l ? lerComple
 /** Resumo de todos os exames (sem o detalhe dos dentes), com o número de cada exame da pessoa já certo. */
 function lerResumos() {
   const m = memo(); if (m.resumos) return m.resumos;
+  m.emendas = m.emendas || {};
+  const c = m.escrevendo ? null : copiaDosExames('resumos');
+  m.resumos = c ? numerarResumos(c) : lerEGuardar('resumos', lerResumosDaPlanilha, function (l) { return l; });
+  return m.resumos;
+}
+function lerResumosDaPlanilha() {
   const aba = abaExames(), n = aba.getLastRow() - 1;
   /** @type {any} */ const porId = {};
   if (n > 0) aba.getRange(2, colEx().resumo_json, n, 1).getValues().forEach(function (v, i) {
     const r = parseExame(v[0], i + 2);
     if (r && (!porId[r.id] || String(r.atualizadoEm || '') > String(porId[r.id].atualizadoEm || ''))) porId[r.id] = r;
   });
-  const l = Object.keys(porId).map(function (k) { return porId[k]; });
+  return numerarResumos(Object.keys(porId).map(function (k) { return porId[k]; }));
+}
+/** Número de cada exame da pessoa (1º, 2º...), pela ordem dos exames válidos. @param {any[]} l */
+function numerarResumos(l) {
   /** @type {any} */ const grupos = {};
   l.filter(exameValido).forEach(function (r) { (grupos[r.codigoIndividuo] = grupos[r.codigoIndividuo] || []).push(r); });
   Object.keys(grupos).forEach(function (k) { grupos[k].sort(ordemExame).forEach(function (r, i) { r.numeroExame = i + 1; }); });
-  m.resumos = l; return l;
+  return l;
+}
+/** Chamado no primeiro exame gravado de um pedido (com a trava): prepara as emendas das cópias. */
+function comecarGravacao() {
+  const m = memo(); if (m.escrevendo) return;
+  m.emendas = m.emendas || {};
+  const c = CacheService.getScriptCache();
+  // Um envio anterior parou no meio (o Google interrompeu): a cópia pode não ter o que ele gravou. Refaz da planilha.
+  if (c.get('gravando')) { esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+'); m.indice = null; m.resumos = null; m.emendas = {}; }
+  lerIndice();
+  // Resumos: se não houver cópia, lê da planilha uma vez aqui (com a trava); os próximos envios só emendam.
+  if (!m.emendas.resumos) { const e = emendasDaCopia('resumos'); if (e && c.get('resumos')) m.emendas.resumos = e; else guardarBase('resumos', lerResumosDaPlanilha()); }
+  c.put('gravando', '1', 21600);
+  m.mudados = {}; m.pendentes = {}; m.registros = [];
+  m.escrevendo = true;
+}
+/** Grava de vez os exames novos (em blocos de linhas seguidas) e as linhas de Acessos guardadas durante o envio.
+ * Roda antes de responder ao app: se falhar, o app recebe erro passageiro e manda de novo (nada se perde). */
+function escreverPendentes() {
+  const m = MEMO; if (!m || !m.pendentes) return;
+  const pend = m.pendentes, ls = Object.keys(pend).map(Number).sort(function (a, b) { return a - b; });
+  try {
+    if (ls.length) {
+      const aba = abaExames();
+      for (let i = 0; i < ls.length;) {
+        let j = i; while (j + 1 < ls.length && ls[j + 1] === ls[j] + 1) j++;
+        aba.getRange(ls[i], 1, j - i + 1, pend[ls[i]].length).setValues(ls.slice(i, j + 1).map(function (l) { return pend[l]; }));
+        i = j + 1;
+      }
+    }
+    m.pendentes = {};
+  } catch (x) { m.falhouGravar = true; throw x; }
+  const rs = m.registros || []; m.registros = [];
+  if (rs.length) {
+    try {
+      const a = obterAba(planilha(), 'Acessos', CAB_ACESSOS);
+      a.insertRowsAfter(1, rs.length);
+      a.getRange(2, 1, rs.length, rs[0].length).setValues(rs.slice().reverse()); // mais recente em cima
+    } catch (x) { contarFalhaAuditoria('várias', x); }
+  }
+}
+function marcarVersaoDados() { try { CacheService.getScriptCache().put('dadosVersao', String(Date.now()) + '-' + Utilities.getUuid().slice(0, 6), 21600); } catch (x) {} }
+/** No fim do pedido, ainda com a trava: grava de vez na planilha e guarda as emendas (os exames deste pedido). */
+function concluirGravacao() {
+  const m = MEMO; if (!m || !m.escrevendo) return;
+  m.escrevendo = false;
+  marcarVersaoDados();
+  const c = CacheService.getScriptCache();
+  try {
+    escreverPendentes();
+    if (m.falhouGravar) throw new Error('gravação incompleta');
+    SpreadsheetApp.flush();
+    const n = abaExames().getLastRow(), ids = Object.keys(m.mudados);
+    const eI = m.emendas.indice;
+    if (eI && m.indice) {
+      /** @type {any} */ const porId = {}; m.indice.forEach(function (r) { porId[r.id] = r; });
+      ids.forEach(function (id) { eI.itens[id] = porId[id] ? empacotarIndice(porId[id]) : null; });
+      if (juntarNaBase(eI) || c.get('refazer:indice')) guardarBase('indice', m.indice.map(empacotarIndice));
+      else { eI.n = n; if (!guardarNaMemoria('indice+', eI, 21600)) esquecerDaMemoria('indice+'); }
+    } else if (m.indice) guardarBase('indice', m.indice.map(empacotarIndice)); // índice lido da planilha neste pedido: já está certo
+    else esquecerDaMemoria('indice+');
+    const eR = m.emendas.resumos;
+    if (eR) {
+      ids.forEach(function (id) { eR.itens[id] = parseExame(m.mudados[id].t, m.mudados[id].linha); });
+      if (juntarNaBase(eR) || c.get('refazer:resumos')) {
+        m.emendas.resumos = eR; eR.n = n;
+        guardarNaMemoria('resumos+', eR, 21600);
+        const l = copiaDosExames('resumos');
+        guardarBase('resumos', numerarResumos(l || lerResumosDaPlanilha()));
+      } else { eR.n = n; if (!guardarNaMemoria('resumos+', eR, 21600)) esquecerDaMemoria('resumos+'); }
+    } else if (m.refazerCopias) guardarBase('resumos', lerResumosDaPlanilha());
+    else esquecerDaMemoria('resumos+');
+    c.remove('gravando');
+  } catch (x) { esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+'); try { c.remove('gravando'); } catch (y) {} }
 }
 /** Resumos só das linhas pedidas. @param {number[]} linhas */
 function lerResumosLinhas(linhas) { const c = lerCelulas(linhas, colEx().resumo_json); return linhas.map(function (l) { return parseExame(c[l], l); }).filter(Boolean); }
 /** Grava o exame na mesma linha (se já existe) ou numa linha nova, e atualiza o índice do pedido. @param {any} reg */
 function gravarRegistro(reg) {
-  const aba = abaExames(), linha = reg._linha || linhaDoExame(reg.id), valores = linhaSegura(linhaExame(reg));
-  const m = memo();
-  if (linha) aba.getRange(linha, 1, 1, valores.length).setValues([valores]);
-  else { const nova = m.proxLinha || Math.max(1, aba.getLastRow()) + 1; aba.getRange(nova, 1, 1, valores.length).setValues([valores]); reg._linha = nova; m.proxLinha = nova + 1; }
+  comecarGravacao();
+  const m = memo(), aba = abaExames(), valores = linhaSegura(linhaExame(reg)), pend = m.pendentes;
+  let linha = reg._linha || linhaDoExame(reg.id);
+  // Por garantia, antes de escrever por cima, confere se a linha é mesmo deste exame (alguém pode ter mexido à mão).
+  if (linha && !pend[linha] && m.indiceDaCopia && String(aba.getRange(linha, 1, 1, 1).getValues()[0][0]) !== String(reg.id)) {
+    escreverPendentes();
+    esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+'); m.indice = null; m.indiceDaCopia = false; m.emendas = {}; m.completos = null;
+    m.indice = lerIndiceDaPlanilha(); linha = linhaDoExame(reg.id); m.refazerCopias = true;
+    delete reg._linha; if (linha) reg._linha = linha;
+  }
+  // Exames novos ficam juntos e vão para a planilha de uma vez no fim do pedido (escreverPendentes): bem mais rápido
+  // que uma escrita por exame. Quem lê essas linhas antes disso (lerCelulas) recebe o que está esperando.
+  if (linha && pend[linha]) pend[linha] = valores;
+  else if (linha) aba.getRange(linha, 1, 1, valores.length).setValues([valores]);
+  else { const nova = m.proxLinha || Math.max(1, aba.getLastRow()) + 1; pend[nova] = valores; reg._linha = nova; m.proxLinha = nova + 1; }
   const i = (m.indice || []).filter(function (x) { return x.id === reg.id; })[0];
   const novo = { id: String(reg.id), codigoIndividuo: codigoIndividuoDe(reg), numeroExame: reg.numeroExame || 1, situacao: exameValido(reg) ? 'valido' : 'cancelado',
     dataExame: reg.dataExame || '', dsei: reg.dsei || '', usuarioId: reg.usuarioId || '', criadoEm: reg.criadoEm || '', atualizadoEm: reg.atualizadoEm || '',
@@ -992,7 +1239,7 @@ function gravarRegistro(reg) {
   if (m.indice) { if (i) Object.assign(i, novo); else m.indice.push(novo); }
   if (m.completos) m.completos[novo._linha] = reg;
   m.resumos = null;
-  if (!m.versaoMarcada) { m.versaoMarcada = true; try { CacheService.getScriptCache().put('dadosVersao', String(Date.now()), 21600); } catch (x) {} }
+  m.mudados[novo.id] = { t: valores[colEx().resumo_json - 1], linha: novo._linha };
 }
 // Muda a cada gravação de exame (o Painel guardado deixa de valer).
 function versaoDados() { try { return CacheService.getScriptCache().get('dadosVersao') || '0'; } catch (x) { return '0'; } }
@@ -2820,7 +3067,6 @@ const DICIONARIO = [
   ['Exames', 'cro', 'CRO do profissional.', 'texto'],
   ['Exames', 'resumo_json', 'Resumo do exame para o sistema (Painel e listas), sem o detalhe dos dentes. Não apague.', 'texto do sistema'],
   ['Exames', 'dados_completos_json', 'Todos os dados do exame, usados pelo app. Não precisa usar na análise.', 'JSON'],
-  ['_sessoes', 'sessao_hash · usuario_id · email · codigo_hash · criada_em · ultimo_uso · aparelho', 'Sessões de acesso (o app guarda a sessão, não o código). Vencem depois de 15 dias sem uso. Só o "hash" fica guardado. Não mexa.', 'texto do sistema'],
   ['_erros', 'data · hora · tipo · acao · quem · detalhe', 'Erros do servidor, com o detalhe técnico. A Administração mostra o motivo em linguagem simples.', 'texto do sistema'],
   ['População', 'codigo_dsei · dsei · codigo_polo_base · polo_base · codigo_aldeia · aldeia', 'Uma linha por aldeia, da planilha de população indígena da SESAI enviada pela coordenação em Administração.', 'texto'],
   ['População', 'codigo_terra_indigena · terra_indigena · codigo_municipio_ibge · municipio · uf', 'Terra Indígena e município da aldeia.', 'texto'],
