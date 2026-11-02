@@ -1,7 +1,42 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 38 · servidor 38 · formato da planilha 25**.
+Versão atual: **app 39 · servidor 39 · formato da planilha 25**.
+
+## Versão 39 (app 39 · servidor 39): backup incremental e análise em quatro níveis
+
+### Backup: uma pasta e uma planilha só, que nunca apaga
+- O backup semanal (uma cópia inteira da planilha toda semana, guardando só as 8 últimas) **sai**. No lugar, há **uma planilha só, "Odontograma - backup"**, na pasta "Odontograma - backups" do Drive, atualizada **toda madrugada** pela tarefa diária e pelo botão **Fazer backup agora** (Administração, só a titular).
+- **Incremental:** a cada vez, o backup compara com o que já tem e só acrescenta o que é novo (exames, versões, cadastros, eventos de Acessos, população).
+- **Nada é apagado:** se um registro some da planilha principal, ele continua no backup com `na_planilha_principal = não` e a data em `sumiu_da_principal_em`, e entra um **alerta** na aba Alertas. A coordenação titular recebe um e-mail.
+- **O passado não é reescrito:**
+  - **Exames:** `dados_originais_json` guarda o exame completo (com cada dente) como entrou no backup e nunca muda. O cancelamento (motivo, observação, data, nome e id de quem cancelou) vai para as colunas de situação atual.
+  - **Profissional:** `perfil_profissional_no_exame` e `dsei_profissional_no_exame` mostram como era o cadastro no momento do exame. `perfil_profissional_atual`, `dsei_profissional_atual` e `situacao_profissional_atual` mostram como está hoje. A partir do servidor 39, o próprio exame guarda o perfil e o DSEI de quem o salvou. Nos exames antigos, vale o cadastro do dia em que o exame entrou no backup (a coluna `origem_perfil_no_exame` diz qual dos dois).
+  - **Cadastros, ações do Dia B, convites e códigos reservados:** as colunas `_inicial` guardam como era o registro quando entrou no backup, e as demais mostram como está hoje. Cada mudança (por exemplo, de CD para RT ou de DSEI) vai para a aba **Historico**, com o valor anterior, o novo e a data.
+- **Exame alterado depois de enviado:** a versão nova entra em **Exames_versoes** (com o que mudou, por exemplo "dentes 16, 26"), a original continua, e entra um alerta. Hoje o app ainda deixa corrigir um exame já enviado. O recomendado é cancelar o exame errado e registrar um novo.
+- **Para reconstruir o sistema:** use a versão mais recente de cada exame (em Exames_versoes, ou em `dados_originais_json` se não houver versão) com a situação atual. Nas outras abas, use as colunas com o mesmo nome da planilha principal. A aba **Sobre** do backup explica cada aba.
+- **Antes de uma reorganização da planilha**, o servidor atualiza este mesmo backup em vez de fazer uma cópia inteira. Se o backup falhar, nada muda.
+- As cópias antigas ("Backup Odontograma ...") que já estão no Drive **não são apagadas**: apague à mão quando quiser.
+
+### Planilhas de análise (Looker Studio) em quatro níveis, sem dados de acesso
+- **"Odontograma - análise"**: abas **Exames** (uma linha por exame), **Dentes** (uma por dente), **Procedimentos** (nova: uma por procedimento indicado ou realizado em cada dente) e **Sobre**.
+  - **Exames** ganha no fim o perfil do profissional no exame e hoje, mais contas prontas (dentes com cárie, faces com cárie, dentes com dor ou abscesso, procedimentos indicados e realizados).
+  - **Dentes** mantém as colunas antigas na mesma ordem e ganha no fim: uf, classe_risco, arcada, lado, grupo_dente, presente, estado, tem_carie_ativa, dor_ou_abscesso e o número de procedimentos.
+  - **Procedimentos** traz em cada linha a condição daquele mesmo dente (tem_carie, tem_carie_ativa, faces_com_carie, dor, abscesso_fistula) e `momento` = indicado ou realizado. Exemplo de pergunta que ela responde: "entre os dentes com cárie, quantos receberam ART?". Ainda **não** há regra de tratamento adequado: isso depende da regra clínica que relaciona condição e procedimento esperado.
+- **"Odontograma - análise - faces"** (planilha nova): aba **Faces**, com uma linha por face de cada dente presente. A coluna `face` traz a letra usada naquele dente (O ou I, V, L ou P, M, D), e `face_nome` junta as faces equivalentes (oclusal/incisal, lingual/palatina) para comparar mesial, distal, vestibular, oclusal/incisal e lingual/palatina.
+  - Ela fica à parte porque tem cerca de 5 linhas por dente e o Google aceita até 10 milhões de células por planilha.
+  - É refeita por uma tarefa própria, às 4h, porque o Google dá 6 minutos a cada tarefa.
+- Nenhuma planilha de análise tem hashes, tokens, sessões ou senhas.
+- Todas ligam pelo `id_exame`.
+
+**Como instalar a 39:**
+1. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":39`.
+2. **Apps Script, uma vez só:** escolha `ativarBackup` e clique em Executar (autorize se pedir). Isso desliga o backup semanal antigo, cria as tarefas da madrugada e faz o primeiro backup.
+3. **GitHub, na raiz:** `index.html`, `sw.js`, `Codigo.gs` e `LEIA-ME.md`. **Dentro de `testes`:** `servidor.test.js`, `navegador.test.js` e `gas-simulado.js`.
+4. **Actions:** ✓ verde. **Celular:** feche e abra o app com internet; em Conta deve aparecer "app versão 39 · servidor versão 39".
+5. **Administração > Planilha de análise > Atualizar agora** (cria a planilha de faces). Depois:
+   - **Looker Studio:** adicione as fontes novas (aba Procedimentos e planilha de faces).
+   - Nas fontes Exames e Dentes que já existem, clique em **Atualizar campos** para as colunas novas aparecerem. Os gráficos que já existem continuam funcionando.
 
 ## Servidor 38: planilha de análise sem perder a ligação com o Looker Studio
 

@@ -27,7 +27,7 @@ function criar(opcoes) {
           getValues: () => (r > 1 && (est.leituras[self._nome] = (est.leituras[self._nome] || 0) + nr * nc), 0) || Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => { const v = (rows(self._nome)[r - 1 + i] || [])[c - 1 + j]; return v == null ? "" : typeof v === "string" && v[0] === "'" ? v.slice(1) : v; })),
           setValues: v => { est.escritas[self._nome] = (est.escritas[self._nome] || 0) + 1; if (est.falharEscrita === self._nome) throw new Error("Serviço indisponível (simulado)"); if (v.length !== nr || v.some(l => l.length !== nc)) throw new Error("setValues: tamanho diferente do intervalo"); v.forEach((l, i) => { const R = rows(self._nome); while (R.length < r + i) R.push([]); l.forEach((x, j) => { R[r - 1 + i][c - 1 + j] = gravar(self._nome, r + i, c + j, x instanceof Date ? x.toISOString() : x); }); }); return rg; },
           setValue: x => rg.setValues([[x]]),
-          setFontWeight: () => rg
+          setFontWeight: () => rg, setNumberFormat: () => rg
         };
         return rg;
       },
@@ -66,6 +66,7 @@ function criar(opcoes) {
         deleteColumns: (i, k) => { maxx[n].c = Math.max(1, maxx[n].c - k); },
         getRange: (r, c, nr, nc) => ({ getValues: () => Array.from({ length: nr || 1 }, (_, i) => Array.from({ length: nc || 1 }, (_, j) => { const v = (abas[n][r - 1 + i] || [])[c - 1 + j]; return v == null ? "" : typeof v === "string" && v[0] === "'" ? v.slice(1) : v; })),
           setValues: v => { if (r - 1 + v.length > sh.getMaxRows() || c - 1 + (v[0] || []).length > sh.getMaxColumns()) throw new Error("Esta ação adicionaria células além do tamanho da aba (simulado)"); v.forEach((l, i) => { while (abas[n].length < r + i) abas[n].push([]); l.forEach((x, j) => { abas[n][r - 1 + i][c - 1 + j] = x; }); }); return { setFontWeight() {} }; }, setFontWeight() {},
+          setNumberFormat() { return this; },
           clearContent: () => { for (let i = 0; i < (nr || 1); i++) if (abas[n][r - 1 + i]) for (let j = 0; j < (nc || 1); j++) abas[n][r - 1 + i][c - 1 + j] = ""; } }),
         setFrozenRows() {}, appendRow: l => { abas[n].push(l); },
         setName: novo => { abas[novo] = abas[n]; maxx[novo] = maxx[n]; ids[novo] = ids[n]; delete abas[n]; delete maxx[n]; delete ids[n]; ordem[ordem.indexOf(n)] = novo; n = novo; return sh; } };
@@ -86,8 +87,9 @@ function criar(opcoes) {
   const pasta = nome => (pastas[nome] = pastas[nome] || { nome, arquivos: [], setSharing() {}, setDescription() {}, getFiles: () => iter(pastas[nome].arquivos.filter(f => !f.lixo)) });
   const ctx = {
     SpreadsheetApp: { getActiveSpreadsheet: () => planilha, flush() {},
-      create: nome => { const id = "planilha-" + (Object.keys(est.extras).length + 1); est.extras[id] = criarExtra(nome, id); return est.extras[id]; },
-      openById: id => { if (!est.extras[id]) throw new Error("planilha não encontrada"); return est.extras[id]; } },
+      // falharBackup: o Drive não responde (não dá para abrir nem criar as planilhas separadas, como o backup).
+      create: nome => { if (est.falharBackup) throw new Error("Drive indisponível (simulado)"); const id = "planilha-" + (Object.keys(est.extras).length + 1); est.extras[id] = criarExtra(nome, id); return est.extras[id]; },
+      openById: id => { if (est.falharBackup) throw new Error("Drive indisponível (simulado)"); if (!est.extras[id]) throw new Error("planilha não encontrada"); return est.extras[id]; } },
     PropertiesService: { getScriptProperties: () => ({
       getProperty: k => est.props[k] == null ? null : String(est.props[k]),
       setProperty: (k, v) => { est.props[k] = String(v); },
