@@ -643,11 +643,14 @@ r = P(C, { acao: "atualizarAnalise" });
 const pAn = Object.values(G.est.extras).find(x => x.nome === "Odontograma - análise");
 T("a titular atualiza a planilha de análise: um arquivo separado, com as abas Exames, Dentes, Procedimentos e Sobre", r.ok && r.analise.ok && pAn && pAn.ordem.join() === "Exames,Dentes,Procedimentos,Sobre", [r, pAn && pAn.ordem]);
 const validosIdx = G.ctx.lerIndiceDaPlanilha().filter(x => x.situacao !== "cancelado");
+const todosIdx = G.ctx.lerIndiceDaPlanilha().filter((x, i, l) => l.findIndex(y => y.id === x.id) === i);
+const canceladosIdx = todosIdx.filter(x => x.situacao === "cancelado");
 const anEx = pAn.abas.Exames, anDe = pAn.abas.Dentes;
-T("aba Exames: uma linha por exame válido, sem cancelados e sem as colunas do sistema", anEx.length - 1 === validosIdx.length && anEx[0].join() === G.ctx.cabAnExames().join()
-  && !anEx[0].includes("dados_completos_json") && anEx.slice(1).every(l => l[anEx[0].indexOf("situacao_registro")] === "válido"), [anEx.length - 1, validosIdx.length]);
-const somaDentes = validosIdx.reduce((t, x) => t + Object.keys(JSON.parse(linhaEx(x.id).at(-1)).dentes).length, 0);
-T("aba Dentes: uma linha por dente de cada exame válido", anDe.length - 1 === somaDentes && anDe[0].join() === require("vm").runInContext("CAB_AN_DENTES", G.ctx).join(), [anDe.length - 1, somaDentes]);
+T("aba Exames: uma linha por exame, válidos e cancelados, sem as colunas do sistema", anEx.length - 1 === todosIdx.length && anEx[0].join() === G.ctx.cabAnExames().join()
+  && !anEx[0].includes("dados_completos_json") && anEx.slice(1).filter(l => l[anEx[0].indexOf("situacao_registro")] === "válido").length === validosIdx.length, [anEx.length - 1, todosIdx.length]);
+T("cancelados entram, marcados, com o motivo do cancelamento", canceladosIdx.length > 0 && canceladosIdx.every(x => { const l = anEx.find(e => e[0] === x.id); return l && l[anEx[0].indexOf("situacao_registro")] === "cancelado" && !!l[anEx[0].indexOf("motivo_cancelamento")]; }), canceladosIdx.map(x => x.id));
+const somaDentes = todosIdx.reduce((t, x) => t + Object.keys(JSON.parse(linhaEx(x.id).at(-1)).dentes).length, 0);
+T("aba Dentes: uma linha por dente de cada exame", anDe.length - 1 === somaDentes && anDe[0].join() === require("vm").runInContext("CAB_AN_DENTES", G.ctx).join(), [anDe.length - 1, somaDentes]);
 const cD = k => anDe[0].indexOf(k), cE = k => anEx[0].indexOf(k);
 const comCarie = anDe.slice(1).find(l => l[cD("face_oclusal_incisal")] === "Cárie ativa");
 const exDaLinha = comCarie && anEx.find(l => l[cE("id_exame")] === comCarie[cD("id_exame")]);
@@ -662,7 +665,7 @@ const d16 = anDe.slice(1).find(l => l[cD("dente")] === 16), d11 = anDe.slice(1).
 T("Dentes: arcada, lado e grupo de cada dente", d16[cD("arcada")] === "superior" && d16[cD("lado")] === "direito" && d16[cD("grupo_dente")] === "molar" && d11[cD("grupo_dente")] === "incisivo" && d53[cD("grupo_dente")] === "canino" && d53[cD("tipo")] === "decíduo", [d16 && d16.slice(-11), d53 && d53.slice(-11)]);
 // Procedimentos: uma linha por procedimento de cada dente, com a condição daquele dente.
 const anPr = pAn.abas.Procedimentos, cP = k => anPr[0].indexOf(k);
-const procsEsperados = validosIdx.reduce((t, x) => t + Object.values(JSON.parse(linhaEx(x.id).at(-1)).dentes).reduce((s, d) => s + Object.values(d.procs || {}).filter(v => v === "indicado" || v === "realizado").length, 0), 0);
+const procsEsperados = todosIdx.reduce((t, x) => t + Object.values(JSON.parse(linhaEx(x.id).at(-1)).dentes).reduce((s, d) => s + Object.values(d.procs || {}).filter(v => v === "indicado" || v === "realizado").length, 0), 0);
 T("Procedimentos: uma linha por procedimento indicado ou realizado em cada dente", anPr.length - 1 === procsEsperados && procsEsperados > 0, [anPr.length - 1, procsEsperados]);
 const exOK2 = validosIdx.find(x => x.id === "OK2"), prOK2 = anPr.slice(1).filter(l => l[cP("id_exame")] === "OK2" && l[cP("dente")] === 16);
 T("Procedimentos: selante realizado e verniz indicado no mesmo dente viram duas linhas, cada uma com o momento", !exOK2 || (prOK2.length === 2 && prOK2.some(l => l[cP("codigo_procedimento")] === "selante" && l[cP("momento")] === "realizado" && l[cP("procedimento")] === "Selante") && prOK2.some(l => l[cP("codigo_procedimento")] === "verniz" && l[cP("momento")] === "indicado")), prOK2);
@@ -671,7 +674,7 @@ T("Exames: perfil do profissional no exame e hoje, e contas prontas", ["perfil_p
   && anEx.slice(1).every(l => l[cE("perfil_profissional_no_exame")] !== ""), anEx.slice(1).map(l => l[cE("perfil_profissional_no_exame")]).slice(0, 5));
 // Faces: planilha separada, uma linha por face de cada dente presente.
 const pFa = planilhaExtra("Odontograma - análise - faces"), anFa = pFa && pFa.abas.Faces, cF = k => anFa[0].indexOf(k);
-const facesEsperadas = validosIdx.reduce((t, x) => t + Object.values(JSON.parse(linhaEx(x.id).at(-1)).dentes).filter(d => d.status === "presente").length * 5, 0);
+const facesEsperadas = todosIdx.reduce((t, x) => t + Object.values(JSON.parse(linhaEx(x.id).at(-1)).dentes).filter(d => d.status === "presente").length * 5, 0);
 T("Faces: planilha à parte (limite de células do Google), com as abas Faces e Sobre", pFa && pFa.ordem.join() === "Faces,Sobre", pFa && pFa.ordem);
 T("Faces: uma linha por face de cada dente presente", anFa.length - 1 === facesEsperadas, [anFa.length - 1, facesEsperadas]);
 const fa = (n, f) => anFa.slice(1).find(l => l[cF("dente")] === n && l[cF("face_nome")] === f);
@@ -679,6 +682,14 @@ T("Faces: letra certa da face (I nos anteriores, P nos superiores) e o nome que 
 const cariada = anFa.slice(1).find(l => l[cF("condicao")] === "Cárie ativa");
 T("Faces: condição, cárie e cárie ativa por face", cariada && cariada[cF("tem_carie")] === "sim" && cariada[cF("tem_carie_ativa")] === "sim" && anFa.slice(1).some(l => l[cF("condicao")] === "Hígida" && l[cF("tem_carie")] === "não"), cariada);
 T("Faces: todo id_exame existe na aba Exames", anFa.slice(1).every(l => anEx.some(e => e[0] === l[0])));
+// situacao_registro e id_exame_dente em todas as abas por dente.
+const chavesDentes = new Set(anDe.slice(1).map(l => l[cD("id_exame_dente")]));
+T("id_exame_dente: único em Dentes e no formato id_exame|dente", chavesDentes.size === anDe.length - 1 && anDe.slice(1).every(l => l[cD("id_exame_dente")] === l[cD("id_exame")] + "|" + l[cD("dente")]));
+T("todo procedimento e toda face apontam para um dente da aba Dentes (id_exame_dente)", anPr.slice(1).every(l => chavesDentes.has(l[cP("id_exame_dente")])) && anFa.slice(1).every(l => chavesDentes.has(l[cF("id_exame_dente")])));
+const sitDe = new Map(anDe.slice(1).map(l => [l[cD("id_exame_dente")], l[cD("situacao_registro")]]));
+T("situacao_registro em Dentes, Procedimentos e Faces, igual à do exame", [[anDe, cD], [anPr, cP], [anFa, cF]].every(([t, c]) => t.slice(1).every(l => l[c("situacao_registro")] === anEx.find(e => e[0] === l[0])[cE("situacao_registro")]))
+  && anDe.slice(1).some(l => l[cD("situacao_registro")] === "cancelado") && anFa.slice(1).every(l => sitDe.get(l[cF("id_exame_dente")]) === l[cF("situacao_registro")]));
+T("a aba Sobre avisa para filtrar situacao_registro = válido", pAn.abas.Sobre.some(l => l[0] === "Atenção" && /situacao_registro/.test(l[1])) && pFa.abas.Sobre.some(l => l[0] === "Atenção"));
 const proibidas = /hash|token|senha|sessao|json|chave/i;
 const colunasAnalise = [anEx[0], anDe[0], anPr[0], anFa[0]].flat();
 T("nenhuma coluna técnica de acesso nas planilhas de análise (hashes, tokens, senhas, sessões)", !colunasAnalise.some(k => proibidas.test(k)), colunasAnalise.filter(k => proibidas.test(k)));
@@ -686,7 +697,7 @@ T("nenhum código de acesso nem hash nas planilhas de análise", ![pAn, pFa].som
 T("Administração mostra também a planilha de faces", P(C, { acao: "admin" }).analise.faces.ok === true && /docs\.google\.com/.test(P(C, { acao: "admin" }).analise.faces.url));
 T("refazer a planilha de análise não apaga a cópia rápida da planilha do app", !!G.ctx.lerDaMemoria("indice+") && !!G.ctx.lerDaMemoria("resumos+"));
 r = P(C, { acao: "admin" });
-T("Administração (titular) mostra a planilha de análise: quando, quantos, espaço e o link", r.analise && r.analise.ok && r.analise.exames === validosIdx.length && /docs\.google\.com/.test(r.analise.url) && r.analise.pct >= 0, r.analise);
+T("Administração (titular) mostra a planilha de análise: quando, quantos, espaço e o link", r.analise && r.analise.ok && r.analise.exames === todosIdx.length && r.analise.validos === validosIdx.length && /docs\.google\.com/.test(r.analise.url) && r.analise.pct >= 0, r.analise);
 T("outra pessoa da coordenação não vê nem atualiza a planilha de análise", P(PAULA, { acao: "admin" }).analise === null && !P(PAULA, { acao: "atualizarAnalise" }).ok);
 T("dentista não atualiza a planilha de análise", !P(ANA, { acao: "atualizarAnalise" }).ok);
 // Conferência: um exame válido na planilha do app que não pôde ir para a análise (dados quebrados) é avisado.
@@ -702,10 +713,17 @@ const ids0 = idsAbas(), nDentes0 = pAn.abas.Dentes.length;
 r = P(ANA, { acao: "cancelarExame", id: validosIdx[0].id, motivo: "Exame em duplicidade" });
 T("(cancela um exame para a planilha de análise encolher)", r.ok, r);
 T("atualizar de novo reescreve dentro das mesmas abas (o Looker continua ligado a elas)", P(C, { acao: "atualizarAnalise" }).ok && idsAbas() === ids0, [ids0, idsAbas()]);
-T("com menos exames, não sobram linhas da versão anterior", pAn.abas.Dentes.length < nDentes0 && pAn.abas.Dentes.length - 1 === G.ctx.estadoAnalise().dentes && pAn.abas.Exames.length - 1 === G.ctx.estadoAnalise().exames,
+T("exame cancelado continua nas abas, agora marcado como cancelado (os dentes também)", pAn.abas.Dentes.length === nDentes0 && pAn.abas.Exames.find(l => l[0] === validosIdx[0].id)[cE("situacao_registro")] === "cancelado"
+  && pAn.abas.Dentes.filter(l => l[0] === validosIdx[0].id).every(l => l[cD("situacao_registro")] === "cancelado") && G.ctx.estadoAnalise().validos === validosIdx.length - 1,
   [pAn.abas.Dentes.length, nDentes0, G.ctx.estadoAnalise()]);
+// Sem sobras: com menos linhas (uma linha da planilha do app apagada à mão), a aba é encurtada.
+const linhaApagadaAn = aba("Exames").findIndex(l => l[0] === validosIdx[1].id), guardadaAn = aba("Exames")[linhaApagadaAn];
+aba("Exames").splice(linhaApagadaAn, 1); editouAMao("Exames");
+T("com menos exames, não sobram linhas da versão anterior", P(C, { acao: "atualizarAnalise" }).ok && pAn.abas.Dentes.length < nDentes0 && pAn.abas.Dentes.length - 1 === G.ctx.estadoAnalise().dentes && pAn.abas.Exames.length - 1 === G.ctx.estadoAnalise().exames,
+  [pAn.abas.Dentes.length, nDentes0, G.ctx.estadoAnalise()]);
+aba("Exames").splice(linhaApagadaAn, 0, guardadaAn); editouAMao("Exames");
 T("a aba Sobre termina sem o aviso de atualização em andamento", !pAn.abas.Sobre.some(l => /em andamento/.test(l[1])) && pAn.abas.Sobre.some(l => l[0] === "Exames válidos"));
-T("a tarefa diária também refaz a planilha de análise, nas mesmas abas", G.ctx.tarefaDiaria().analise === validosIdx.length - 1 && idsAbas() === ids0);
+T("a tarefa diária também refaz a planilha de análise, nas mesmas abas", G.ctx.tarefaDiaria().analise === todosIdx.length && idsAbas() === ids0);
 T("a planilha de faces tem a sua própria tarefa da madrugada", G.est.triggers.some(t => t.fn === "tarefaFaces") && G.ctx.tarefaFaces() === G.ctx.estadoFaces().faces && planilhaExtra("Odontograma - análise - faces").abas.Faces.length - 1 === G.ctx.estadoFaces().faces);
 
 /* ---------------------------------------------------------------- backup incremental */
@@ -744,6 +762,32 @@ T("a versão nova diz o que mudou (dentes 16 e 26)", vers[0].o_que_mudou === "de
 T("exame alterado gera alerta e e-mail para a coordenação titular", bkObj("Alertas").some(a => a.tipo === "Exame alterado depois de enviado" && a.registro === "BKX" && /Versão 2/.test(a.detalhe)) && mailsPara("coord@teste.org").length === mailsBk0 + 1 && /backup encontrou 1 alerta/.test(mailsPara("coord@teste.org").at(-1).subject), bkObj("Alertas").slice(-2));
 rb = G.ctx.fazerBackup("teste");
 T("a mesma alteração não vira outra versão no backup seguinte", rb.exames.versoes === 0 && bkObj("Exames_versoes").filter(x => x.id_exame === "BKX").length === 1);
+// Corrigido duas vezes ANTES do primeiro backup: o original é o primeiro envio, e nenhuma versão se perde.
+r = P(ANA, { acao: "enviarExame", registro: exame({ id: "BKY", sufixo: "BKYBKYB2" }) });
+const y1 = jsonEx("BKY"); y1.dentes[36].faces.O = "ca"; y1.atualizadoEm = new Date(Date.now() + 1000).toISOString();
+const r1 = P(ANA, { acao: "enviarExame", registro: y1 });
+const y2 = jsonEx("BKY"); y2.dentes[46].faces.O = "ca"; y2.atualizadoEm = new Date(Date.now() + 2000).toISOString();
+const r2 = P(ANA, { acao: "enviarExame", registro: y2 });
+T("(o exame é enviado e corrigido duas vezes antes do backup)", r.ok && r1.ok && r2.ok && aba("_versoes_exames").filter(l => l[0] === "BKY").length === 2, [r1, r2]);
+rb = G.ctx.fazerBackup("teste");
+const bky = bkEx("BKY"), versY = bkObj("Exames_versoes").filter(x => x.id_exame === "BKY");
+T("o original no backup é o primeiro envio, não a versão da hora do backup", JSON.parse(bky.dados_originais_json).dentes[36].faces.O === "" && JSON.parse(bky.dados_originais_json).dentes[46].faces.O === "", bky.versao_atual);
+T("as duas correções feitas antes do backup viram as versões 2 e 3, cada uma com o que mudou", bky.versao_atual === "3" && versY.map(x => x.versao + ":" + x.o_que_mudou).join() === "2:dentes 36,3:dentes 46", versY.map(x => x.versao + ":" + x.o_que_mudou));
+r = P(ANA, { acao: "cancelarExame", id: "BKY", motivo: "Digitado errado" });
+T("cancelar não é uma versão nova (os dados clínicos não mudam)", r.ok && aba("_versoes_exames").filter(l => l[0] === "BKY").length === 2);
+rb = G.ctx.fazerBackup("teste");
+T("e o backup marca o cancelamento sem criar versão", rb.exames.versoes === 0 && bkEx("BKY").situacao_atual === "cancelado" && bkEx("BKY").versao_atual === "3" && bkEx("BKY").motivo_cancelamento === "Digitado errado");
+rb = G.ctx.fazerBackup("teste");
+T("backup sem mudanças não regrava nenhuma linha de exame (incremental também na gravação)", rb.exames.linhasGravadas === 0 && rb.exames.novos === 0, rb.exames);
+// Perfil da época: a pessoa vira RT no mesmo DSEI e corrige um exame antigo; o exame continua dizendo cirurgião-dentista.
+const idAna = S.idDe("ana@teste.org"), linAna = aba("Usuarios").find(l => l[0] === idAna), cPerfil = aba("Usuarios")[0].indexOf("perfil");
+linAna[cPerfil] = "rt"; editouAMao("Usuarios");
+const z = jsonEx("BKX"); z.dentes[11].faces.V = "mba"; z.atualizadoEm = new Date(Date.now() + 3000).toISOString();
+r = P(ANA, { acao: "enviarExame", registro: z });
+T("correção depois de virar RT: o perfil e o DSEI do exame continuam os da época", r.ok && jsonEx("BKX").profissional.perfil === "cirurgião-dentista" && jsonEx("BKX").profissional.dsei === "Yanomami", r.ok ? jsonEx("BKX").profissional : r);
+rb = G.ctx.fazerBackup("teste");
+T("no backup, o perfil no exame continua o da época e o de hoje aparece à parte", bkEx("BKX").perfil_profissional_no_exame === "cirurgião-dentista" && bkEx("BKX").perfil_profissional_atual === "referência técnica", [bkEx("BKX").perfil_profissional_no_exame, bkEx("BKX").perfil_profissional_atual]);
+linAna[cPerfil] = "dentista"; editouAMao("Usuarios");
 // Exame que some da planilha principal: continua no backup, com alerta.
 const linhaBKX = aba("Exames").findIndex(l => l[0] === "BKX"), guardada = aba("Exames")[linhaBKX];
 aba("Exames").splice(linhaBKX, 1); editouAMao("Exames");

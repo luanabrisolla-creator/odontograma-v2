@@ -1196,7 +1196,7 @@ function avisarSemEspaco() {
   a.classList.add("aviso-servidor"); a.hidden = false;
 }
 // Versão do app: a mesma do número no sw.js (odontograma-vNN). Vai junto em cada pedido ao servidor.
-const VERSAO_APP = 39;
+const VERSAO_APP = 40;
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_LEG = "odonto.legenda.v1";
 const K_SESSAO = "odonto.sessao.v1";
@@ -4730,12 +4730,12 @@ function blocoPlanAnalise(a) {
   if (a == null) return "";
   const f = a.faces || {};
   const st = !a.em ? `<p class="dica" style="margin:4px 0 0">Ainda não foi criada. Toque em <b>Criar agora</b> (ou espere a tarefa da madrugada).</p>`
-    : `<p class="dica" style="margin:4px 0 0">Atualizada em <b>${esc(fmtDataHora(a.em))}</b> · ${fmtN(a.exames || 0)} exames · ${fmtN(a.dentes || 0)} linhas de dentes · ${fmtN(a.procedimentos || 0)} ${a.procedimentos === 1 ? "procedimento" : "procedimentos"} · ${a.pct || 0}% do espaço</p>`
+    : `<p class="dica" style="margin:4px 0 0">Atualizada em <b>${esc(fmtDataHora(a.em))}</b> · ${fmtN(a.exames || 0)} exames${a.cancelados != null ? ` (${fmtN(a.validos || 0)} válidos, ${fmtN(a.cancelados)} ${a.cancelados === 1 ? "cancelado" : "cancelados"})` : ""} · ${fmtN(a.dentes || 0)} linhas de dentes · ${fmtN(a.procedimentos || 0)} ${a.procedimentos === 1 ? "procedimento" : "procedimentos"} · ${a.pct || 0}% do espaço</p>`
       + (a.ok ? "" : `<p class="dica" style="margin:6px 0 0;color:var(--erro-ink)"><b>Não foi atualizada:</b> ${esc(a.erro || "veja em Erros recentes")}</p>`)
       + (f.em ? `<p class="dica" style="margin:4px 0 0">Faces: atualizada em <b>${esc(fmtDataHora(f.em))}</b> · ${fmtN(f.faces || 0)} linhas · ${f.pct || 0}% do espaço</p>` : "")
       + (f.em && !f.ok ? `<p class="dica" style="margin:6px 0 0;color:var(--erro-ink)"><b>Faces não foi atualizada:</b> ${esc(f.erro || "veja em Erros recentes")}</p>` : "");
   return `<div class="bloco"><h3>Planilha de análise (Looker Studio)</h3>
-    <p class="dica" style="margin:4px 0 0">Cópia dos exames válidos em quatro níveis, refeita toda madrugada: uma linha por <b>exame</b>, por <b>dente</b> e por <b>procedimento</b> de cada dente e, numa planilha à parte (por causa do limite de células do Google), uma linha por <b>face</b>. É ela que o Looker Studio lê; a planilha do app não é tocada. Não leva dados de acesso (senhas, códigos, tokens).</p>
+    <p class="dica" style="margin:4px 0 0">Cópia de todos os exames (válidos e cancelados) em quatro níveis, refeita toda madrugada: uma linha por <b>exame</b>, por <b>dente</b> e por <b>procedimento</b> de cada dente e, numa planilha à parte (por causa do limite de células do Google), uma linha por <b>face</b>. É ela que o Looker Studio lê; a planilha do app não é tocada. Não leva dados de acesso (senhas, códigos, tokens). <b>Para os indicadores, filtre situacao_registro = válido.</b></p>
     ${st}
     <div class="acoes-l" style="margin-top:10px">${a.url ? `<a class="sec" href="${esc(a.url)}" target="_blank" rel="noopener">Abrir planilha</a>` : ""}${f.url ? `<a class="sec" href="${esc(f.url)}" target="_blank" rel="noopener" id="admPlanFaces">Abrir planilha de faces</a>` : ""}<button class="prim" id="admPlanAnalise">${a.em ? "Atualizar agora" : "Criar agora"}</button></div>
     <p class="dica" id="admPlanStatus" aria-live="polite"></p></div>`;
