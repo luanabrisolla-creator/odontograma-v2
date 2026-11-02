@@ -62,7 +62,7 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 40;
+const VERSAO = 41;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -131,7 +131,8 @@ const BK_EX_FIXAS = ['id_exame', 'codigo_exame', 'codigo_individuo_original', 'd
 const BK_EX_ATUAIS = ['situacao_atual', 'codigo_individuo_atual', 'numero_exame_atual', 'data_exame_atual', 'classe_risco_atual',
   'motivo_cancelamento', 'observacao_cancelamento', 'cancelado_em', 'cancelado_por', 'cancelado_por_id',
   'perfil_profissional_atual', 'dsei_profissional_atual', 'situacao_profissional_atual',
-  'versao_atual', 'impressao_atual', 'atualizado_em_principal', 'ultima_mudanca_em', 'na_planilha_principal', 'sumiu_da_principal_em', 'conferido_em'];
+  'versao_atual', 'impressao_atual', 'atualizado_em_principal', 'ultima_mudanca_em', 'na_planilha_principal', 'sumiu_da_principal_em', 'conferido_em',
+  'cancelado_era_referencia_de', 'cancelado_com_exames_posteriores'];
 const BK_EX_CAB = BK_EX_FIXAS.concat(BK_EX_ATUAIS);
 const BK_VERSOES_CAB = ['id_exame', 'versao', 'detectada_em', 'atualizado_em_principal', 'o_que_mudou', 'impressao', 'dados_json'];
 const BK_ALERTAS_CAB = ['data', 'hora', 'tipo', 'aba', 'registro', 'detalhe'];
@@ -294,6 +295,7 @@ function atuaisDoExame(e, u) {
   return { situacao_atual: exameValido(e) ? 'válido' : 'cancelado', codigo_individuo_atual: codigoIndividuoDe(e), numero_exame_atual: e.numeroExame || 1,
     data_exame_atual: e.dataExame || '', classe_risco_atual: (e.resultado || {}).classe || '',
     motivo_cancelamento: c.motivo || '', observacao_cancelamento: c.observacao || '', cancelado_em: c.em || '', cancelado_por: c.por || '', cancelado_por_id: c.porId || '',
+    cancelado_era_referencia_de: (c.referenciaDe || []).join('; '), cancelado_com_exames_posteriores: (c.examesPosteriores || []).join('; '),
     perfil_profissional_atual: u ? perfilTexto(u) : '', dsei_profissional_atual: u ? u.dsei || '' : '', situacao_profissional_atual: u ? u.status || '' : 'não encontrado',
     atualizado_em_principal: e.atualizadoEm || '' };
 }
@@ -639,7 +641,8 @@ function arquivarAcessos() {
 const ANALISE_NOME = 'Odontograma - análise', ANALISE_FACES_NOME = 'Odontograma - análise - faces';
 // Colunas a mais na aba Exames (depois das mesmas colunas da aba Exames do app, sem as duas colunas do sistema).
 const CAB_AN_EXAMES_MAIS = ['perfil_profissional_no_exame', 'perfil_profissional_atual', 'dsei_profissional_atual', 'situacao_profissional_atual',
-  'n_dentes_presentes', 'n_dentes_com_carie', 'n_faces_com_carie', 'n_dentes_com_dor_ou_abscesso', 'n_procedimentos_indicados', 'n_procedimentos_realizados'];
+  'n_dentes_presentes', 'n_dentes_com_carie', 'n_faces_com_carie', 'n_dentes_com_dor_ou_abscesso', 'n_procedimentos_indicados', 'n_procedimentos_realizados',
+  'cancelado_era_referencia_de', 'cancelado_com_exames_posteriores'];
 // (CAB_EXAME vem do trecho compartilhado, no fim do arquivo: por isso é calculado na hora)
 function cabAnExames() { return CAB_EXAME.filter(function (k) { return k !== 'resumo_json' && k !== 'dados_completos_json'; }).concat(CAB_AN_EXAMES_MAIS); }
 // Dentes: as colunas antigas continuam na mesma ordem (os gráficos do Looker seguem funcionando); as novas vêm no fim.
@@ -703,6 +706,7 @@ function linhaAnExame(e, b) {
   o.n_dentes_com_dor_ou_abscesso = ds.filter(function (x) { return x.dor_ou_abscesso === 'sim'; }).length;
   o.n_procedimentos_indicados = ds.reduce(function (t, x) { return t + x.nInd; }, 0);
   o.n_procedimentos_realizados = ds.reduce(function (t, x) { return t + x.nReal; }, 0);
+  const c = e.cancelamento || {}; o.cancelado_era_referencia_de = (c.referenciaDe || []).join('; '); o.cancelado_com_exames_posteriores = (c.examesPosteriores || []).join('; ');
   return cabAnExames().map(function (k) { return o[k] == null ? '' : o[k]; });
 }
 /** Linhas das abas Dentes e Procedimentos de um exame. @param {any} e */
@@ -1252,6 +1256,7 @@ const ACOES = {
   previaReorganizacao: { perfis: ['coord'], fn: previaReorganizacao },
   reorganizar:    { perfis: ['coord'], escreve: true, reorganiza: true, fn: reorganizarPelaTitular },
   entrar:         { fn: entrar },
+  sair:           { fn: sairDoAparelho },
   enviarExame:    { escreve: true, fn: enviarExame },
   enviarExames:   { escreve: true, fn: enviarExames },
   dadosAnalise:   { fn: dadosAnalise },
@@ -1446,6 +1451,22 @@ function validarSessao(email, t) {
   if (!u) return null;
   if (fmtDia(ult) !== hojeIso()) { try { s.uso = new Date().toISOString(); PropertiesService.getScriptProperties().setProperty(chave, JSON.stringify(s)); } catch (x) {} }
   return u.id === 'coord' ? u : marcarAcesso(u);
+}
+/** Apaga todas as sessões de uma pessoa (todos os aparelhos). @param {string} id */
+function revogarSessoes(id) {
+  const pr = PropertiesService.getScriptProperties(), todas = pr.getProperties();
+  let n = 0;
+  Object.keys(todas).forEach(function (k) {
+    if (k.indexOf(PREFIXO_SESSAO) !== 0) return;
+    let u = ''; try { u = JSON.parse(todas[k]).u; } catch (x) {}
+    if (u === id) { pr.deleteProperty(k); n++; }
+  });
+  return n;
+}
+/** "Sair deste aparelho": a sessão deste aparelho deixa de valer no servidor. @param {any} d @param {any} u */
+function sairDoAparelho(d, u) {
+  if (d.sessao) { try { PropertiesService.getScriptProperties().deleteProperty(PREFIXO_SESSAO + hashSessao(String(d.sessao))); } catch (x) {} }
+  return { ok: true };
 }
 // Limpeza (tarefa diária): apaga as sessões vencidas.
 function limparSessoes() {
@@ -2094,12 +2115,22 @@ function cancelarExame(d, u) {
   const motivo = String(d.motivo || ''), obs = String(d.observacao || '').trim();
   if (MOTIVOS_CANCELAMENTO.indexOf(motivo) < 0) return { ok: false, erro: 'Escolha o motivo do cancelamento.' };
   if (motivo === 'Outro' && !obs) return { ok: false, erro: 'Explique o motivo em "Outro motivo".' };
+  // Exames válidos da mesma pessoa feitos DEPOIS deste, e os que usaram este como referência na conferência dente a dente.
+  // Eles não são alterados (a comparação feita na época continua registrada); só o número de ordem é refeito.
+  const cod = codigoIndividuoDe(r), outros = lerIndice().filter(function (x) { return x.id !== r.id && x.situacao !== 'cancelado'; });
+  const referencia = outros.filter(function (x) { return x.anteriorId === r.id; });
+  const posteriores = outros.filter(function (x) { return x.codigoIndividuo === cod && ordemExame(r, x) < 0; });
+  const resumo = function (/** @type {any} */ x) { return { id: x.id, data: x.dataExame, numero: x.numeroExame, codigo: x.codigo || '' }; };
+  if (referencia.length && !d.confirmado) return { ok: false, confirmar: true, referencia: referencia.map(resumo), posteriores: posteriores.map(resumo),
+    erro: 'Este exame foi usado como referência por ' + (referencia.length === 1 ? 'um exame posterior' : referencia.length + ' exames posteriores') + ' da mesma pessoa (' + referencia.map(function (x) { return dataBR(x.dataExame); }).join(', ') + '). Confirme para cancelar mesmo assim.' };
   r.situacao = 'cancelado';
   r.cancelamento = { motivo: motivo, observacao: obs, em: new Date().toISOString(), por: u.nome, porId: u.id };
+  if (referencia.length) r.cancelamento.referenciaDe = referencia.map(function (x) { return x.id; });
+  if (posteriores.length) r.cancelamento.examesPosteriores = posteriores.map(function (x) { return x.id; });
   r.atualizadoEm = new Date().toISOString();
   gravarRegistro(r);
   renumerarPessoa(codigoIndividuoDe(r), r);
-  registrar(u, 'Cancelou exame', (r.codigo || r.id) + ' · ' + motivo + (obs ? ': ' + obs : ''));
+  registrar(u, 'Cancelou exame', (r.codigo || r.id) + ' · ' + motivo + (obs ? ': ' + obs : '') + (referencia.length ? ' · era referência de ' + referencia.length + (referencia.length === 1 ? ' exame posterior' : ' exames posteriores') : ''));
   atualizarUsoExames(u, lerIndice());
   delete r._linha;
   return { ok: true, exame: r };
@@ -2581,10 +2612,13 @@ function mudarStatus(d, u, status) {
   if (!a || a.status === 'pendente') return { ok: false, erro: 'Usuário não encontrado.' };
   if (!podeGerir(u, a)) return { ok: false, erro: 'Você não pode alterar este acesso.' };
   a.status = status;
+  // Desativar encerra na hora as sessões da pessoa em todos os aparelhos: se ela for reativada, entra de novo com o código
+  // (uma sessão antiga, por exemplo de um celular perdido, não volta a valer).
+  const revogadas = status !== 'ativo' ? revogarSessoes(a.id) : 0;
   // Reativar é uma nova aprovação: fica registrado quem reativou e quando (e some o aviso de "pediu reativação").
   if (status === 'ativo') Object.assign(a, { aprovado_por: u.nome, aprovado_em: new Date().toISOString() });
   salvarUsuario(a);
-  registrar(u, status === 'ativo' ? 'Reativou acesso' : 'Desativou acesso', a.nome + ' · DSEI ' + a.dsei);
+  registrar(u, status === 'ativo' ? 'Reativou acesso' : 'Desativou acesso', a.nome + ' · DSEI ' + a.dsei + (revogadas ? ' · ' + revogadas + (revogadas === 1 ? ' sessão encerrada' : ' sessões encerradas') : ''));
   return { ok: true };
 }
 /** @param {any} d @param {any} u */

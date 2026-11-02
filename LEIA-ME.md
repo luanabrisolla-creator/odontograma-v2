@@ -1,7 +1,31 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 40 · servidor 40 · formato da planilha 25**.
+Versão atual: **app 41 · servidor 41 · formato da planilha 25**.
+
+## Versão 41 (app 41 · servidor 41): aparelho compartilhado, sessões e cancelamento com aviso
+
+### Aparelho usado por mais de uma pessoa
+- **O exame em andamento é de quem o começou.** Se a sessão de alguém vence (ou o acesso cai) no meio de um exame, ele sai da tela e fica guardado no aparelho para essa pessoa. Quem entrar depois começa com o exame em branco. Quando a dona ou o dono entrar de novo, o exame volta, com o aviso "O exame que você tinha começado neste aparelho foi recuperado".
+- **Quando o acesso cai**, as listas e os números que vieram do servidor (exames na nuvem, página inicial, equipe, Administração) saem da memória do app. Os exames não enviados continuam guardados.
+- **A cópia de segurança** (Meus exames > Mais opções) leva só os exames de quem está no aparelho, não os de outras pessoas.
+
+### Sessões
+- **Desativar um acesso encerra na hora as sessões da pessoa em todos os aparelhos.** Se ela for reativada, entra de novo com o mesmo código. Uma sessão antiga, como a de um celular perdido, não volta a valer. O registro em Acessos diz quantas sessões foram encerradas.
+- **"Sair deste aparelho" também encerra a sessão no servidor**, quando há internet. Sem internet, a pessoa sai do aparelho do mesmo jeito.
+- Trocar o perfil ou o DSEI **não** derruba a sessão: a cada pedido, o servidor confere o cadastro atual, então a permissão nova vale na hora.
+
+### Cancelar um exame que serviu de referência
+- Se o exame foi usado como referência (na conferência dente a dente) por um exame posterior da mesma pessoa, o app **avisa e pede confirmação**, com a data desses exames.
+- Os exames posteriores **não mudam**: continuam apontando para o exame usado na época. Só a ordem dos exames da pessoa (1º, 2º...) é refeita.
+- O cancelamento guarda quais exames usaram este como referência e quais exames da pessoa eram posteriores. Isso aparece:
+  - no backup e na aba Exames da análise, nas colunas `cancelado_era_referencia_de` e `cancelado_com_exames_posteriores`;
+  - em Acessos.
+
+**Como instalar a 41:**
+1. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":41`.
+2. **App:** feche e abra com internet. Em Conta deve aparecer "app versão 41 · servidor versão 41".
+3. **Looker (opcional):** em Exames, **Atualizar campos** (duas colunas novas no fim).
 
 ## Versão 40 (app 40 · servidor 40): o passado protegido desde o primeiro envio, cancelados no Looker
 
