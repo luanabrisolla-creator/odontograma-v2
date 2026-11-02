@@ -1,7 +1,28 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 39 · servidor 39 · formato da planilha 25**.
+Versão atual: **app 40 · servidor 40 · formato da planilha 25**.
+
+## Versão 40 (app 40 · servidor 40): o passado protegido desde o primeiro envio, cancelados no Looker
+
+### Backup
+- **O original agora é o primeiro envio.** Quando um exame já enviado é corrigido, o servidor guarda **na hora** a versão que estava na planilha, na aba `_versoes_exames` da planilha principal, antes de gravar a nova. O backup da madrugada junta essas versões: `dados_originais_json` é sempre o que chegou ao servidor da primeira vez, e cada correção vira uma versão em `Exames_versoes`, mesmo se aconteceu antes do backup.
+- **O perfil da época não é reescrito numa correção.** Se a pessoa era cirurgiã-dentista quando fez o exame e depois virou RT, a correção mantém "cirurgião-dentista" e o DSEI daquela época no exame. O perfil de hoje aparece à parte, em `perfil_profissional_atual`.
+- **Cancelar não cria versão nova:** os dados clínicos não mudam.
+- **Gravação incremental de verdade:** o backup só regrava as linhas que mudaram. `conferido_em` passa a ser a última vez que a linha mudou; a data da conferência geral fica na aba Sobre.
+
+### Looker
+- **Os cancelados entram em todas as abas** (Exames, Dentes, Procedimentos e Faces), com a coluna `situacao_registro` = válido ou cancelado. O motivo do cancelamento fica na aba Exames.
+- ⚠️ **Nos painéis que já existem, ponha um filtro `situacao_registro = válido`** nas fontes (Recurso > Gerenciar fontes de dados > Editar > Filtro, ou um filtro em cada gráfico). Sem isso, os números passam a contar também os exames cancelados.
+- **Nova coluna `id_exame_dente`** (por exemplo, `EX123|16`) em Dentes, Procedimentos e Faces. Use essa coluna para ligar dente com procedimento e face. Para ligar com a aba Exames, use `id_exame`.
+
+**Como instalar a 40:**
+1. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":40`.
+2. **GitHub:** já está no repositório, se você juntou o pull request.
+3. **App:** Administração > Planilha de análise > **Atualizar agora**.
+4. **Looker:**
+   - em cada fonte, **Atualizar campos**;
+   - ponha o filtro `situacao_registro = válido` nos painéis de indicadores.
 
 ## Versão 39 (app 39 · servidor 39): backup incremental e análise em quatro níveis
 

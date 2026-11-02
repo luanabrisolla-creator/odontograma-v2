@@ -62,7 +62,7 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 39;
+const VERSAO = 40;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -304,67 +304,93 @@ function perfilNoExame(e, u) {
   if (u) return [perfilTexto(u), u.dsei || '', 'cadastro no dia em que o exame entrou no backup'];
   return ['', '', 'profissional não encontrado no cadastro'];
 }
+/** Grava só as linhas que mudaram, juntando as linhas seguidas numa escrita só. @param {any} aba @param {number} col @param {any[][]} linhas @param {any} mudadas */
+function gravarMudadas(aba, col, linhas, mudadas) {
+  const ix = Object.keys(mudadas).map(Number).sort(function (a, b) { return a - b; });
+  for (let i = 0; i < ix.length;) {
+    let j = i; while (j + 1 < ix.length && ix[j + 1] === ix[j] + 1) j++;
+    gravarBloco(aba, ix[i] + 2, col, linhas.slice(ix[i], ix[j] + 1));
+    i = j + 1;
+  }
+  return ix.length;
+}
 /** @param {any} ss @param {string} agora @param {any[]} alertas @param {any} usuarios */
 function backupExames(ss, agora, alertas, usuarios) {
   const aba = abaBackup(ss, 'Exames', BK_EX_CAB), nf = BK_EX_FIXAS.length, A = {};
   BK_EX_ATUAIS.forEach(function (k, i) { /** @type {any} */ (A)[k] = i; });
   const ids = lerBloco(aba, 1, 1).map(function (l) { return l[0]; }), atuais = lerBloco(aba, nf + 1, BK_EX_ATUAIS.length);
   /** @type {any} */ const pos = {}; ids.forEach(function (id, i) { if (id && !(id in pos)) pos[id] = i; });
-  const regs = todosExamesCompletos();
-  /** @type {any} */ const r = { novos: 0, versoes: 0, cancelados: 0, sumiram: 0, total: 0 };
+  const regs = todosExamesCompletos(), anteriores = versoesAnteriores();
+  /** @type {any} */ const r = { novos: 0, versoes: 0, cancelados: 0, sumiram: 0, total: 0, linhasGravadas: 0 };
   // Proteção: planilha principal sem nenhum exame, mas o backup com exames presentes = provável problema de leitura. Nada é marcado.
   if (!regs.length && ids.some(function (id, i) { return id && atuais[i][A.na_planilha_principal] === 'sim'; }))
     throw new Error('backup: a planilha principal não tem nenhum exame, mas o backup tem. Nada foi marcado como sumido; confira a aba Exames da planilha principal.');
   const abaV = abaBackup(ss, 'Exames_versoes', BK_VERSOES_CAB);
-  /** @type {any[]} */ const novas = [], versoes = []; /** @type {any} */ const vistos = {};
+  /** @type {any[]} */ const novas = [], versoes = []; /** @type {any} */ const vistos = {}, mudadas = {};
   let versoesLidas = /** @type {any[][]|null} */ (null);
-  /** A versão mais recente guardada de um exame (para dizer o que mudou). @param {string} id @param {number} i */
+  /** A versão mais recente guardada no backup (para dizer o que mudou). @param {string} id @param {number} i */
   function ultimaVersao(id, i) {
     try {
       const v = Number(atuais[i][A.versao_atual]) || 1;
       if (v <= 1) return JSON.parse(String(aba.getRange(i + 2, nf, 1, 1).getValues()[0][0]));
       if (!versoesLidas) versoesLidas = lerBloco(abaV, 1, BK_VERSOES_CAB.length);
-      const l = versoesLidas.concat(versoes).filter(function (x) { return x[0] === id; }).pop();
+      const l = versoesLidas.filter(function (x) { return x[0] === id; }).pop();
       return l ? JSON.parse(l[6]) : null;
     } catch (x) { return null; }
   }
+  /** Acrescenta uma versão nova e o alerta. @param {string} id @param {number} v @param {any} antes @param {any} depois */
+  function novaVersao(id, v, antes, depois) {
+    const mud = antes ? oQueMudou(antes, depois) : '';
+    versoes.push([id, v, agora, depois.atualizadoEm || '', mud, impressaoClinica(depois), registroParaJson(depois)]);
+    alertas.push(alertaBackup('Exame alterado depois de enviado', 'Exames', id, 'Versão ' + v + (mud ? ': mudou ' + mud : '') + '. A versão original continua no backup.'));
+    r.versoes++;
+  }
   regs.forEach(function (e) {
     const id = String(e.id); if (vistos[id]) return; vistos[id] = true;
-    const u = usuarios[e.usuarioId] || null, at = atuaisDoExame(e, u), imp = impressaoClinica(e);
+    const u = usuarios[e.usuarioId] || null, at = atuaisDoExame(e, u);
+    // Todas as versões do exame, da primeira gravação até hoje (as substituídas foram guardadas na hora da correção).
+    /** @type {any[]} */ const cadeia = [];
+    (anteriores[id] || []).concat([e]).forEach(function (x) { if (!cadeia.length || impressaoClinica(cadeia[cadeia.length - 1]) !== impressaoClinica(x)) cadeia.push(x); });
+    const imp = impressaoClinica(e);
     if (!(id in pos)) {
-      const pn = perfilNoExame(e, u), pr = e.profissional || {};
-      const fixo = { id_exame: id, codigo_exame: e.codigo || '', codigo_individuo_original: codigoIndividuoDe(e), dsei: e.dsei || '', data_exame_original: e.dataExame || '',
-        usuario_id: e.usuarioId || '', profissional: pr.nome || '', cro: pr.cro || '', perfil_profissional_no_exame: pn[0], dsei_profissional_no_exame: pn[1], origem_perfil_no_exame: pn[2],
-        criado_em: e.criadoEm || '', entrou_no_backup_em: agora, impressao_original: imp, dados_originais_json: registroParaJson(e) };
-      const mut = Object.assign({}, at, { versao_atual: 1, impressao_atual: imp, ultima_mudanca_em: '', na_planilha_principal: 'sim', sumiu_da_principal_em: '', conferido_em: agora });
+      // O original é a primeira versão que chegou ao servidor, mesmo que o exame tenha sido corrigido antes deste backup.
+      const o = cadeia[0], pn = perfilNoExame(o, u), pr = o.profissional || {};
+      const fixo = { id_exame: id, codigo_exame: o.codigo || '', codigo_individuo_original: codigoIndividuoDe(o), dsei: o.dsei || '', data_exame_original: o.dataExame || '',
+        usuario_id: o.usuarioId || e.usuarioId || '', profissional: pr.nome || '', cro: pr.cro || '', perfil_profissional_no_exame: pn[0], dsei_profissional_no_exame: pn[1], origem_perfil_no_exame: pn[2],
+        criado_em: o.criadoEm || e.criadoEm || '', entrou_no_backup_em: agora, impressao_original: impressaoClinica(o), dados_originais_json: registroParaJson(o) };
+      for (let k = 1; k < cadeia.length; k++) novaVersao(id, k + 1, cadeia[k - 1], cadeia[k]);
+      const mut = Object.assign({}, at, { versao_atual: cadeia.length, impressao_atual: imp, ultima_mudanca_em: cadeia.length > 1 ? agora : '', na_planilha_principal: 'sim', sumiu_da_principal_em: '', conferido_em: agora });
       novas.push(BK_EX_FIXAS.map(function (k) { return /** @type {any} */ (fixo)[k]; }).concat(BK_EX_ATUAIS.map(function (k) { return /** @type {any} */ (mut)[k]; })));
       r.novos++;
       return;
     }
-    const i = pos[id], l = atuais[i];
+    const i = pos[id], l = atuais[i], antes = l.join('\u0001');
     if (l[A.na_planilha_principal] === 'não') alertas.push(alertaBackup('Exame voltou para a planilha principal', 'Exames', id, 'Tinha sumido em ' + l[A.sumiu_da_principal_em] + '.'));
     if (l[A.situacao_atual] === 'válido' && !exameValido(e)) r.cancelados++;
     if (l[A.situacao_atual] === 'cancelado' && exameValido(e)) alertas.push(alertaBackup('Exame cancelado voltou a valer', 'Exames', id, 'Estava cancelado (' + l[A.motivo_cancelamento] + ') e aparece como válido na planilha principal.'));
     let mudou = Object.keys(at).some(function (k) { return k.indexOf('_profissional_') < 0 && String(l[A[k]]) !== String(at[k]); });
     if (imp !== l[A.impressao_atual]) {
-      // Conteúdo clínico diferente: a versão nova é acrescentada (a original continua em dados_originais_json).
-      const v = (Number(l[A.versao_atual]) || 1) + 1, antes = ultimaVersao(id, i), mud = antes ? oQueMudou(antes, e) : '';
-      versoes.push([id, v, agora, e.atualizadoEm || '', mud, imp, registroParaJson(e)]);
-      alertas.push(alertaBackup('Exame alterado depois de enviado', 'Exames', id, 'Versão ' + v + (mud ? ': mudou ' + mud : '') + '. A versão original continua no backup.'));
-      l[A.versao_atual] = v; l[A.impressao_atual] = imp; mudou = true; r.versoes++;
+      // Versões novas desde o último backup: as que vêm depois da que o backup já conhece.
+      let j = -1; cadeia.forEach(function (x, k) { if (impressaoClinica(x) === l[A.impressao_atual]) j = k; });
+      let v = Number(l[A.versao_atual]) || 1;
+      if (j >= 0) for (let k = j + 1; k < cadeia.length; k++) novaVersao(id, ++v, cadeia[k - 1], cadeia[k]);
+      else novaVersao(id, ++v, ultimaVersao(id, i), e);
+      l[A.versao_atual] = v; l[A.impressao_atual] = imp; mudou = true;
     }
     Object.keys(at).forEach(function (k) { l[A[k]] = at[k]; });
+    l[A.na_planilha_principal] = 'sim'; l[A.sumiu_da_principal_em] = '';
     if (mudou) l[A.ultima_mudanca_em] = agora;
-    l[A.na_planilha_principal] = 'sim'; l[A.sumiu_da_principal_em] = ''; l[A.conferido_em] = agora;
+    // Só as linhas que mudaram são gravadas (a data da conferência geral fica na aba Sobre).
+    if (l.join('\u0001') !== antes) { l[A.conferido_em] = agora; mudadas[i] = true; }
   });
   ids.forEach(function (id, i) {
     if (!id || vistos[id]) return;
     const l = atuais[i];
     if (l[A.na_planilha_principal] === 'não') return;
-    l[A.na_planilha_principal] = 'não'; l[A.sumiu_da_principal_em] = agora; r.sumiram++;
+    l[A.na_planilha_principal] = 'não'; l[A.sumiu_da_principal_em] = agora; l[A.conferido_em] = agora; mudadas[i] = true; r.sumiram++;
     alertas.push(alertaBackup('Exame sumiu da planilha principal', 'Exames', id, 'Exame de ' + l[A.data_exame_atual] + ' (' + l[A.situacao_atual] + '). Continua guardado no backup.'));
   });
-  gravarBloco(aba, 2, nf + 1, atuais);
+  r.linhasGravadas = gravarMudadas(aba, nf + 1, atuais, mudadas);
   acrescentar(aba, novas);
   acrescentar(abaV, versoes);
   r.total = ids.filter(Boolean).length + novas.length;
@@ -379,13 +405,13 @@ function backupRegistros(ss, s, agora, alertas) {
   const campos = c.atuais.slice(0, iNa);
   const chaves = lerBloco(aba, 1, 1).map(function (l) { return l[0]; }), atuais = lerBloco(aba, nf + 1, c.atuais.length);
   /** @type {any} */ const pos = {}; chaves.forEach(function (k, i) { if (k && !(k in pos)) pos[k] = i; });
-  /** @type {any[]} */ const novas = [], hist = []; /** @type {any} */ const vistos = {};
+  /** @type {any[]} */ const novas = [], hist = []; /** @type {any} */ const vistos = {}, mudadas = {};
   const r = { novos: 0, mudancas: 0, sumiram: 0, total: 0 };
   lerAbaPrincipal(s.origem, s.cab).forEach(function (o) {
     const k = String(o[s.chave] || ''); if (!k || vistos[k]) return; vistos[k] = true;
     const valores = campos.map(function (f) { return o[f]; });
     if (!(k in pos)) { novas.push([k].concat(c.hist.map(function (f) { return o[f]; }), [agora], valores, ['sim', '', ''])); r.novos++; return; }
-    const l = atuais[pos[k]];
+    const l = atuais[pos[k]], antes = l.join('\u0001');
     let mudou = false;
     valores.forEach(function (v, j) {
       if (String(l[j]) === String(v)) return;
@@ -396,13 +422,14 @@ function backupRegistros(ss, s, agora, alertas) {
     if (l[iNa] === 'não') { alertas.push(alertaBackup('Registro voltou para a planilha principal', s.aba, k, 'Tinha sumido em ' + l[iSum] + '.')); mudou = true; }
     if (mudou) l[iMud] = agora;
     l[iNa] = 'sim'; l[iSum] = '';
+    if (l.join('\u0001') !== antes) mudadas[pos[k]] = true;
   });
   chaves.forEach(function (k, i) {
     if (!k || vistos[k] || atuais[i][iNa] === 'não') return;
-    atuais[i][iNa] = 'não'; atuais[i][iSum] = agora; r.sumiram++;
+    atuais[i][iNa] = 'não'; atuais[i][iSum] = agora; mudadas[i] = true; r.sumiram++;
     alertas.push(alertaBackup('Registro sumiu da planilha principal', s.aba, k, 'Continua guardado no backup, com a última situação conhecida.'));
   });
-  gravarBloco(aba, 2, nf + 1, atuais);
+  gravarMudadas(aba, nf + 1, atuais, mudadas);
   acrescentar(aba, novas);
   acrescentar(abaBackup(ss, 'Historico', BK_HIST_CAB), hist);
   r.total = chaves.filter(Boolean).length + novas.length;
@@ -467,8 +494,8 @@ function fazerBackup(motivo) {
       ['Versões novas de exames neste backup', String(est.exames.versoes)], ['Cadastros no backup', String(cad.total || 0)],
       ['Alertas novos neste backup', String(alertas.length)], ['Alertas no total', String(totalAlertas)],
       ['Regras', 'Nada é apagado: o que some da planilha principal fica aqui, com na_planilha_principal = "não", a data em sumiu_da_principal_em e um alerta. O passado não é reescrito: as colunas que terminam em _original, _inicial e _no_exame mostram como era; as que terminam em _atual (ou com o mesmo nome da planilha principal) mostram a situação de hoje.'],
-      ['Exames', 'Uma linha por exame (válidos e cancelados). dados_originais_json é o exame completo, com cada dente, como entrou no backup. Cancelamento (motivo, data e responsável) fica nas colunas de situação atual.'],
-      ['Exames_versoes', 'Se um exame for alterado depois de enviado, cada versão nova entra aqui (o exame completo em dados_json) e gera um alerta. A versão mais recente é a que vale hoje.'],
+      ['Exames', 'Uma linha por exame (válidos e cancelados). dados_originais_json é o exame completo, com cada dente, como chegou ao servidor pela primeira vez (as correções feitas antes do backup também ficam guardadas, em Exames_versoes). Cancelamento (motivo, data e responsável) fica nas colunas de situação atual. conferido_em é a última vez que a linha mudou; a conferência geral é a data do último backup, acima.'],
+      ['Exames_versoes', 'Se um exame for alterado depois de enviado, cada versão nova entra aqui (o exame completo em dados_json) e gera um alerta. O servidor guarda a versão anterior na hora da correção, então nenhuma versão se perde entre dois backups. A versão mais recente é a que vale hoje.'],
       ['Cadastros', 'Uma linha por pessoa. Colunas _inicial: como era o cadastro quando entrou no backup. Demais colunas: como está hoje. Cada mudança de perfil, DSEI, situação etc. fica na aba Historico com a data.'],
       ['Historico', 'Cada mudança detectada em cadastros, ações do Dia B, convites e códigos reservados: valor anterior, valor novo e quando o backup percebeu.'],
       ['Acoes_Dia_B, Convites, Codigos_reservados', 'Mesma lógica dos cadastros.'],
@@ -599,13 +626,14 @@ function arquivarAcessos() {
 }
 
 /* ---------- planilhas de análise (para o Looker Studio) ----------
- * Cópias dos exames VÁLIDOS em quatro níveis, refeitas toda madrugada (e pelo botão "Atualizar agora" da Administração),
+ * Cópias de TODOS os exames (válidos e cancelados, com situacao_registro em todas as abas) em quatro níveis, refeitas toda madrugada (e pelo botão "Atualizar agora" da Administração),
  * sem nada técnico de acesso (sem hashes, tokens, sessões ou senhas):
  * - "Odontograma - análise": aba Exames (uma linha por exame), aba Dentes (uma linha por dente), aba Procedimentos
  *   (uma linha por procedimento indicado ou realizado em cada dente) e aba Sobre;
  * - "Odontograma - análise - faces": aba Faces (uma linha por face de cada dente presente) e aba Sobre. Fica numa
  *   planilha à parte porque é a maior (cerca de 5 linhas por dente) e o Google aceita até 10 milhões de células por planilha.
- * Todas ligam pelo id_exame. O Looker lê estas cópias, nunca a planilha do app: assim ele não atrapalha os envios.
+ * Exames liga com as outras pelo id_exame; Dentes, Procedimentos e Faces ligam entre si pelo id_exame_dente
+ * ("id_exame|dente"). Para indicadores, filtre situacao_registro = "válido". O Looker lê estas cópias, nunca a planilha do app: assim ele não atrapalha os envios.
  * As abas são sempre as MESMAS (o conteúdo é reescrito dentro delas): o Looker guarda o número interno de cada aba
  * e perderia a ligação se a aba fosse apagada e criada de novo. No fim, o servidor confere se os números batem. */
 const ANALISE_NOME = 'Odontograma - análise', ANALISE_FACES_NOME = 'Odontograma - análise - faces';
@@ -618,12 +646,13 @@ function cabAnExames() { return CAB_EXAME.filter(function (k) { return k !== 're
 const CAB_AN_DENTES = ['id_exame', 'codigo_individuo', 'numero_exame', 'data_exame', 'dsei', 'polo_base', 'aldeia_comunidade', 'faixa_etaria', 'sexo', 'idade_anos',
   'dente', 'tipo', 'situacao', 'sigla', 'tem_carie', 'faces_com_carie', 'face_oclusal_incisal', 'face_vestibular', 'face_lingual_palatina', 'face_mesial', 'face_distal', 'dor', 'abscesso_fistula',
   'procedimentos_indicados', 'procedimentos_realizados', 'observacao',
-  'uf', 'classe_risco', 'arcada', 'lado', 'grupo_dente', 'presente', 'estado', 'tem_carie_ativa', 'dor_ou_abscesso', 'n_procedimentos_indicados', 'n_procedimentos_realizados'];
+  'uf', 'classe_risco', 'arcada', 'lado', 'grupo_dente', 'presente', 'estado', 'tem_carie_ativa', 'dor_ou_abscesso', 'n_procedimentos_indicados', 'n_procedimentos_realizados',
+  'situacao_registro', 'id_exame_dente'];
 const CAB_AN_PROCS = ['id_exame', 'codigo_individuo', 'numero_exame', 'data_exame', 'uf', 'dsei', 'polo_base', 'aldeia_comunidade', 'faixa_etaria', 'sexo', 'idade_anos', 'usuario_id',
   'dente', 'tipo', 'arcada', 'grupo_dente', 'situacao_dente', 'estado_dente', 'sigla', 'tem_carie', 'tem_carie_ativa', 'faces_com_carie', 'dor', 'abscesso_fistula', 'dor_ou_abscesso',
-  'procedimento', 'codigo_procedimento', 'momento'];
+  'procedimento', 'codigo_procedimento', 'momento', 'situacao_registro', 'id_exame_dente'];
 const CAB_AN_FACES = ['id_exame', 'codigo_individuo', 'data_exame', 'dsei', 'polo_base', 'aldeia_comunidade', 'faixa_etaria', 'sexo',
-  'dente', 'tipo', 'arcada', 'grupo_dente', 'face', 'face_nome', 'condicao', 'tem_carie', 'tem_carie_ativa', 'restaurada'];
+  'dente', 'tipo', 'arcada', 'grupo_dente', 'face', 'face_nome', 'condicao', 'tem_carie', 'tem_carie_ativa', 'restaurada', 'situacao_registro', 'id_exame_dente'];
 const ANALISE_LIMITE = 9000000; // o Google aceita 10 milhões de células por planilha; deixa folga
 const FACES_ORDEM = ['O', 'V', 'L', 'M', 'D'], FACE_NOME = { O: 'oclusal/incisal', V: 'vestibular', L: 'lingual/palatina', M: 'mesial', D: 'distal' };
 /** Arcada, lado e grupo do dente (numeração FDI). @param {any} n */
@@ -633,9 +662,9 @@ function infoDente(n) {
     grupo: u <= 2 ? 'incisivo' : u === 3 ? 'canino' : dec || u >= 6 ? 'molar' : 'pré-molar', tipo: dec ? 'decíduo' : 'permanente' };
 }
 const simNao = function (/** @type {any} */ b) { return b ? 'sim' : 'não'; };
-/** Os exames válidos, completos, e o que é preciso para as colunas do profissional. */
+/** Todos os exames (válidos e cancelados), completos, e o que é preciso para as colunas do profissional. */
 function baseAnalise() {
-  const regs = todosExamesCompletos().filter(exameValido);
+  const regs = todosExamesCompletos();
   /** @type {any} */ const usuarios = {}; lerAbaPrincipal('Usuarios', CAB_USUARIOS).forEach(function (u) { if (u.id) usuarios[u.id] = u; });
   return { regs: regs, usuarios: usuarios, perfis: perfisDoBackup() };
 }
@@ -684,12 +713,12 @@ function linhasDentesEProcs(e) {
     /** @type {any} */ const d = {}; CAB_DENTE.forEach(function (k, j) { d[k] = base[i][j]; });
     Object.assign(d, { tem_carie: x.tem_carie, faces_com_carie: x.faces_com_carie, uf: o.uf, classe_risco: o.classe_risco, arcada: x.info.arcada, lado: x.info.lado,
       grupo_dente: x.info.grupo, presente: simNao(x.pres), estado: x.estado, tem_carie_ativa: x.tem_carie_ativa, dor_ou_abscesso: x.dor_ou_abscesso,
-      n_procedimentos_indicados: x.nInd, n_procedimentos_realizados: x.nReal });
+      n_procedimentos_indicados: x.nInd, n_procedimentos_realizados: x.nReal, id_exame_dente: e.id + '|' + x.n });
     dentes.push(CAB_AN_DENTES.map(function (k) { return k in d ? d[k] : o[k] == null ? '' : o[k]; }));
     x.procs.forEach(function (k) {
       /** @type {any} */ const p = { dente: x.n, tipo: x.info.tipo, arcada: x.info.arcada, grupo_dente: x.info.grupo, situacao_dente: NOMES_STATUS[x.d.status] || x.d.status || '',
         estado_dente: x.estado, sigla: x.sigla, tem_carie: x.tem_carie, tem_carie_ativa: x.tem_carie_ativa, faces_com_carie: x.faces_com_carie,
-        dor: x.dor, abscesso_fistula: x.abscesso, dor_ou_abscesso: x.dor_ou_abscesso, procedimento: NOMES_PROC[k] || k, codigo_procedimento: k, momento: x.p[k] };
+        dor: x.dor, abscesso_fistula: x.abscesso, dor_ou_abscesso: x.dor_ou_abscesso, procedimento: NOMES_PROC[k] || k, codigo_procedimento: k, momento: x.p[k], id_exame_dente: e.id + '|' + x.n };
       procs.push(CAB_AN_PROCS.map(function (c) { return c in p ? p[c] : o[c] == null ? '' : o[c]; }));
     });
   });
@@ -704,7 +733,7 @@ function linhasFaces(e) {
     FACES_ORDEM.forEach(function (f) {
       const v = x.fs[f] || '';
       /** @type {any} */ const r = { dente: x.n, tipo: x.info.tipo, arcada: x.info.arcada, grupo_dente: x.info.grupo, face: /** @type {any} */ (lf)[f], face_nome: FACE_NOME[f],
-        condicao: NOMES_FACE[v] || v, tem_carie: simNao(['ca', 'cc', 'restc'].indexOf(v) >= 0), tem_carie_ativa: simNao(v === 'ca'), restaurada: simNao(v === 'rest' || v === 'restc') };
+        condicao: NOMES_FACE[v] || v, tem_carie: simNao(['ca', 'cc', 'restc'].indexOf(v) >= 0), tem_carie_ativa: simNao(v === 'ca'), restaurada: simNao(v === 'rest' || v === 'restc'), id_exame_dente: e.id + '|' + x.n };
       l.push(CAB_AN_FACES.map(function (k) { return k in r ? r[k] : o[k] == null ? '' : o[k]; }));
     });
   });
@@ -725,7 +754,8 @@ function atualizarAnalise(b) {
   /** @type {any[]} */ const dentes = [], procs = [];
   b.regs.forEach(function (e) { const x = linhasDentesEProcs(e); Array.prototype.push.apply(dentes, x.dentes); Array.prototype.push.apply(procs, x.procs); });
   const celulas = (exames.length + 1) * cabAnExames().length + (dentes.length + 1) * CAB_AN_DENTES.length + (procs.length + 1) * CAB_AN_PROCS.length;
-  /** @type {any} */ const est = Object.assign(estadoAnalise() || {}, { em: new Date().toISOString(), exames: exames.length, dentes: dentes.length, procedimentos: procs.length,
+  const nValidos = b.regs.filter(exameValido).length;
+  /** @type {any} */ const est = Object.assign(estadoAnalise() || {}, { em: new Date().toISOString(), exames: exames.length, validos: nValidos, cancelados: exames.length - nValidos, dentes: dentes.length, procedimentos: procs.length,
     celulas: celulas, pct: Math.floor(celulas / ANALISE_LIMITE * 100), ok: false, erro: '' });
   if (celulas > ANALISE_LIMITE) {
     est.erro = 'A planilha de análise ficaria com ' + celulas + ' células, acima do limite. A versão anterior foi mantida.';
@@ -738,11 +768,13 @@ function atualizarAnalise(b) {
   escreverAbaNoLugar(ss, 'Procedimentos', CAB_AN_PROCS, procs, 2);
   const agora = new Date();
   escreverAbaNoLugar(ss, 'Sobre', ['item', 'valor'], [
-    ['O que é', 'Cópia dos exames válidos do Odontograma para análise (Looker Studio, Excel). Refeita toda madrugada: não edite, as mudanças se perdem. Não tem dados de acesso (senhas, códigos, tokens).'],
+    ['O que é', 'Cópia de todos os exames do Odontograma (válidos e cancelados) para análise (Looker Studio, Excel). Refeita toda madrugada: não edite, as mudanças se perdem. Não tem dados de acesso (senhas, códigos, tokens).'],
+    ['Atenção', 'Para calcular indicadores, filtre situacao_registro = "válido" (em todas as abas). Os cancelados ficam para estudar os cancelamentos (motivo_cancelamento, na aba Exames).'],
     ['Atualizada em (horário de Brasília)', fmtDia(agora) + ' ' + fmtHora(agora)],
-    ['Exames válidos', String(exames.length)], ['Linhas de dentes', String(dentes.length)], ['Linhas de procedimentos', String(procs.length)],
+    ['Exames', String(exames.length)], ['Exames válidos', String(nValidos)], ['Exames cancelados', String(exames.length - nValidos)], ['Linhas de dentes', String(dentes.length)], ['Linhas de procedimentos', String(procs.length)],
     ['Espaço usado', est.pct + '% (o Google aceita até 10 milhões de células)'],
-    ['Exames', 'Uma linha por exame válido. As colunas são as mesmas da aba Exames do app (o Dicionário do app explica cada uma), mais o perfil do profissional no exame e hoje e contas prontas no fim.'],
+    ['Ligações', 'Exames liga com as outras abas pelo id_exame. Dentes, Procedimentos e Faces ligam entre si pelo id_exame_dente (id_exame|dente, ex.: EX123|16).'],
+    ['Exames', 'Uma linha por exame (válido ou cancelado). As colunas são as mesmas da aba Exames do app (o Dicionário do app explica cada uma), mais o perfil do profissional no exame e hoje e contas prontas no fim.'],
     ['Dentes', 'Uma linha por dente de cada exame (todos os dentes da dentição registrada), com arcada, lado, grupo, estado, faces, dor e abscesso. Use id_exame para ligar com a aba Exames.'],
     ['Procedimentos', 'Uma linha por procedimento de cada dente, com momento = indicado ou realizado e a condição daquele mesmo dente (cárie, cárie ativa, dor, abscesso). Ex.: entre os dentes com cárie, quantos receberam ART.'],
     ['Faces', 'Uma linha por face de cada dente presente, na planilha "' + ANALISE_FACES_NOME + '" (fica à parte por causa do limite de células do Google).']
@@ -751,10 +783,10 @@ function atualizarAnalise(b) {
   SpreadsheetApp.flush();
   // Conferência: o que ficou na planilha de análise bate com a planilha do app?
   const nEx = ss.getSheetByName('Exames').getLastRow() - 1, nDe = ss.getSheetByName('Dentes').getLastRow() - 1, nPr = Math.max(ss.getSheetByName('Procedimentos').getLastRow() - 1, 0);
-  const validos = lerIndice().filter(function (r) { return r.situacao !== 'cancelado'; }).length;
+  const naPrincipal = lerIndice().map(function (r) { return r.id; }).filter(function (id, i, l) { return l.indexOf(id) === i; }).length;
   est.url = ss.getUrl(); est.segundos = Math.round((Date.now() - inicio) / 1000);
-  est.ok = nEx === exames.length && nDe === dentes.length && nPr === procs.length && exames.length === validos;
-  if (!est.ok) est.erro = 'Conferência: planilha de análise com ' + nEx + ' exames, ' + nDe + ' dentes e ' + nPr + ' procedimentos; esperado ' + validos + ' exames válidos, ' + dentes.length + ' dentes e ' + procs.length + ' procedimentos.';
+  est.ok = nEx === exames.length && nDe === dentes.length && nPr === procs.length && exames.length === naPrincipal;
+  if (!est.ok) est.erro = 'Conferência: planilha de análise com ' + nEx + ' exames, ' + nDe + ' dentes e ' + nPr + ' procedimentos; esperado ' + naPrincipal + ' exames (válidos e cancelados), ' + dentes.length + ' dentes e ' + procs.length + ' procedimentos.';
   guardarEstadoAnalise(est);
   if (!est.ok) throw new Error('planilha de análise: ' + est.erro);
   return est;
@@ -778,9 +810,10 @@ function atualizarAnaliseFaces(b) {
   });
   const agora = new Date();
   escreverAbaNoLugar(ss, 'Sobre', ['item', 'valor'], [
-    ['O que é', 'Uma linha por face de cada dente presente nos exames válidos do Odontograma. Refeita toda madrugada: não edite. Use id_exame para ligar com as abas da planilha "' + ANALISE_NOME + '".'],
+    ['O que é', 'Uma linha por face de cada dente presente em todos os exames do Odontograma (válidos e cancelados). Refeita toda madrugada: não edite. Liga com a aba Exames pelo id_exame e com Dentes e Procedimentos pelo id_exame_dente (id_exame|dente).'],
+    ['Atenção', 'Para calcular indicadores, filtre situacao_registro = "válido".'],
     ['Atualizada em (horário de Brasília)', fmtDia(agora) + ' ' + fmtHora(agora)],
-    ['Exames válidos', String(b.regs.length)], ['Linhas de faces', String(total)],
+    ['Exames', String(b.regs.length)], ['Linhas de faces', String(total)],
     ['Espaço usado', est.pct + '% (o Google aceita até 10 milhões de células)'],
     ['Faces', 'face: a letra usada no dente (O ou I = oclusal/incisal, V = vestibular, L ou P = lingual/palatina, M = mesial, D = distal). face_nome junta oclusal com incisal e lingual com palatina, para comparar faces entre dentes. condicao: Hígida, Cárie ativa, Cárie crônica, Mancha branca ativa ou inativa, Restaurada sem ou com cárie, Selante.']
   ], 1);
@@ -1929,6 +1962,22 @@ function camposPermitidos(reg, u) {
   if (fora.length) registrar(u, 'Campos descartados de um exame', String(reg.id || '') + ': ' + fora.slice(0, 10).join(', ') + (fora.length > 10 ? '…' : ''));
   return r;
 }
+/* Versões anteriores dos exames corrigidos depois de enviados (aba _versoes_exames da planilha principal). Gravadas na
+ * hora da correção, antes de o exame ser substituído: o backup da madrugada recebe todas, mesmo as de antes de ele rodar. */
+const ABA_VERSOES = '_versoes_exames', CAB_VERSOES = ['id_exame', 'versao_de', 'substituida_em', 'substituida_por_id', 'impressao', 'dados_json'];
+/** @param {any} ant @param {any} u */
+function guardarVersaoAnterior(ant, u) {
+  obterAba(planilha(), ABA_VERSOES, CAB_VERSOES).appendRow(linhaSegura([String(ant.id), ant.atualizadoEm || ant.criadoEm || '', new Date().toISOString(), u.id, impressaoClinica(ant), registroParaJson(ant)]));
+}
+/** Versões anteriores guardadas, por exame, na ordem em que foram substituídas. */
+function versoesAnteriores() {
+  /** @type {any} */ const o = {};
+  lerAbaPrincipal(ABA_VERSOES, CAB_VERSOES).forEach(function (v) {
+    if (!v.id_exame) return;
+    try { (o[v.id_exame] = o[v.id_exame] || []).push(JSON.parse(v.dados_json)); } catch (x) {}
+  });
+  return o;
+}
 /** Confere e grava um exame. Em lote, a aba Uso é atualizada uma vez só, no fim. @param {any} reg @param {any} u @param {boolean} emLote */
 function processarExame(reg, u, emLote) {
   if (!reg || !reg.id || !reg.resultado) return { ok: false, erro: 'Exame incompleto.' };
@@ -1961,8 +2010,20 @@ function processarExame(reg, u, emLote) {
   if (classeDoApp && classeDoApp !== reg.resultado.classe) registrar(u, 'Resultado recalculado', 'Exame ' + reg.id + ': o app mandou classe ' + classeDoApp + ', o servidor calculou ' + reg.resultado.classe);
   if (u.id === 'coord') return { ok: false, erro: 'A coordenação titular não registra exames.' };
   if (u.perfil === 'coord' && !u.dsei) return { ok: false, erro: 'Para registrar exames, a pessoa da coordenação precisa ser também RT de um DSEI.' };
-  // Quem fez o exame e como era o cadastro naquele momento (perfil e DSEI): não muda se o cadastro mudar depois.
-  reg.profissional = { nome: u.nome, cro: u.cro, perfil: perfilTexto(u), dsei: u.dsei || '' };
+  // Correção de um exame já enviado: a versão que está na planilha é lida antes (para guardá-la e manter o profissional da época).
+  let antCompleto = anterior ? lerCompletos([anterior._linha])[0] : null;
+  if (anterior && (!antCompleto || String(antCompleto.id) !== String(reg.id))) {
+    // A cópia rápida apontou a linha errada (alguém mexeu na planilha): relê o índice da própria planilha.
+    const m = memo(); escreverPendentes();
+    esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+'); m.indiceDaCopia = false; m.emendas = {}; m.completos = null;
+    m.indice = lerIndiceDaPlanilha(); m.refazerCopias = true;
+    const l2 = linhaDoExame(reg.id); antCompleto = l2 ? lerCompletos([l2])[0] : null;
+    if (!antCompleto || String(antCompleto.id) !== String(reg.id)) return { ok: false, passageiro: true, erro: 'Não foi possível ler a versão anterior deste exame agora. O app vai tentar de novo sozinho.' };
+    anterior._linha = l2;
+  }
+  // Quem fez o exame e como era o cadastro naquele momento (perfil e DSEI). Numa correção, continua o da primeira
+  // gravação: se a pessoa virou RT ou mudou de DSEI depois, o exame não muda.
+  reg.profissional = antCompleto ? (antCompleto.profissional || { nome: u.nome, cro: u.cro }) : { nome: u.nome, cro: u.cro, perfil: perfilTexto(u), dsei: u.dsei || '' };
   reg.usuarioId = u.id;
   reg.situacao = 'valido'; delete reg.cancelamento;
   if (anterior && anterior.criadoEm) reg.criadoEm = anterior.criadoEm;
@@ -2014,6 +2075,8 @@ function processarExame(reg, u, emLote) {
     }
   }
   if (anterior) reg._linha = anterior._linha;
+  // O passado não é reescrito: se o conteúdo clínico mudou, a versão anterior fica guardada antes de ser substituída.
+  if (antCompleto && impressaoClinica(antCompleto) !== impressaoClinica(reg)) guardarVersaoAnterior(antCompleto, u);
   renumerarPessoa(reg.codigoIndividuo, reg);
   if (!reg.numeroExame) reg.numeroExame = 1;
   gravarRegistro(reg);
