@@ -445,9 +445,28 @@ for (let i = 0; i < 8; i++) {
   const iB = chavesB.length - 1;
   chavesB.forEach(k => { const x = JSON.parse(G.est.props[k]); x.uso = new Date(Date.now() - 20 * 864e5).toISOString(); G.est.props[k] = JSON.stringify(x); });
   await pg.evaluate(l => { localStorage.setItem("odonto.exames.v1", JSON.stringify(l)); }, [Object.assign(exame({ id: "BVB", sufixo: "BVZMQXR2" }), { dono: S.idDe("bruno@teste.org"), envio: { estado: "pendente", tentativas: 0 } })]);
+  await pg.evaluate(() => { estado.ex.observacoes = "rascunho do Bruno"; alterado(); }); await pg.waitForTimeout(400);
   await pg.evaluate(() => sincronizar(true)); await pg.waitForTimeout(1000);
   T("sessão vencida: o app volta para a tela de entrada com a explicação", !!sesB && iB >= 0 && /15 dias/.test(await pg.textContent("body")) && await pg.evaluate(() => !sessao()), await pg.evaluate(() => estAc.msg));
   T("e o exame guardado continua no aparelho", (await pg.evaluate(() => exames().map(e => e.id))).includes("BVB"));
+  T("o exame que o Bruno tinha começado sai da tela e fica guardado para ele", await pg.evaluate(id => !estado.ex._tocado && !localStorage.getItem("odonto.rascunho.v1")?.includes("rascunho do Bruno") && (JSON.parse(localStorage.getItem("odonto.rascunhosGuardados.v1")) || {})[id].observacoes === "rascunho do Bruno" && estado.nuvem === null, S.idDe("bruno@teste.org")));
+  // Outra pessoa entra no mesmo aparelho: não herda o rascunho nem baixa os exames do Bruno.
+  await pg.evaluate(l => { localStorage.setItem("odonto.exames.v1", JSON.stringify(exames().concat(l))); }, [Object.assign(exame({ id: "ANAPEND", sufixo: "ANPZKQX2" }), { dono: S.idDe("ana@teste.org"), envio: { estado: "corrigir", tentativas: 0, erro: "teste" } })]);
+  await entrar(pg, S.ANA);
+  T("a pessoa seguinte começa com o exame em branco (não vê o rascunho do Bruno)", await pg.evaluate(() => !estado.ex._tocado && estado.ex.observacoes !== "rascunho do Bruno" && !JSON.stringify(estado.ex).includes("rascunho do Bruno")));
+  await irAba(pg, "lista"); await pg.waitForTimeout(300); await pg.click("details.mais summary");
+  const [dlA] = await Promise.all([pg.waitForEvent("download"), pg.click("#copiaBaixar")]);
+  const copiaA = JSON.parse(fs.readFileSync(await dlA.path(), "utf8"));
+  T("a cópia de segurança leva só os exames de quem baixou, não os do Bruno", copiaA.exames.map(e => e.id).join() === "ANAPEND", copiaA.exames.map(e => e.id));
+  await irAba(pg, "config"); await pg.waitForTimeout(200); await pg.click("#sair"); await pg.waitForTimeout(300);
+  // O Bruno volta: o rascunho dele reaparece.
+  await entrar(pg, S.BRUNO);
+  T("quando o Bruno entra de novo, o exame que ele tinha começado volta", await pg.evaluate(() => estado.ex._tocado && estado.ex.observacoes === "rascunho do Bruno"));
+  const sessoesB = () => Object.keys(G.est.props).filter(k => k.startsWith("sessao_") && JSON.parse(G.est.props[k]).u === S.idDe("bruno@teste.org")).length;
+  const nSesB = sessoesB();
+  await irAba(pg, "config"); await pg.waitForTimeout(200); await pg.click("#sair"); await pg.waitForTimeout(800);
+  T("Sair deste aparelho também encerra a sessão no servidor", nSesB >= 1 && sessoesB() === nSesB - 1, [nSesB, sessoesB()]);
+  T("sem erros na página (aparelho compartilhado)", !pg.erros.length, pg.erros);
   await ctx.close();
   // Administração (titular): espaço, erros explicados e dados para análise.
   ({ ctx, pg } = await pagina(false));

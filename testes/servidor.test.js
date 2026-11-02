@@ -711,7 +711,12 @@ T("corrigido, volta a bater", P(C, { acao: "atualizarAnalise" }).ok);
 const idsAbas = () => ["Exames", "Dentes", "Sobre"].map(n => G.ctx.planilhaAnalise().getSheetByName(n).getSheetId()).join();
 const ids0 = idsAbas(), nDentes0 = pAn.abas.Dentes.length;
 r = P(ANA, { acao: "cancelarExame", id: validosIdx[0].id, motivo: "Exame em duplicidade" });
-T("(cancela um exame para a planilha de análise encolher)", r.ok, r);
+const refPost = G.ctx.lerIndiceDaPlanilha().find(x => x.anteriorId === validosIdx[0].id && x.situacao !== "cancelado");
+T("cancelar um exame usado como referência por um exame posterior: o servidor pede confirmação e não cancela", !!refPost && !r.ok && r.confirmar && r.referencia.some(x => x.id === refPost.id) && /referência/.test(r.erro) && jsonEx(validosIdx[0].id).situacao !== "cancelado", r);
+r = P(ANA, { acao: "cancelarExame", id: validosIdx[0].id, motivo: "Exame em duplicidade", confirmado: true });
+T("confirmado, cancela e registra quais exames o usaram como referência", r.ok && r.exame.cancelamento.referenciaDe.includes(refPost.id) && r.exame.cancelamento.examesPosteriores.includes(refPost.id), r.exame && r.exame.cancelamento);
+T("o exame posterior não é alterado: continua apontando para o exame usado na época", G.ctx.lerIndiceDaPlanilha().find(x => x.id === refPost.id).anteriorId === validosIdx[0].id && jsonEx(refPost.id).vinculo.anteriorId === validosIdx[0].id);
+T("o registro em Acessos diz que o exame era referência", aba("Acessos").some(l => l[7] === "Cancelou exame" && /era referência de 1 exame posterior/.test(l[8])));
 T("atualizar de novo reescreve dentro das mesmas abas (o Looker continua ligado a elas)", P(C, { acao: "atualizarAnalise" }).ok && idsAbas() === ids0, [ids0, idsAbas()]);
 T("exame cancelado continua nas abas, agora marcado como cancelado (os dentes também)", pAn.abas.Dentes.length === nDentes0 && pAn.abas.Exames.find(l => l[0] === validosIdx[0].id)[cE("situacao_registro")] === "cancelado"
   && pAn.abas.Dentes.filter(l => l[0] === validosIdx[0].id).every(l => l[cD("situacao_registro")] === "cancelado") && G.ctx.estadoAnalise().validos === validosIdx.length - 1,
@@ -830,6 +835,21 @@ T("o erro do backup aparece em Erros recentes, explicado", aba("_erros").some(l 
 G.ctx.ScriptApp.newTrigger("fazerBackup").timeBased().onWeekDay(1).atHour(3).create();
 G.ctx.garantirTarefaDiaria();
 T("o backup semanal antigo (cópia inteira) é desligado sozinho", !G.est.triggers.some(t => t.fn === "fazerBackup") && G.est.triggers.some(t => t.fn === "tarefaDiaria"));
+
+/* ---------------------------------------------------------------- sessões */
+parte("sessões");
+const sessoesDe = id => Object.keys(G.est.props).filter(k => k.startsWith("sessao_") && JSON.parse(G.est.props[k]).u === id);
+const idCarla = S.idDe("carla@teste.org");
+const sC1 = P(S.CARLA, { acao: "entrar", aparelho: "Celular 1" }).sessao, sC2 = P(S.CARLA, { acao: "entrar", aparelho: "Celular 2" }).sessao;
+const comS = t => ({ email: "carla@teste.org", sessao: t });
+T("(Carla entra em dois aparelhos)", !!sC1 && !!sC2 && P(comS(sC1), { acao: "inicio" }).ok && sessoesDe(idCarla).length >= 2);
+r = P(comS(sC1), { acao: "sair" });
+T("Sair deste aparelho encerra a sessão no servidor (um token copiado deixa de valer)", r.ok && P(comS(sC1), { acao: "inicio" }).semAcesso === true && P(comS(sC2), { acao: "inicio" }).ok, r);
+r = P(C, { acao: "desativar", id: idCarla });
+T("desativar encerra todas as sessões da pessoa e fica anotado", r.ok && sessoesDe(idCarla).length === 0 && aba("Acessos").some(l => l[7] === "Desativou acesso" && /sessões? encerradas?/.test(l[8])), sessoesDe(idCarla));
+r = P(C, { acao: "reativar", id: idCarla });
+T("reativar não traz de volta a sessão antiga (por exemplo, de um celular perdido)", r.ok && P(comS(sC2), { acao: "inicio" }).semAcesso === true);
+T("depois de reativada, a pessoa entra de novo com o mesmo código", P(S.CARLA, { acao: "entrar" }).ok);
 
 /* ---------------------------------------------------------------- geral */
 parte("geral");

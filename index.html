@@ -1196,10 +1196,12 @@ function avisarSemEspaco() {
   a.classList.add("aviso-servidor"); a.hidden = false;
 }
 // Versão do app: a mesma do número no sw.js (odontograma-vNN). Vai junto em cada pedido ao servidor.
-const VERSAO_APP = 40;
+const VERSAO_APP = 41;
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_LEG = "odonto.legenda.v1";
 const K_SESSAO = "odonto.sessao.v1";
+// Rascunhos de outras pessoas que usam o mesmo aparelho, guardados até cada uma entrar de novo: {id do profissional: exame}.
+const K_RASC_OUTROS = "odonto.rascunhosGuardados.v1";
 const sessao = () => store.get(K_SESSAO, null);
 // Quando o servidor devolve uma sessão (ao entrar com o código), o app guarda a sessão e apaga o código do aparelho.
 function comSessao(s, j) { if (j && j.sessao) { s.sessao = j.sessao; delete s.codigo; } return s; }
@@ -1456,6 +1458,24 @@ function novoExame() {
 function garantirDentes(ex) { const idade = idadeDecimal(ex); for (const n of dentesDe(ex.denticao)) if (!ex.dentes[n]) ex.dentes[n] = denteNovo(n, ex.denticao, idade); }
 const estado = {ex: store.get(K_RASC, null) || novoExame(), editando: null, sel: null, aba: "exame", enviando: false};
 if (estado.ex._editando) estado.editando = estado.ex._editando;
+const idUsuario = () => ((sessao() || {}).usuario || {}).id || "";
+// O rascunho é de quem o começou (_dono). Em aparelho compartilhado, ninguém vê nem herda o exame em andamento de outra pessoa:
+// ele fica guardado e volta quando a dona ou o dono entrar de novo. Rascunho sem dono (de versões antigas) passa a ser de quem está no aparelho.
+function guardarRascunhoDoDono() {
+  const r = estado.ex;
+  if (r && r._tocado && r._dono) { const g = store.get(K_RASC_OUTROS, {}) || {}; g[r._dono] = Object.assign(clone(r), {_editando: estado.editando}); store.set(K_RASC_OUTROS, g); }
+  estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null; store.set(K_RASC, null);
+}
+function rascunhoDaPessoa() {
+  const id = idUsuario(), r = estado.ex;
+  if (r && r._tocado && r._dono !== id && (r._dono || !id)) { if (r._dono) guardarRascunhoDoDono(); }
+  else if (r && r._tocado && !r._dono && id) { r._dono = id; store.set(K_RASC, Object.assign(r, {_editando: estado.editando})); }
+  const g = store.get(K_RASC_OUTROS, {}) || {};
+  if (id && g[id] && !estado.ex._tocado) {
+    estado.ex = g[id]; estado.editando = estado.ex._editando || null; delete g[id];
+    store.set(K_RASC_OUTROS, g); store.set(K_RASC, estado.ex); toast("O exame que você tinha começado neste aparelho foi recuperado.");
+  }
+}
 function proteseVazia() { return {sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false}; }
 // Exame reaberto (do aparelho ou da nuvem) ganha os campos de trabalho do formulário que não são guardados.
 function completarCampos(ex) {
@@ -1472,7 +1492,7 @@ function completarCampos(ex) {
 completarCampos(estado.ex);
 garantirDentes(estado.ex);
 let tRasc;
-function alterado() { estado.ex._tocado = true; clearTimeout(tRasc); tRasc = setTimeout(() => store.set(K_RASC, Object.assign(estado.ex, {_editando: estado.editando})), 300); renderEtapas(); }
+function alterado() { estado.ex._tocado = true; if (!estado.ex._dono) estado.ex._dono = idUsuario(); clearTimeout(tRasc); tRasc = setTimeout(() => store.set(K_RASC, Object.assign(estado.ex, {_editando: estado.editando})), 300); renderEtapas(); }
 
 /* A classe de risco e os índices vêm de avaliarExame, no trecho compartilhado: o servidor refaz o mesmo cálculo ao gravar. */
 
@@ -1960,7 +1980,7 @@ function abrirExame(id) {
     vinculo: reg.vinculo && reg.vinculo.codigoIndividuo ? {codigoIndividuo: reg.vinculo.codigoIndividuo, chaves: (reg.vinculo.chaves || []).slice(), numero: reg.numeroExame || reg.vinculo.numero} : null,
     _cand: null, _recusados: [], _anterior: null, _id: {modo: ""}, _travado: !!(reg.vinculo && reg.vinculo.codigoIndividuo), codigoFixo: reg.codigo || null,
     codigoGerado: !(reg.vinculo && reg.vinculo.codigoIndividuo) && reg.codigo || null, codigoMostrado: !(reg.vinculo && reg.vinculo.codigoIndividuo) && !!reg.codigo, codigoReservado: false};
-  completarCampos(estado.ex); garantirDentes(estado.ex); estado.editando = id; store.set(K_RASC, Object.assign(clone(estado.ex), {_editando: id}));
+  completarCampos(estado.ex); garantirDentes(estado.ex); estado.editando = id; estado.ex._dono = idUsuario(); store.set(K_RASC, Object.assign(clone(estado.ex), {_editando: id}));
   irAba("exame"); renderExame(); window.scrollTo({top: 0});
   if (estado.ex.vinculo) carregarAnterior();
 }
@@ -2049,6 +2069,7 @@ function abrirCancelar(id) {
     <p class="dica">O exame continua guardado na planilha, marcado como cancelado, e deixa de contar no painel, nos índices e no acompanhamento. Não dá para desfazer: se precisar, faça um exame novo. Para corrigir um erro de digitação, prefira <b>Abrir</b> e editar.</p>
     <div class="radios" style="margin-top:12px">${MOTIVOS.map(([k, t]) => `<label class="radio"><input type="radio" name="cMot" value="${esc(k)}"><span><b>${esc(k === "Outro" ? "Outro motivo" : k)}</b><small>${esc(t)}</small></span></label>`).join("")}</div>
     <label class="campo" style="margin-top:12px">Observação (obrigatória em "Outro motivo")<textarea id="cObs" placeholder="Sem dados que identifiquem a pessoa"></textarea></label>
+    <p class="dica" id="cAviso" role="alert" hidden style="margin-top:12px;padding:10px 12px;border-left:4px solid var(--sesai-amarelo);background:var(--accent-soft)"></p>
     <div class="p-acoes"><button class="sec" data-fecha-leitura>Voltar sem cancelar</button><button class="prim perigo-b" id="cConfirma" data-id="${esc(id)}" disabled>Cancelar exame</button></div></div>`;
   m.hidden = false; document.body.style.overflow = "hidden";
 }
@@ -2063,7 +2084,18 @@ $("#leitura").addEventListener("click", async e => {
   if (!navigator.onLine) return toast("Cancelar precisa de internet. Tente de novo quando houver conexão.");
   b.disabled = true;
   try {
-    const j = await api("cancelarExame", {id: b.dataset.id, motivo: document.querySelector('input[name="cMot"]:checked').value, observacao: $("#cObs").value.trim()});
+    let j;
+    try { j = await api("cancelarExame", {id: b.dataset.id, motivo: document.querySelector('input[name="cMot"]:checked').value, observacao: $("#cObs").value.trim(), confirmado: b.dataset.confirmado === "1"}); }
+    catch (err) {
+      const d = err.dados || {};
+      if (!d.confirmar) throw err;
+      // O exame serviu de referência para um exame posterior da mesma pessoa: avisa e pede confirmação.
+      const box = $("#cAviso"), lista = (d.referencia || []).map(x => `${fmtData(x.data)}${x.numero ? ` (${x.numero}º exame)` : ""}`).join(", ");
+      box.innerHTML = `<b>Este exame foi usado como referência por ${d.referencia.length === 1 ? "um exame posterior" : `${d.referencia.length} exames posteriores`} da mesma pessoa: ${esc(lista)}.</b>
+        Esses exames não mudam: a comparação dente a dente feita na época continua registrada. Depois de cancelar, a ordem dos exames da pessoa (1º, 2º...) é refeita sem este.`;
+      box.hidden = false; b.dataset.confirmado = "1"; b.textContent = "Cancelar mesmo assim"; b.disabled = false;
+      return;
+    }
     const l = exames(), i = l.findIndex(x => x.id === j.exame.id);
     if (i >= 0) { l[i] = Object.assign(j.exame, {dono: l[i].dono || sessao().usuario.id, envio: {estado: "enviado", em: new Date().toISOString(), tentativas: 0}}); gravarExames(l); }
     if (estado.nuvem) estado.nuvem = estado.nuvem.map(x => x.id === j.exame.id ? j.exame : x);
@@ -2440,7 +2472,8 @@ const DIAS_PARADO = 3;
 const parados = () => meus().filter(e => e.envio.estado !== "enviado" && Date.now() - new Date(e.atualizadoEm || e.criadoEm || Date.now()).getTime() > DIAS_PARADO * 864e5);
 const textoParados = n => `<b>${n === 1 ? "1 exame está guardado só neste aparelho" : n + " exames estão guardados só neste aparelho"} há mais de ${DIAS_PARADO} dias.</b> Conecte-se à internet para enviar${meus().some(e => e.envio.estado === "corrigir") ? " (e corrija os marcados com \"Precisa de correção\")" : ""}. Enquanto isso, baixe uma cópia de segurança em Mais opções.`;
 function baixarCopia() {
-  const l = exames().filter(e => e.envio.estado !== "enviado");
+  // Só os exames de quem está no aparelho: os de outras pessoas não saem num arquivo baixado por você.
+  const l = meus().filter(e => e.envio.estado !== "enviado");
   if (!l.length) return toast("Não há exames esperando envio neste aparelho.");
   const dados = {app: "odontograma", tipo: "copia-de-seguranca", versaoApp: VERSAO_APP, geradaEm: new Date().toISOString(), exames: l.map(e => Object.assign(JSON.parse(registroParaJson(e)), {dono: e.dono || ""}))};
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(dados)], {type: "application/json"}));
@@ -3917,8 +3950,17 @@ async function api(acao, dados, opc) {
     throw err;
   } finally { clearTimeout(t); }
 }
+// Dados da sessão (listas e números vindos do servidor) saem do aparelho e da memória do app. Os exames não enviados ficam.
+function limparDadosDaSessao() {
+  store.set(K_INICIO, {}); store.set(K_ACOES, {}); store.set(K_ALERTA, {}); store.set(K_TERR, null);
+  estado.nuvem = null; estado.listaCompleta = null; estI.dados = null; estAcoes.dados = null; estAcoes.form = false;
+  estA.dados = null; estA.pessoa = null; estEq.dados = null; estAdm.dados = null;
+}
 function acessoPerdido(msg) {
-  store.set(K_SESSAO, null);
+  // Quem entrar depois neste aparelho não vê o exame em andamento nem os dados da pessoa anterior.
+  if (estado.ex._tocado && !estado.ex._dono) estado.ex._dono = idUsuario();
+  guardarRascunhoDoDono(); limparDadosDaSessao();
+  store.set(K_SESSAO, null); try { renderExame(); } catch (x) {}
   estAc.vista = "entrar"; estAc.msg = (msg || "Seu acesso não é mais válido.") + " Os exames que ainda não foram enviados continuam neste aparelho.";
   renderAbas(); irAba("acesso");
 }
@@ -4265,7 +4307,7 @@ async function aceitarConvite(b) {
     verificarSessao(true);   // troca o código por uma sessão
     carregarTerritorios("", true);
     aplicarUsuario(j.usuario); salvarCfg({polo: d.polo}); estAc.vista = "entrar"; estAc.convite = null; estAc.msg = "";
-    renderAbas(); irAba(abaInicial()); sincronizar(); carregarNuvem();
+    rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); sincronizar(); carregarNuvem();
     mostrarCodigoNovo(j.usuario, j.codigo);
   } catch (err) {
     const dd = err.dados || {};
@@ -4412,7 +4454,7 @@ $("#acessoConteudo").addEventListener("click", async e => {
       avisarServidor(j.versao || 0);
       carregarTerritorios(j.territoriosVersao || "", true);
       aplicarUsuario(j.usuario); estAc.msg = "";
-      renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem();
+      rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem();
     } catch (err) {
       estAc.msg = err.semAcesso ? "O e-mail ou o código não conferem. Confira os dois (o código diferencia maiúsculas de minúsculas) ou peça um novo código." : err.message;
       renderAcesso(); $("#acEmail").value = email;
@@ -4454,8 +4496,9 @@ $("#sair").addEventListener("click", () => {
   if (mem && !confirm(`${mem === 1 ? "Um exame não foi guardado" : `${mem} exames não foram guardados`} no aparelho por falta de espaço e ainda não ${mem === 1 ? "foi enviado" : "foram enviados"}. Se sair agora, ${mem === 1 ? "ele se perde" : "eles se perdem"}. Envie em Meus exames antes de sair. Sair mesmo assim?`)) return;
   // Os exames ainda não enviados (seus e de outras pessoas) ficam guardados; os já enviados saem do aparelho.
   gravarExames(exames().filter(e => e.envio.estado !== "enviado"));
-  store.set(K_SESSAO, null); store.set(K_RASC, null); estado.nuvem = null;
-  store.set(K_INICIO, {}); store.set(K_ACOES, {}); store.set(K_ALERTA, {}); store.set(K_TERR, null); estI.dados = null; estAcoes.dados = null; estAcoes.form = false;
+  // Avisa o servidor (se houver internet) para a sessão deste aparelho deixar de valer. Sem internet, sai do mesmo jeito.
+  const s0 = sessao(); if (s0 && s0.sessao) api("sair", {}, {cred: s0, tempo: 8000}).catch(() => {});
+  store.set(K_SESSAO, null); store.set(K_RASC, null); limparDadosDaSessao();
   estado.ex = novoExame(); garantirDentes(estado.ex); estado.editando = null;
   estAc.vista = "entrar"; estAc.msg = "Você saiu deste aparelho. Seus exames enviados continuam na nuvem." + (pend.length ? ` ${pend.length === 1 ? "O exame que ainda não foi enviado ficou guardado" : `Os ${pend.length} exames que ainda não foram enviados ficaram guardados`} neste aparelho: quando você entrar de novo aqui, ${pend.length === 1 ? "ele é enviado" : "eles são enviados"} sozinho${pend.length === 1 ? "" : "s"}. Outra pessoa que entrar neste aparelho não vê nem envia esses exames.` : "");
   renderAbas(); irAba("acesso");
@@ -4936,7 +4979,7 @@ if (CONVITE_URL) {
   if (sessao()) setTimeout(() => toast(`Este aparelho já está conectado com a conta de ${sessao().usuario.nome}. Para aceitar o convite, saia em "Minha conta" e abra o link do convite de novo.`), 900);
   else { estAc.vista = "convite"; estAc.convite = {token: CONVITE_URL}; }
 }
-renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao();
+rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao();
 if (RECUPERAR_URL) abrirRecuperacao();
 conferirVersaoServidor();
 sincronizar();
