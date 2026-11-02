@@ -11,8 +11,9 @@
  *      CHAVE_COORDENACAO = senha da coordenação titular (use uma frase longa)
  *    e clique em "Salvar propriedades do script". Trocar a senha depois vale na hora, sem publicar de novo.
  * 2. No editor, escolha "testarInstalacao" e clique em Executar: mostra "TUDO CERTO" quando estiver pronto.
- * 3. Escolha "ativarBackupSemanal" e clique em Executar (uma vez só): toda segunda-feira, de madrugada, uma cópia
- *    da planilha vai para a pasta "Odontograma - backups" do seu Drive.
+ * 3. Escolha "ativarBackup" e clique em Executar (uma vez só): cria a tarefa da madrugada e faz o primeiro backup.
+ *    Toda madrugada, o backup incremental atualiza a planilha "Odontograma - backup", na pasta "Odontograma - backups"
+ *    do seu Drive (uma pasta e uma planilha só; nada é apagado).
  *
  * PERFIS
  * - Coordenação titular: entra com EMAIL_COORDENACAO + CHAVE_COORDENACAO; é a única que mexe em outras pessoas da coordenação.
@@ -33,8 +34,7 @@
 /* ---------- 1. configuração e constantes ---------- */
 const NOME_APP = 'Odontograma · Saúde Bucal Indígena';
 
-// Backup: quantas cópias semanais guardar (as mais antigas vão para a lixeira do Drive).
-const BACKUPS_GUARDADOS = 8;
+// Pasta do Drive com o backup, as planilhas de análise e o arquivo de acessos.
 const PASTA_BACKUP = 'Odontograma - backups';
 
 // Configuração guardada fora do código (Propriedades do script).
@@ -62,7 +62,7 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 38;
+const VERSAO = 39;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -86,7 +86,7 @@ function diagnostico() {
   catch (x) { d.planilha = 'sem autorização: rode a função testarInstalacao no Apps Script e publique uma nova versão'; }
   try { MailApp.getRemainingDailyQuota(); d.email_envio = 'ok'; }
   catch (x) { d.email_envio = 'sem autorização: rode a função testarInstalacao no Apps Script e publique uma nova versão'; }
-  d.backup = propriedade('ULTIMO_BACKUP') || 'ainda não feito (rode ativarBackupSemanal)';
+  d.backup = propriedade('ULTIMO_BACKUP') || 'ainda não feito (rode ativarBackup)';
   d.formato = propriedade('FORMATO_PLANILHA') === FORMATO ? 'ok' : 'será reorganizada no primeiro uso (ou rode reorganizarPlanilha)';
   d.pronto = d.email === 'ok' && d.chave === 'ok' && d.planilha === 'ok' && d.email_envio === 'ok';
   return d;
@@ -108,57 +108,433 @@ function testarInstalacao() {
   Logger.log('Login da coordenação: ' + (login && login.perfil === 'coord' ? 'funciona' : 'NÃO funciona: confira as Propriedades do script'));
   const contaDiferente = !!conta && emailConfigurado() && conta !== normEmail(emailCfg());
   Logger.log('Formato da planilha: ' + (propriedade('FORMATO_PLANILHA') === FORMATO ? 'versão ' + FORMATO + ' (reorganizada)' : 'ainda não reorganizada: acontece sozinha no primeiro uso, ou rode reorganizarPlanilha'));
-  Logger.log('Backup semanal: ' + (backupAtivo() ? 'ativado' : 'desativado (rode ativarBackupSemanal)') + (propriedade('ULTIMO_BACKUP') ? ' · último: ' + propriedade('ULTIMO_BACKUP') : ''));
+  Logger.log('Backup diário: ' + (backupAtivo() ? 'ativado' : 'desativado (rode ativarBackup)') + (propriedade('ULTIMO_BACKUP') ? ' · último: ' + propriedade('ULTIMO_BACKUP') : ''));
   Logger.log(d.pronto && login && !contaDiferente ? 'TUDO CERTO. Agora publique: Implantar > Gerenciar implantações > lápis > Nova versão > Implantar (ou Nova implantação, na primeira vez).'
                                : 'Ainda falta ajustar o que está indicado acima.');
 }
 
-/* ---------- backup semanal ---------- */
-// Rode uma vez: agenda o backup para toda segunda-feira de madrugada e já faz o primeiro.
-function ativarBackupSemanal() {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'fazerBackup') ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('fazerBackup').timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(3).create();
-  garantirTarefaDiaria();
-  fazerBackup();
-  Logger.log('Backup semanal ativado: toda segunda-feira, entre 3h e 4h. Primeira cópia já feita na pasta "' + PASTA_BACKUP + '" do seu Drive.');
+/* ---------- backup incremental ----------
+ * Uma pasta só ("Odontograma - backups") e uma planilha só de backup ("Odontograma - backup"), atualizada toda
+ * madrugada pela tarefa diária (e pelo botão "Fazer backup agora" da Administração). A cada vez, o backup compara com o
+ * que já tem e só ACRESCENTA: registros novos, versões novas e a situação atual. Ele nunca apaga nada:
+ * - o que sumiu da planilha principal continua no backup (na_planilha_principal = "não") e gera um alerta;
+ * - o passado não é reescrito: o que era verdade quando o registro entrou no backup fica como está; o que mudou depois
+ *   vai para as colunas de situação atual e, nos cadastros, para a aba Historico (com a data da mudança);
+ * - um exame alterado depois de enviado ganha uma versão nova em Exames_versoes (a original continua) e gera um alerta;
+ * - um exame cancelado continua com os dados clínicos originais; motivo, data e responsável vão para a situação atual.
+ * Com ele dá para reconstruir o sistema: exames completos (com cada dente, em dados_originais_json e nas versões),
+ * cadastros, ações do Dia B, convites, códigos reservados, o registro de Acessos e a população. */
+const BACKUP_NOME = 'Odontograma - backup';
+// Exames: as colunas "fixas" são gravadas uma vez só, quando o exame entra no backup; as "atuais" são conferidas a cada backup.
+const BK_EX_FIXAS = ['id_exame', 'codigo_exame', 'codigo_individuo_original', 'dsei', 'data_exame_original', 'usuario_id', 'profissional', 'cro',
+  'perfil_profissional_no_exame', 'dsei_profissional_no_exame', 'origem_perfil_no_exame', 'criado_em', 'entrou_no_backup_em', 'impressao_original', 'dados_originais_json'];
+const BK_EX_ATUAIS = ['situacao_atual', 'codigo_individuo_atual', 'numero_exame_atual', 'data_exame_atual', 'classe_risco_atual',
+  'motivo_cancelamento', 'observacao_cancelamento', 'cancelado_em', 'cancelado_por', 'cancelado_por_id',
+  'perfil_profissional_atual', 'dsei_profissional_atual', 'situacao_profissional_atual',
+  'versao_atual', 'impressao_atual', 'atualizado_em_principal', 'ultima_mudanca_em', 'na_planilha_principal', 'sumiu_da_principal_em', 'conferido_em'];
+const BK_EX_CAB = BK_EX_FIXAS.concat(BK_EX_ATUAIS);
+const BK_VERSOES_CAB = ['id_exame', 'versao', 'detectada_em', 'atualizado_em_principal', 'o_que_mudou', 'impressao', 'dados_json'];
+const BK_ALERTAS_CAB = ['data', 'hora', 'tipo', 'aba', 'registro', 'detalhe'];
+const BK_HIST_CAB = ['detectado_em', 'aba', 'registro', 'campo', 'valor_anterior', 'valor_novo'];
+const BK_POP_CAB = ['guardada_em', 'versao', 'impressao', 'parte', 'dados_populacao_json'];
+const BK_ACESSOS_CAB = CAB_ACESSOS.concat(['entrou_no_backup_em']);
+const BK_ABAS = ['Sobre', 'Alertas', 'Exames', 'Exames_versoes', 'Cadastros', 'Historico', 'Acoes_Dia_B', 'Convites', 'Codigos_reservados', 'Acessos', 'Populacao'];
+// O que não entra na "impressão" clínica do exame: situação, cancelamento, número do exame e resultado (o servidor recalcula),
+// quem enviou e datas de controle. Se a impressão muda, o conteúdo clínico do exame mudou.
+const FORA_DA_IMPRESSAO = ['situacao', 'cancelamento', 'atualizadoEm', 'numeroExame', 'resultado', 'profissional', 'versao', 'dono', 'envio', 'usuarioId', 'codigoIndividuo'];
+// Cadastros e outras abas com um registro por linha: o que é guardado e como.
+function registrosDoBackup() {
+  return [
+    { origem: 'Usuarios', aba: 'Cadastros', cab: CAB_USUARIOS, chave: 'id', semHistorico: ['codigo_hash', 'ultimo_acesso'] },
+    { origem: 'Acoes', aba: 'Acoes_Dia_B', cab: CAB_ACOES, chave: 'id', semHistorico: [] },
+    { origem: 'Convites', aba: 'Convites', cab: CAB_CONVITES, chave: 'id', semHistorico: ['token_hash'] },
+    { origem: ABA_RESERVAS, aba: 'Codigos_reservados', cab: CAB_RESERVAS, chave: 'codigo', semHistorico: [] }
+  ];
 }
-// Para parar os backups automáticos (as cópias já feitas continuam no Drive).
-function desativarBackupSemanal() {
-  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'fazerBackup') ScriptApp.deleteTrigger(t); });
-  Logger.log('Backup semanal desativado.');
+/** Colunas da aba do backup: chave, como era no início (_inicial), e a situação atual (com os mesmos nomes da planilha principal). @param {any} s */
+function cabRegistro(s) {
+  const hist = s.cab.filter(function (k) { return k !== s.chave && s.semHistorico.indexOf(k) < 0; });
+  const fixas = [s.chave].concat(hist.map(function (k) { return k + '_inicial'; }), ['entrou_no_backup_em']);
+  const atuais = s.cab.filter(function (k) { return k !== s.chave; }).concat(['na_planilha_principal', 'ultima_mudanca_em', 'sumiu_da_principal_em']);
+  return { hist: hist, fixas: fixas, atuais: atuais, todas: fixas.concat(atuais) };
 }
-function backupAtivo() {
-  try { return ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'fazerBackup'; }); } catch (x) { return false; }
-}
-// Faz uma cópia da planilha agora (também pode ser rodada à mão, a qualquer momento).
-/** @param {string} [motivo] */
-function fazerBackup(motivo) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+/* pasta e planilhas separadas (backup, análise, arquivo de acessos): todas na mesma pasta, só da coordenação titular */
+function pastaBackup() {
   const pastas = DriveApp.getFoldersByName(PASTA_BACKUP);
   const pasta = pastas.hasNext() ? pastas.next() : DriveApp.createFolder(PASTA_BACKUP);
-  const quando = Utilities.formatDate(new Date(), FUSO, 'yyyy-MM-dd HH-mm');
   try { pasta.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE); } catch (x) {}
-  try { pasta.setDescription('Cópias automáticas do Odontograma. Contêm dados de saúde: não compartilhe esta pasta.'); } catch (x) {}
-  // A cópia de antes da reorganização tem outro nome: não entra no rodízio e não vai para a lixeira.
-  const copia = DriveApp.getFileById(ss.getId()).makeCopy((motivo ? 'Antes da reorganização - Odontograma ' : 'Backup Odontograma ') + quando, pasta);
-  // Guarda só as mais recentes; as antigas vão para a lixeira do Drive (recuperáveis por 30 dias).
-  /** @type {any[]} */ const copias = [];
-  const it = pasta.getFiles();
-  while (it.hasNext()) { const f = it.next(); if (/^Backup Odontograma /.test(f.getName())) copias.push(f); }
-  copias.sort(function (a, b) { return b.getDateCreated().getTime() - a.getDateCreated().getTime(); });
-  copias.slice(BACKUPS_GUARDADOS).forEach(function (f) { f.setTrashed(true); });
-  PropertiesService.getScriptProperties().setProperty('ULTIMO_BACKUP', quando);
-  registrar({ email: '', nome: 'Sistema' }, 'Backup da planilha', copia.getName());
-  return copia.getName();
+  try { pasta.setDescription('Backup, planilhas de análise e arquivo de acessos do Odontograma. Contêm dados de saúde: não compartilhe esta pasta.'); } catch (x) {}
+  return pasta;
+}
+/** Abre a planilha cujo id está na propriedade, ou cria uma nova na pasta. Com "fixa", nunca cria outra se a
+ * guardada não abrir (o backup é um só: criar outro esconderia o problema). @param {string} prop @param {string} nome @param {boolean} [fixa] */
+function planilhaSeparada(prop, nome, fixa) {
+  const id = propriedade(prop); let ss = null, erro = null;
+  try { if (id) ss = SpreadsheetApp.openById(id); } catch (x) { ss = null; erro = x; }
+  if (!ss && id && fixa) throw new Error('Não consegui abrir a planilha "' + nome + '" (' + erro + '). Ela continua guardada; nada foi alterado. Se ela foi apagada de propósito, apague a propriedade ' + prop + ' em Propriedades do script para criar outra.');
+  if (!ss) {
+    ss = SpreadsheetApp.create(nome);
+    try { DriveApp.getFileById(ss.getId()).moveTo(pastaBackup()); } catch (x) {}
+    PropertiesService.getScriptProperties().setProperty(prop, ss.getId());
+  }
+  return ss;
+}
+function planilhaBackup() { return planilhaSeparada('BACKUP_ID', BACKUP_NOME, true); }
+
+/* utilidades do backup */
+/** Data e hora de Brasília, legível. @param {Date} d */
+function carimbo(d) { return Utilities.formatDate(d, FUSO, 'yyyy-MM-dd HH:mm:ss'); }
+/** JSON com as chaves sempre na mesma ordem (para comparar dois exames sem se enganar com a ordem). @param {any} v @returns {string} */
+function jsonEstavel(v) {
+  if (Array.isArray(v)) return '[' + v.map(jsonEstavel).join(',') + ']';
+  if (v && typeof v === 'object') return '{' + Object.keys(v).sort().filter(function (k) { return v[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ':' + jsonEstavel(v[k]); }).join(',') + '}';
+  return JSON.stringify(v === undefined ? null : v);
+}
+/** @param {string} t */
+function impressaoTexto(t) { return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, t).map(function (b) { return ('0' + (b & 255).toString(16)).slice(-2); }).join('').slice(0, 20); }
+/** O conteúdo clínico do exame, sem o que muda sozinho. @param {any} e */
+function parteClinica(e) {
+  /** @type {any} */ const o = {};
+  Object.keys(e || {}).forEach(function (k) { if (k.charAt(0) !== '_' && FORA_DA_IMPRESSAO.indexOf(k) < 0) o[k] = e[k]; });
+  return o;
+}
+/** @param {any} e */
+function impressaoClinica(e) { return impressaoTexto(jsonEstavel(parteClinica(e))); }
+const NOMES_CAMPO_EXAME = { dataExame: 'data do exame', crianca: 'nascimento ou sexo', idadeAnos: 'idade', denticao: 'dentição', localAtendimento: 'local de atendimento',
+  vigilancia: 'vigilância', protese: 'prótese', placa: 'placa', gengivite: 'gengivite', gerais: 'procedimentos coletivos', insumos: 'insumos', observacoes: 'observações',
+  vinculo: 'vínculo com exame anterior', aldeia: 'aldeia', polo: 'polo base', dsei: 'DSEI', codigo: 'código' };
+/** O que mudou entre duas versões do exame, em poucas palavras. @param {any} a @param {any} b */
+function oQueMudou(a, b) {
+  const pa = parteClinica(a), pb = parteClinica(b), out = [];
+  const chaves = Object.keys(pa).concat(Object.keys(pb)).filter(function (k, i, l) { return l.indexOf(k) === i; }).sort();
+  chaves.forEach(function (k) {
+    if (jsonEstavel(pa[k]) === jsonEstavel(pb[k])) return;
+    if (k === 'dentes') {
+      const da = pa.dentes || {}, db = pb.dentes || {};
+      const ns = Object.keys(da).concat(Object.keys(db)).filter(function (n, i, l) { return l.indexOf(n) === i && jsonEstavel(da[n]) !== jsonEstavel(db[n]); }).map(Number).sort(function (x, y) { return x - y; });
+      out.push('dentes ' + ns.join(', '));
+    } else out.push(NOMES_CAMPO_EXAME[k] || k);
+  });
+  return out.join('; ');
+}
+/** Lê uma aba da planilha principal pelos nomes das colunas (funciona mesmo com colunas fora de ordem). @param {string} nome @param {string[]} cab */
+function lerAbaPrincipal(nome, cab) {
+  const aba = planilha().getSheetByName(nome);
+  if (!aba || aba.getLastRow() < 2) return [];
+  const nc = Math.max(aba.getLastColumn(), 1), topo = aba.getRange(1, 1, 1, nc).getValues()[0].map(String);
+  return aba.getRange(2, 1, aba.getLastRow() - 1, nc).getValues().map(function (l) {
+    /** @type {any} */ const o = {};
+    cab.forEach(function (k) { const j = topo.indexOf(k), v = j < 0 ? '' : l[j]; o[k] = v instanceof Date && k === 'hora' ? fmtHora(v) : textoCelula(v); });
+    return o;
+  });
+}
+/** Aba do backup com o cabeçalho certo, do tamanho necessário. Cabeçalho diferente: a aba antiga é guardada com outro
+ * nome (nada se perde) e uma nova é criada, como na planilha principal. @param {any} ss @param {string} nome @param {string[]} cab */
+function abaBackup(ss, nome, cab) {
+  let a = ss.getSheetByName(nome);
+  if (a && a.getLastRow() > 0) {
+    const atual = a.getRange(1, 1, 1, Math.max(a.getLastColumn(), 1)).getValues()[0].map(String);
+    if (!atual.every(function (c, i) { return c === '' || c === cab[i]; })) { a.setName(nome + ' - formato antigo ' + Utilities.formatDate(new Date(), FUSO, 'yyyy-MM-dd HH-mm')); a = null; }
+  }
+  if (!a) a = ss.insertSheet(nome);
+  if (a.getMaxColumns() < cab.length) a.insertColumnsAfter(a.getMaxColumns(), cab.length - a.getMaxColumns());
+  if (a.getLastRow() === 0 || a.getLastColumn() < cab.length) { a.getRange(1, 1, 1, cab.length).setValues([cab]).setFontWeight('bold'); a.setFrozenRows(1); }
+  return a;
+}
+/** Lê as linhas de uma aba do backup como texto. @param {any} aba @param {number} col @param {number} nc */
+function lerBloco(aba, col, nc) {
+  const n = aba.getLastRow() - 1;
+  return n > 0 ? aba.getRange(2, col, n, nc).getValues().map(function (l) { return l.map(textoCelula); }) : [];
+}
+/** Grava um bloco de linhas (como texto, para o Google não transformar códigos e datas). @param {any} aba @param {number} linha @param {number} col @param {any[][]} linhas */
+function gravarBloco(aba, linha, col, linhas) {
+  if (!linhas.length) return;
+  const nc = linhas[0].length, fim = linha + linhas.length - 1;
+  if (aba.getMaxRows() < fim) aba.insertRowsAfter(aba.getMaxRows(), fim - aba.getMaxRows());
+  if (aba.getMaxColumns() < col + nc - 1) aba.insertColumnsAfter(aba.getMaxColumns(), col + nc - 1 - aba.getMaxColumns());
+  for (let i = 0; i < linhas.length; i += 4000) {
+    const b = linhas.slice(i, i + 4000).map(function (l) { return linhaSegura(l.map(function (v) { return v == null ? '' : String(v); })); });
+    const r = aba.getRange(linha + i, col, b.length, nc);
+    try { r.setNumberFormat('@'); } catch (x) {}
+    r.setValues(b);
+  }
+}
+/** Acrescenta linhas no fim da aba. @param {any} aba @param {any[][]} linhas */
+function acrescentar(aba, linhas) { if (linhas.length) gravarBloco(aba, Math.max(aba.getLastRow(), 1) + 1, 1, linhas); }
+/** @param {string} tipo @param {string} aba @param {string} registro @param {string} detalhe */
+function alertaBackup(tipo, aba, registro, detalhe) { const d = new Date(); return [fmtDia(d), Utilities.formatDate(d, FUSO, 'HH:mm'), tipo, aba, registro, detalhe]; }
+
+/* todos os exames da planilha principal, completos (com os dentes), válidos e cancelados: a versão mais recente de cada um */
+function todosExamesCompletos() {
+  const m = memo(); if (m.todosCompletos) return m.todosCompletos;
+  /** @type {any[]} */ let l;
+  if (!formatoAtual()) l = lerExames(); // planilha num formato antigo (antes da reorganização): lê pelo conteúdo
+  else {
+    const aba = abaExames(), n = aba.getLastRow() - 1, col = colEx().dados_completos_json; /** @type {any} */ const porId = {};
+    for (let i = 0; i < n; i += 1000) {
+      aba.getRange(2 + i, col, Math.min(1000, n - i), 1).getValues().forEach(function (v, k) {
+        const r = parseExame(v[0], 2 + i + k);
+        if (r && (!porId[r.id] || String(r.atualizadoEm || '') > String(porId[r.id].atualizadoEm || ''))) porId[r.id] = r;
+      });
+    }
+    l = Object.keys(porId).map(function (k) { return porId[k]; });
+    // Número do exame de cada pessoa igual ao da planilha do app (pela ordem dos exames válidos).
+    /** @type {any} */ const num = {}; lerResumos().forEach(function (r) { num[r.id] = r.numeroExame; });
+    l.forEach(function (r) { if (exameValido(r) && num[r.id]) r.numeroExame = num[r.id]; });
+  }
+  l.sort(function (a, b) { return String(a.dataExame).localeCompare(String(b.dataExame)) || String(a.id).localeCompare(String(b.id)); });
+  return (m.todosCompletos = l);
+}
+
+/* exames no backup */
+/** Situação atual do exame (as colunas BK_EX_ATUAIS que vêm do exame e do cadastro). @param {any} e @param {any} u */
+function atuaisDoExame(e, u) {
+  const c = e.cancelamento || {};
+  return { situacao_atual: exameValido(e) ? 'válido' : 'cancelado', codigo_individuo_atual: codigoIndividuoDe(e), numero_exame_atual: e.numeroExame || 1,
+    data_exame_atual: e.dataExame || '', classe_risco_atual: (e.resultado || {}).classe || '',
+    motivo_cancelamento: c.motivo || '', observacao_cancelamento: c.observacao || '', cancelado_em: c.em || '', cancelado_por: c.por || '', cancelado_por_id: c.porId || '',
+    perfil_profissional_atual: u ? perfilTexto(u) : '', dsei_profissional_atual: u ? u.dsei || '' : '', situacao_profissional_atual: u ? u.status || '' : 'não encontrado',
+    atualizado_em_principal: e.atualizadoEm || '' };
+}
+/** Perfil e DSEI do profissional no momento do exame: o que o exame guardou ou, nos exames antigos, o cadastro quando o exame entrou no backup. @param {any} e @param {any} u */
+function perfilNoExame(e, u) {
+  const p = e.profissional || {};
+  if (p.perfil) return [p.perfil, p.dsei != null ? p.dsei : e.dsei || '', 'registrado no exame'];
+  if (u) return [perfilTexto(u), u.dsei || '', 'cadastro no dia em que o exame entrou no backup'];
+  return ['', '', 'profissional não encontrado no cadastro'];
+}
+/** @param {any} ss @param {string} agora @param {any[]} alertas @param {any} usuarios */
+function backupExames(ss, agora, alertas, usuarios) {
+  const aba = abaBackup(ss, 'Exames', BK_EX_CAB), nf = BK_EX_FIXAS.length, A = {};
+  BK_EX_ATUAIS.forEach(function (k, i) { /** @type {any} */ (A)[k] = i; });
+  const ids = lerBloco(aba, 1, 1).map(function (l) { return l[0]; }), atuais = lerBloco(aba, nf + 1, BK_EX_ATUAIS.length);
+  /** @type {any} */ const pos = {}; ids.forEach(function (id, i) { if (id && !(id in pos)) pos[id] = i; });
+  const regs = todosExamesCompletos();
+  /** @type {any} */ const r = { novos: 0, versoes: 0, cancelados: 0, sumiram: 0, total: 0 };
+  // Proteção: planilha principal sem nenhum exame, mas o backup com exames presentes = provável problema de leitura. Nada é marcado.
+  if (!regs.length && ids.some(function (id, i) { return id && atuais[i][A.na_planilha_principal] === 'sim'; }))
+    throw new Error('backup: a planilha principal não tem nenhum exame, mas o backup tem. Nada foi marcado como sumido; confira a aba Exames da planilha principal.');
+  const abaV = abaBackup(ss, 'Exames_versoes', BK_VERSOES_CAB);
+  /** @type {any[]} */ const novas = [], versoes = []; /** @type {any} */ const vistos = {};
+  let versoesLidas = /** @type {any[][]|null} */ (null);
+  /** A versão mais recente guardada de um exame (para dizer o que mudou). @param {string} id @param {number} i */
+  function ultimaVersao(id, i) {
+    try {
+      const v = Number(atuais[i][A.versao_atual]) || 1;
+      if (v <= 1) return JSON.parse(String(aba.getRange(i + 2, nf, 1, 1).getValues()[0][0]));
+      if (!versoesLidas) versoesLidas = lerBloco(abaV, 1, BK_VERSOES_CAB.length);
+      const l = versoesLidas.concat(versoes).filter(function (x) { return x[0] === id; }).pop();
+      return l ? JSON.parse(l[6]) : null;
+    } catch (x) { return null; }
+  }
+  regs.forEach(function (e) {
+    const id = String(e.id); if (vistos[id]) return; vistos[id] = true;
+    const u = usuarios[e.usuarioId] || null, at = atuaisDoExame(e, u), imp = impressaoClinica(e);
+    if (!(id in pos)) {
+      const pn = perfilNoExame(e, u), pr = e.profissional || {};
+      const fixo = { id_exame: id, codigo_exame: e.codigo || '', codigo_individuo_original: codigoIndividuoDe(e), dsei: e.dsei || '', data_exame_original: e.dataExame || '',
+        usuario_id: e.usuarioId || '', profissional: pr.nome || '', cro: pr.cro || '', perfil_profissional_no_exame: pn[0], dsei_profissional_no_exame: pn[1], origem_perfil_no_exame: pn[2],
+        criado_em: e.criadoEm || '', entrou_no_backup_em: agora, impressao_original: imp, dados_originais_json: registroParaJson(e) };
+      const mut = Object.assign({}, at, { versao_atual: 1, impressao_atual: imp, ultima_mudanca_em: '', na_planilha_principal: 'sim', sumiu_da_principal_em: '', conferido_em: agora });
+      novas.push(BK_EX_FIXAS.map(function (k) { return /** @type {any} */ (fixo)[k]; }).concat(BK_EX_ATUAIS.map(function (k) { return /** @type {any} */ (mut)[k]; })));
+      r.novos++;
+      return;
+    }
+    const i = pos[id], l = atuais[i];
+    if (l[A.na_planilha_principal] === 'não') alertas.push(alertaBackup('Exame voltou para a planilha principal', 'Exames', id, 'Tinha sumido em ' + l[A.sumiu_da_principal_em] + '.'));
+    if (l[A.situacao_atual] === 'válido' && !exameValido(e)) r.cancelados++;
+    if (l[A.situacao_atual] === 'cancelado' && exameValido(e)) alertas.push(alertaBackup('Exame cancelado voltou a valer', 'Exames', id, 'Estava cancelado (' + l[A.motivo_cancelamento] + ') e aparece como válido na planilha principal.'));
+    let mudou = Object.keys(at).some(function (k) { return k.indexOf('_profissional_') < 0 && String(l[A[k]]) !== String(at[k]); });
+    if (imp !== l[A.impressao_atual]) {
+      // Conteúdo clínico diferente: a versão nova é acrescentada (a original continua em dados_originais_json).
+      const v = (Number(l[A.versao_atual]) || 1) + 1, antes = ultimaVersao(id, i), mud = antes ? oQueMudou(antes, e) : '';
+      versoes.push([id, v, agora, e.atualizadoEm || '', mud, imp, registroParaJson(e)]);
+      alertas.push(alertaBackup('Exame alterado depois de enviado', 'Exames', id, 'Versão ' + v + (mud ? ': mudou ' + mud : '') + '. A versão original continua no backup.'));
+      l[A.versao_atual] = v; l[A.impressao_atual] = imp; mudou = true; r.versoes++;
+    }
+    Object.keys(at).forEach(function (k) { l[A[k]] = at[k]; });
+    if (mudou) l[A.ultima_mudanca_em] = agora;
+    l[A.na_planilha_principal] = 'sim'; l[A.sumiu_da_principal_em] = ''; l[A.conferido_em] = agora;
+  });
+  ids.forEach(function (id, i) {
+    if (!id || vistos[id]) return;
+    const l = atuais[i];
+    if (l[A.na_planilha_principal] === 'não') return;
+    l[A.na_planilha_principal] = 'não'; l[A.sumiu_da_principal_em] = agora; r.sumiram++;
+    alertas.push(alertaBackup('Exame sumiu da planilha principal', 'Exames', id, 'Exame de ' + l[A.data_exame_atual] + ' (' + l[A.situacao_atual] + '). Continua guardado no backup.'));
+  });
+  gravarBloco(aba, 2, nf + 1, atuais);
+  acrescentar(aba, novas);
+  acrescentar(abaV, versoes);
+  r.total = ids.filter(Boolean).length + novas.length;
+  return r;
+}
+
+/* cadastros, ações, convites e códigos reservados */
+/** @param {any} ss @param {any} s @param {string} agora @param {any[]} alertas */
+function backupRegistros(ss, s, agora, alertas) {
+  const c = cabRegistro(s), aba = abaBackup(ss, s.aba, c.todas), nf = c.fixas.length;
+  const iNa = c.atuais.indexOf('na_planilha_principal'), iMud = c.atuais.indexOf('ultima_mudanca_em'), iSum = c.atuais.indexOf('sumiu_da_principal_em');
+  const campos = c.atuais.slice(0, iNa);
+  const chaves = lerBloco(aba, 1, 1).map(function (l) { return l[0]; }), atuais = lerBloco(aba, nf + 1, c.atuais.length);
+  /** @type {any} */ const pos = {}; chaves.forEach(function (k, i) { if (k && !(k in pos)) pos[k] = i; });
+  /** @type {any[]} */ const novas = [], hist = []; /** @type {any} */ const vistos = {};
+  const r = { novos: 0, mudancas: 0, sumiram: 0, total: 0 };
+  lerAbaPrincipal(s.origem, s.cab).forEach(function (o) {
+    const k = String(o[s.chave] || ''); if (!k || vistos[k]) return; vistos[k] = true;
+    const valores = campos.map(function (f) { return o[f]; });
+    if (!(k in pos)) { novas.push([k].concat(c.hist.map(function (f) { return o[f]; }), [agora], valores, ['sim', '', ''])); r.novos++; return; }
+    const l = atuais[pos[k]];
+    let mudou = false;
+    valores.forEach(function (v, j) {
+      if (String(l[j]) === String(v)) return;
+      // O que era antes vai para o Historico (menos senhas e últimos acessos, que só valem como estão agora).
+      if (s.semHistorico.indexOf(campos[j]) < 0) { hist.push([agora, s.aba, k, campos[j], l[j], v]); mudou = true; r.mudancas++; }
+      l[j] = v;
+    });
+    if (l[iNa] === 'não') { alertas.push(alertaBackup('Registro voltou para a planilha principal', s.aba, k, 'Tinha sumido em ' + l[iSum] + '.')); mudou = true; }
+    if (mudou) l[iMud] = agora;
+    l[iNa] = 'sim'; l[iSum] = '';
+  });
+  chaves.forEach(function (k, i) {
+    if (!k || vistos[k] || atuais[i][iNa] === 'não') return;
+    atuais[i][iNa] = 'não'; atuais[i][iSum] = agora; r.sumiram++;
+    alertas.push(alertaBackup('Registro sumiu da planilha principal', s.aba, k, 'Continua guardado no backup, com a última situação conhecida.'));
+  });
+  gravarBloco(aba, 2, nf + 1, atuais);
+  acrescentar(aba, novas);
+  acrescentar(abaBackup(ss, 'Historico', BK_HIST_CAB), hist);
+  r.total = chaves.filter(Boolean).length + novas.length;
+  return r;
+}
+
+/* Acessos: só acrescenta os eventos novos. Os que saem da planilha principal (arquivo de mais de 12 meses) continuam aqui. */
+/** @param {any} ss @param {string} agora */
+function backupAcessos(ss, agora) {
+  const orig = lerAbaPrincipal('Acessos', CAB_ACESSOS).map(function (o) { return CAB_ACESSOS.map(function (k) { return o[k]; }); });
+  const aba = abaBackup(ss, 'Acessos', BK_ACESSOS_CAB);
+  /** @type {any} */ const ja = {};
+  lerBloco(aba, 1, CAB_ACESSOS.length).forEach(function (l) { const k = l.join('\u0001'); ja[k] = (ja[k] || 0) + 1; });
+  /** @type {any[]} */ const novas = [];
+  // Na planilha principal o mais recente fica em cima; no backup, do mais antigo para o mais novo.
+  orig.slice().reverse().forEach(function (l) { const k = l.join('\u0001'); if (ja[k]) { ja[k]--; return; } novas.push(l.concat([agora])); });
+  acrescentar(aba, novas);
+  return novas.length;
+}
+/* População: uma versão nova só quando os dados mudam (as anteriores continuam). */
+/** @param {any} ss @param {string} agora */
+function backupPopulacao(ss, agora) {
+  const orig = planilha().getSheetByName(ABA_POP_DADOS);
+  if (!orig || orig.getLastRow() < 2) return 0;
+  const partes = orig.getRange(2, 1, orig.getLastRow() - 1, 1).getValues().map(function (l) { return String(l[0] || ''); });
+  const imp = impressaoTexto(partes.join('')), aba = abaBackup(ss, 'Populacao', BK_POP_CAB), n = aba.getLastRow() - 1;
+  if (n > 0 && String(aba.getRange(n + 1, 3, 1, 1).getValues()[0][0]) === imp) return 0;
+  acrescentar(aba, partes.map(function (p, i) { return [agora, propriedade('POP_VERSAO'), imp, i + 1, p]; }));
+  return 1;
+}
+
+/** Faz o backup incremental agora. Devolve o estado (também guardado em BACKUP_ESTADO). @param {string} [motivo] */
+function fazerBackup(motivo) {
+  const pr = PropertiesService.getScriptProperties(), andamento = Number(pr.getProperty('BACKUP_ANDAMENTO') || 0);
+  if (andamento && Date.now() - andamento < 15 * 60000) throw new Error('backup: já há um backup em andamento (começou às ' + fmtHora(new Date(andamento)) + '). Tente de novo em alguns minutos.');
+  pr.setProperty('BACKUP_ANDAMENTO', String(Date.now()));
+  memo().todosCompletos = null; // sempre lê a planilha principal de novo (a planilha de análise, logo depois, aproveita esta leitura)
+  const inicio = Date.now(), quando = new Date(), agora = carimbo(quando);
+  /** @type {any} */ const est = { em: quando.toISOString(), ok: false, motivo: motivo || '' };
+  try {
+    const ss = planilhaBackup();
+    BK_ABAS.forEach(function (n) { if (!ss.getSheetByName(n)) { const a = ss.insertSheet(n); try { ss.setActiveSheet(a); ss.moveActiveSheet(BK_ABAS.indexOf(n) + 1); } catch (x) {} } });
+    // A folha vazia que o Google cria junto com a planilha sai.
+    ss.getSheets().forEach(function (a) { if (BK_ABAS.indexOf(a.getName()) < 0 && a.getLastRow() === 0) { try { ss.deleteSheet(a); } catch (x) {} } });
+    /** @type {any[]} */ const alertas = [];
+    /** @type {any} */ const usuarios = {};
+    lerAbaPrincipal('Usuarios', CAB_USUARIOS).forEach(function (u) { if (u.id) usuarios[u.id] = u; });
+    est.exames = backupExames(ss, agora, alertas, usuarios);
+    est.registros = {};
+    registrosDoBackup().forEach(function (s) { est.registros[s.aba] = backupRegistros(ss, s, agora, alertas); });
+    est.acessos = backupAcessos(ss, agora);
+    est.populacao = backupPopulacao(ss, agora);
+    acrescentar(abaBackup(ss, 'Alertas', BK_ALERTAS_CAB), alertas);
+    const totalAlertas = Math.max(ss.getSheetByName('Alertas').getLastRow() - 1, 0);
+    est.alertasNovos = alertas.length; est.alertas = totalAlertas; est.url = ss.getUrl();
+    est.alertasExemplos = alertas.slice(0, 5).map(function (a) { return a[2] + ' · ' + a[4]; });
+    const cad = est.registros.Cadastros || {};
+    escreverAbaNoLugar(ss, 'Sobre', ['item', 'valor'], [
+      ['O que é', 'Backup incremental do Odontograma: o único backup, atualizado toda madrugada. Ele só acrescenta e nunca apaga. Não edite à mão.'],
+      ['Último backup (horário de Brasília)', agora],
+      ['Exames no backup', String(est.exames.total)], ['Exames novos neste backup', String(est.exames.novos)],
+      ['Versões novas de exames neste backup', String(est.exames.versoes)], ['Cadastros no backup', String(cad.total || 0)],
+      ['Alertas novos neste backup', String(alertas.length)], ['Alertas no total', String(totalAlertas)],
+      ['Regras', 'Nada é apagado: o que some da planilha principal fica aqui, com na_planilha_principal = "não", a data em sumiu_da_principal_em e um alerta. O passado não é reescrito: as colunas que terminam em _original, _inicial e _no_exame mostram como era; as que terminam em _atual (ou com o mesmo nome da planilha principal) mostram a situação de hoje.'],
+      ['Exames', 'Uma linha por exame (válidos e cancelados). dados_originais_json é o exame completo, com cada dente, como entrou no backup. Cancelamento (motivo, data e responsável) fica nas colunas de situação atual.'],
+      ['Exames_versoes', 'Se um exame for alterado depois de enviado, cada versão nova entra aqui (o exame completo em dados_json) e gera um alerta. A versão mais recente é a que vale hoje.'],
+      ['Cadastros', 'Uma linha por pessoa. Colunas _inicial: como era o cadastro quando entrou no backup. Demais colunas: como está hoje. Cada mudança de perfil, DSEI, situação etc. fica na aba Historico com a data.'],
+      ['Historico', 'Cada mudança detectada em cadastros, ações do Dia B, convites e códigos reservados: valor anterior, valor novo e quando o backup percebeu.'],
+      ['Acoes_Dia_B, Convites, Codigos_reservados', 'Mesma lógica dos cadastros.'],
+      ['Acessos', 'Todos os eventos da aba Acessos, inclusive os que já saíram da planilha principal.'],
+      ['Populacao', 'Cada versão dos dados de população enviada pela coordenação (em partes de texto).'],
+      ['Alertas', 'O que precisa de atenção: registro que sumiu da planilha principal, exame alterado depois de enviado, exame cancelado que voltou a valer.'],
+      ['Para reconstruir', 'Exames: a versão mais recente de cada exame (Exames_versoes ou, se não houver, dados_originais_json), com a situação atual. Cadastros e demais abas: as colunas com o mesmo nome da planilha principal.']
+    ], 0);
+    est.ok = true;
+  } catch (err) {
+    est.erro = String(err && err.message || err);
+    guardarEstadoBackup(est);
+    throw /backup:/.test(est.erro) ? err : new Error('backup: ' + est.erro);
+  } finally { pr.deleteProperty('BACKUP_ANDAMENTO'); }
+  est.segundos = Math.round((Date.now() - inicio) / 1000);
+  guardarEstadoBackup(est);
+  pr.setProperty('ULTIMO_BACKUP', Utilities.formatDate(quando, FUSO, 'yyyy-MM-dd HH-mm'));
+  est.resumo = BACKUP_NOME + ' (' + agora + '): ' + est.exames.total + ' exames, ' + est.exames.novos + ' novos, ' + est.exames.versoes + ' versões novas, ' + est.alertasNovos + ' alertas novos';
+  registrar({ email: '', nome: 'Sistema' }, 'Backup da planilha', est.resumo);
+  if (est.alertasNovos) avisarAlertasBackup(est);
+  return est;
+}
+/** E-mail para a coordenação titular quando o backup encontra algo que precisa de atenção. @param {any} est */
+function avisarAlertasBackup(est) {
+  enviarEmail(emailCoord(), 'Odontograma: o backup encontrou ' + est.alertasNovos + (est.alertasNovos === 1 ? ' alerta' : ' alertas'),
+    'O backup de hoje encontrou ' + est.alertasNovos + (est.alertasNovos === 1 ? ' registro que precisa' : ' registros que precisam') + ' de atenção. Nada foi apagado do backup.\n\n' +
+    est.alertasExemplos.join('\n') + (est.alertasNovos > est.alertasExemplos.length ? '\n…' : '') +
+    '\n\nVeja a aba Alertas da planilha "' + BACKUP_NOME + '", na pasta "' + PASTA_BACKUP + '" do seu Drive.\n\n' + NOME_APP);
+}
+/** @param {any} est */
+function guardarEstadoBackup(est) { try { PropertiesService.getScriptProperties().setProperty('BACKUP_ESTADO', JSON.stringify(est)); } catch (x) {} }
+function estadoBackup() { try { return JSON.parse(propriedade('BACKUP_ESTADO') || 'null'); } catch (x) { return null; } }
+/** @param {any} d @param {any} u */
+function fazerBackupPelaTitular(d, u) {
+  if (!u.titular) return { ok: false, erro: 'Só a coordenação titular faz o backup.' };
+  try { return { ok: true, backup: fazerBackup('pedido na Administração') }; }
+  catch (err) {
+    if (/em andamento/.test(String(err && err.message || err))) return { ok: false, erro: 'Já há um backup em andamento. Tente de novo em alguns minutos.', backup: estadoBackup() || {} };
+    const e = registrarErro(err, 'backup', u), t = TIPOS_ERRO[e.tipo] || TIPOS_ERRO.nao_identificado;
+    return { ok: false, erro: t.titulo + '. ' + (e.tipo === 'autorizacao' ? 'No Apps Script, escolha fazerBackup, clique em Executar e autorize.' : t.fazer), backup: estadoBackup() || {} };
+  }
+}
+// Rode uma vez no editor (ou deixe a Administração criar sozinha): a tarefa diária faz o backup toda madrugada; o primeiro é feito agora.
+function ativarBackup() {
+  garantirTarefaDiaria();
+  const r = fazerBackup('instalação');
+  Logger.log('Backup diário ativado: toda madrugada, junto com a tarefa diária. ' + r.resumo + '\n' + r.url);
+}
+// Nome antigo (o guia de instalação das versões anteriores mandava rodar esta).
+function ativarBackupSemanal() { ativarBackup(); }
+function backupAtivo() {
+  try { return ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'tarefaDiaria'; }); } catch (x) { return false; }
 }
 
 /* ---------- tarefa diária (de madrugada) ----------
  * Confere o espaço da planilha (e avisa a coordenação titular), corta linhas e colunas vazias, passa o registro de
- * Acessos com mais de 12 meses para uma planilha de arquivo e apaga sessões vencidas. Criada sozinha. */
+ * Acessos com mais de 12 meses para uma planilha de arquivo, apaga sessões vencidas, faz o backup incremental e
+ * refaz a planilha de análise. A planilha de faces é refeita por outra tarefa, às 4h. Criadas sozinhas. */
 function garantirTarefaDiaria() {
-  const tem = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'tarefaDiaria'; });
-  if (!tem) ScriptApp.newTrigger('tarefaDiaria').timeBased().everyDays(1).atHour(2).create();
-  return !tem;
+  const ts = ScriptApp.getProjectTriggers(), tem = function (/** @type {string} */ f) { return ts.some(function (t) { return t.getHandlerFunction() === f; }); };
+  const criou = !tem('tarefaDiaria');
+  if (criou) ScriptApp.newTrigger('tarefaDiaria').timeBased().everyDays(1).atHour(2).create();
+  if (!tem('tarefaFaces')) ScriptApp.newTrigger('tarefaFaces').timeBased().everyDays(1).atHour(4).create();
+  // O backup semanal antigo (uma cópia inteira por semana) sai: o backup agora é incremental, na tarefa diária.
+  ts.forEach(function (t) { if (t.getHandlerFunction() === 'fazerBackup') ScriptApp.deleteTrigger(t); });
+  return criou;
 }
 function tarefaDiaria() {
   /** @type {any} */ const r = { espaco: null, cortadas: 0, arquivados: 0, sessoes: 0, uso: 0 };
@@ -170,6 +546,7 @@ function tarefaDiaria() {
   try { r.espaco = conferirEspaco(); } catch (x) { registrarErro(x, 'tarefaDiaria: espaço', null); }
   try { r.uso = recalcularUso(planilha(), lerResumos()); } catch (x) { registrarErro(x, 'tarefaDiaria: aba Uso', null); }
   try { lerIndice(); } catch (x) {}
+  try { r.backup = fazerBackup('tarefa da madrugada').exames.total; } catch (x) { registrarErro(x, 'tarefaDiaria: backup', null); }
   try { r.analise = atualizarAnalise().exames; } catch (x) { registrarErro(x, 'tarefaDiaria: planilha de análise', null); }
   PropertiesService.getScriptProperties().setProperty('TAREFA_DIARIA_EM', new Date().toISOString());
   return r;
@@ -213,13 +590,7 @@ function arquivarAcessos() {
   const v = aba.getRange(2, 1, aba.getLastRow() - 1, CAB_ACESSOS.length).getValues();
   const velhos = v.filter(function (l) { return textoCelula(l[0]).slice(0, 10) < corte; });
   if (!velhos.length) return 0;
-  let id = propriedade('ARQUIVO_ACESSOS_ID'), arq = null;
-  try { if (id) arq = SpreadsheetApp.openById(id); } catch (x) { arq = null; }
-  if (!arq) {
-    arq = SpreadsheetApp.create('Odontograma - arquivo de acessos');
-    try { const pastas = DriveApp.getFoldersByName(PASTA_BACKUP); const pasta = pastas.hasNext() ? pastas.next() : DriveApp.createFolder(PASTA_BACKUP); DriveApp.getFileById(arq.getId()).moveTo(pasta); } catch (x) {}
-    PropertiesService.getScriptProperties().setProperty('ARQUIVO_ACESSOS_ID', arq.getId());
-  }
+  const arq = planilhaSeparada('ARQUIVO_ACESSOS_ID', 'Odontograma - arquivo de acessos', false);
   const destino = obterAba(arq, 'Acessos', CAB_ACESSOS);
   destino.getRange(destino.getLastRow() + 1, 1, velhos.length, CAB_ACESSOS.length).setValues(velhos.map(function (l) { return linhaSegura(l.map(textoCelula)); }));
   const ficam = v.filter(function (l) { return textoCelula(l[0]).slice(0, 10) >= corte; });
@@ -227,131 +598,251 @@ function arquivarAcessos() {
   return velhos.length;
 }
 
-/* ---------- planilha de análise (para o Looker Studio) ----------
- * Uma planilha separada, "Odontograma - análise", na pasta de backups e só da coordenação titular, refeita toda
- * madrugada pela tarefa diária (e pelo botão "Atualizar agora" da Administração):
- * - aba Exames: uma linha por exame válido, com as mesmas colunas da aba Exames do app, sem as duas colunas do sistema;
- * - aba Dentes: uma linha por dente de cada exame válido (todos os dentes da dentição registrada);
- * - aba Sobre: quando foi atualizada e quantos exames e dentes tem.
- * O Looker Studio lê esta cópia, nunca a planilha do app: assim ele não atrapalha os envios e a cópia pode ser
- * refeita a qualquer momento. No fim, o servidor confere se os números batem com a planilha do app.
+/* ---------- planilhas de análise (para o Looker Studio) ----------
+ * Cópias dos exames VÁLIDOS em quatro níveis, refeitas toda madrugada (e pelo botão "Atualizar agora" da Administração),
+ * sem nada técnico de acesso (sem hashes, tokens, sessões ou senhas):
+ * - "Odontograma - análise": aba Exames (uma linha por exame), aba Dentes (uma linha por dente), aba Procedimentos
+ *   (uma linha por procedimento indicado ou realizado em cada dente) e aba Sobre;
+ * - "Odontograma - análise - faces": aba Faces (uma linha por face de cada dente presente) e aba Sobre. Fica numa
+ *   planilha à parte porque é a maior (cerca de 5 linhas por dente) e o Google aceita até 10 milhões de células por planilha.
+ * Todas ligam pelo id_exame. O Looker lê estas cópias, nunca a planilha do app: assim ele não atrapalha os envios.
  * As abas são sempre as MESMAS (o conteúdo é reescrito dentro delas): o Looker guarda o número interno de cada aba
- * e perderia a ligação se a aba fosse apagada e criada de novo. */
-const ANALISE_NOME = 'Odontograma - análise';
+ * e perderia a ligação se a aba fosse apagada e criada de novo. No fim, o servidor confere se os números batem. */
+const ANALISE_NOME = 'Odontograma - análise', ANALISE_FACES_NOME = 'Odontograma - análise - faces';
+// Colunas a mais na aba Exames (depois das mesmas colunas da aba Exames do app, sem as duas colunas do sistema).
+const CAB_AN_EXAMES_MAIS = ['perfil_profissional_no_exame', 'perfil_profissional_atual', 'dsei_profissional_atual', 'situacao_profissional_atual',
+  'n_dentes_presentes', 'n_dentes_com_carie', 'n_faces_com_carie', 'n_dentes_com_dor_ou_abscesso', 'n_procedimentos_indicados', 'n_procedimentos_realizados'];
 // (CAB_EXAME vem do trecho compartilhado, no fim do arquivo: por isso é calculado na hora)
-function cabAnExames() { return CAB_EXAME.filter(function (k) { return k !== 'resumo_json' && k !== 'dados_completos_json'; }); }
+function cabAnExames() { return CAB_EXAME.filter(function (k) { return k !== 'resumo_json' && k !== 'dados_completos_json'; }).concat(CAB_AN_EXAMES_MAIS); }
+// Dentes: as colunas antigas continuam na mesma ordem (os gráficos do Looker seguem funcionando); as novas vêm no fim.
 const CAB_AN_DENTES = ['id_exame', 'codigo_individuo', 'numero_exame', 'data_exame', 'dsei', 'polo_base', 'aldeia_comunidade', 'faixa_etaria', 'sexo', 'idade_anos',
   'dente', 'tipo', 'situacao', 'sigla', 'tem_carie', 'faces_com_carie', 'face_oclusal_incisal', 'face_vestibular', 'face_lingual_palatina', 'face_mesial', 'face_distal', 'dor', 'abscesso_fistula',
-  'procedimentos_indicados', 'procedimentos_realizados', 'observacao'];
-const ANALISE_LIMITE = 9000000; // o Google aceita 10 milhões de células; deixa folga
-/** Todos os exames válidos, completos (com os dentes), lidos da planilha do app em blocos. */
-function examesValidosCompletos() {
-  const aba = abaExames(), n = aba.getLastRow() - 1, col = colEx().dados_completos_json; /** @type {any} */ const porId = {};
-  for (let i = 0; i < n; i += 1000) {
-    aba.getRange(2 + i, col, Math.min(1000, n - i), 1).getValues().forEach(function (v, k) {
-      const r = parseExame(v[0], 2 + i + k);
-      if (r && (!porId[r.id] || String(r.atualizadoEm || '') > String(porId[r.id].atualizadoEm || ''))) porId[r.id] = r;
+  'procedimentos_indicados', 'procedimentos_realizados', 'observacao',
+  'uf', 'classe_risco', 'arcada', 'lado', 'grupo_dente', 'presente', 'estado', 'tem_carie_ativa', 'dor_ou_abscesso', 'n_procedimentos_indicados', 'n_procedimentos_realizados'];
+const CAB_AN_PROCS = ['id_exame', 'codigo_individuo', 'numero_exame', 'data_exame', 'uf', 'dsei', 'polo_base', 'aldeia_comunidade', 'faixa_etaria', 'sexo', 'idade_anos', 'usuario_id',
+  'dente', 'tipo', 'arcada', 'grupo_dente', 'situacao_dente', 'estado_dente', 'sigla', 'tem_carie', 'tem_carie_ativa', 'faces_com_carie', 'dor', 'abscesso_fistula', 'dor_ou_abscesso',
+  'procedimento', 'codigo_procedimento', 'momento'];
+const CAB_AN_FACES = ['id_exame', 'codigo_individuo', 'data_exame', 'dsei', 'polo_base', 'aldeia_comunidade', 'faixa_etaria', 'sexo',
+  'dente', 'tipo', 'arcada', 'grupo_dente', 'face', 'face_nome', 'condicao', 'tem_carie', 'tem_carie_ativa', 'restaurada'];
+const ANALISE_LIMITE = 9000000; // o Google aceita 10 milhões de células por planilha; deixa folga
+const FACES_ORDEM = ['O', 'V', 'L', 'M', 'D'], FACE_NOME = { O: 'oclusal/incisal', V: 'vestibular', L: 'lingual/palatina', M: 'mesial', D: 'distal' };
+/** Arcada, lado e grupo do dente (numeração FDI). @param {any} n */
+function infoDente(n) {
+  n = Number(n); const q = Math.floor(n / 10), u = n % 10, dec = q >= 5;
+  return { arcada: [1, 2, 5, 6].indexOf(q) >= 0 ? 'superior' : 'inferior', lado: [1, 4, 5, 8].indexOf(q) >= 0 ? 'direito' : 'esquerdo',
+    grupo: u <= 2 ? 'incisivo' : u === 3 ? 'canino' : dec || u >= 6 ? 'molar' : 'pré-molar', tipo: dec ? 'decíduo' : 'permanente' };
+}
+const simNao = function (/** @type {any} */ b) { return b ? 'sim' : 'não'; };
+/** Os exames válidos, completos, e o que é preciso para as colunas do profissional. */
+function baseAnalise() {
+  const regs = todosExamesCompletos().filter(exameValido);
+  /** @type {any} */ const usuarios = {}; lerAbaPrincipal('Usuarios', CAB_USUARIOS).forEach(function (u) { if (u.id) usuarios[u.id] = u; });
+  return { regs: regs, usuarios: usuarios, perfis: perfisDoBackup() };
+}
+/** Perfil do profissional no momento de cada exame, como o backup guardou (exames antigos não têm no próprio exame). */
+function perfisDoBackup() {
+  /** @type {any} */ const o = {};
+  if (!propriedade('BACKUP_ID')) return o;
+  try {
+    const a = planilhaBackup().getSheetByName('Exames'), c = BK_EX_FIXAS.indexOf('perfil_profissional_no_exame') + 1;
+    if (a) lerBloco(a, 1, c).forEach(function (l) { if (l[0]) o[l[0]] = l[c - 1]; });
+  } catch (x) {}
+  return o;
+}
+/** Tudo o que o dente diz, pronto para as linhas de Dentes, Procedimentos e Faces. @param {any} e @param {any} n */
+function dadosDoDente(e, n) {
+  const d = (e.dentes || {})[n] || {}, pres = d.status === 'presente', fs = pres ? d.faces || {} : {}, p = d.procs || {};
+  const carie = FACES_ORDEM.filter(function (f) { return ['ca', 'cc', 'restc'].indexOf(fs[f]) >= 0; }).length;
+  const procs = Object.keys(NOMES_PROC).filter(function (k) { return p[k] === 'indicado' || p[k] === 'realizado'; })
+    .concat(Object.keys(p).filter(function (k) { return !NOMES_PROC[k] && (p[k] === 'indicado' || p[k] === 'realizado'); }));
+  return { n: Number(n), d: d, pres: pres, fs: fs, p: p, procs: procs, info: infoDente(n), faces_com_carie: carie,
+    tem_carie: simNao(carie > 0), tem_carie_ativa: simNao(FACES_ORDEM.some(function (f) { return fs[f] === 'ca'; })),
+    dor: simNao(pres && d.dor), abscesso: simNao(pres && d.abscesso), dor_ou_abscesso: simNao(pres && (d.dor || d.abscesso)),
+    estado: NOMES_ESTADO[estadoDente(d)] || '', sigla: siglaDente(d),
+    nInd: procs.filter(function (k) { return p[k] === 'indicado'; }).length, nReal: procs.filter(function (k) { return p[k] === 'realizado'; }).length };
+}
+/** Os dentes do exame, em ordem. @param {any} e */
+function dentesDoExame(e) { return Object.keys(e.dentes || {}).map(Number).sort(function (a, b) { return a - b; }).map(function (n) { return dadosDoDente(e, n); }); }
+/** Linha da aba Exames. @param {any} e @param {any} b */
+function linhaAnExame(e, b) {
+  const o = valoresDoExame(e, false), u = b.usuarios[e.usuarioId], pr = e.profissional || {}, ds = dentesDoExame(e);
+  o.perfil_profissional_no_exame = pr.perfil || b.perfis[e.id] || (u ? perfilTexto(u) : '');
+  o.perfil_profissional_atual = u ? perfilTexto(u) : ''; o.dsei_profissional_atual = u ? u.dsei || '' : ''; o.situacao_profissional_atual = u ? u.status || '' : 'não encontrado';
+  o.n_dentes_presentes = ds.filter(function (x) { return x.pres; }).length;
+  o.n_dentes_com_carie = ds.filter(function (x) { return x.faces_com_carie > 0; }).length;
+  o.n_faces_com_carie = ds.reduce(function (t, x) { return t + x.faces_com_carie; }, 0);
+  o.n_dentes_com_dor_ou_abscesso = ds.filter(function (x) { return x.dor_ou_abscesso === 'sim'; }).length;
+  o.n_procedimentos_indicados = ds.reduce(function (t, x) { return t + x.nInd; }, 0);
+  o.n_procedimentos_realizados = ds.reduce(function (t, x) { return t + x.nReal; }, 0);
+  return cabAnExames().map(function (k) { return o[k] == null ? '' : o[k]; });
+}
+/** Linhas das abas Dentes e Procedimentos de um exame. @param {any} e */
+function linhasDentesEProcs(e) {
+  const o = valoresDoExame(e, false), base = linhasDentes(e), ds = dentesDoExame(e);
+  /** @type {any[]} */ const dentes = [], procs = [];
+  ds.forEach(function (x, i) {
+    /** @type {any} */ const d = {}; CAB_DENTE.forEach(function (k, j) { d[k] = base[i][j]; });
+    Object.assign(d, { tem_carie: x.tem_carie, faces_com_carie: x.faces_com_carie, uf: o.uf, classe_risco: o.classe_risco, arcada: x.info.arcada, lado: x.info.lado,
+      grupo_dente: x.info.grupo, presente: simNao(x.pres), estado: x.estado, tem_carie_ativa: x.tem_carie_ativa, dor_ou_abscesso: x.dor_ou_abscesso,
+      n_procedimentos_indicados: x.nInd, n_procedimentos_realizados: x.nReal });
+    dentes.push(CAB_AN_DENTES.map(function (k) { return k in d ? d[k] : o[k] == null ? '' : o[k]; }));
+    x.procs.forEach(function (k) {
+      /** @type {any} */ const p = { dente: x.n, tipo: x.info.tipo, arcada: x.info.arcada, grupo_dente: x.info.grupo, situacao_dente: NOMES_STATUS[x.d.status] || x.d.status || '',
+        estado_dente: x.estado, sigla: x.sigla, tem_carie: x.tem_carie, tem_carie_ativa: x.tem_carie_ativa, faces_com_carie: x.faces_com_carie,
+        dor: x.dor, abscesso_fistula: x.abscesso, dor_ou_abscesso: x.dor_ou_abscesso, procedimento: NOMES_PROC[k] || k, codigo_procedimento: k, momento: x.p[k] };
+      procs.push(CAB_AN_PROCS.map(function (c) { return c in p ? p[c] : o[c] == null ? '' : o[c]; }));
     });
-  }
-  const l = Object.keys(porId).map(function (k) { return porId[k]; });
-  // Número do exame de cada pessoa igual ao da planilha do app (pela ordem dos exames válidos).
-  const num = {}; lerResumos().forEach(function (r) { num[r.id] = r.numeroExame; });
-  return l.filter(exameValido).map(function (r) { if (num[r.id]) r.numeroExame = num[r.id]; return r; })
-    .sort(function (a, b) { return String(a.dataExame).localeCompare(String(b.dataExame)) || String(a.id).localeCompare(String(b.id)); });
-}
-/** @param {any} e */
-function linhasDentesAnalise(e) {
-  const o = valoresDoExame(e, false);
-  return linhasDentes(e).map(function (l) {
-    /** @type {any} */ const d = {}; CAB_DENTE.forEach(function (k, i) { d[k] = l[i]; });
-    // Contas prontas para o Looker: faces com cárie (ativa, crônica ou restaurada com cárie) neste dente.
-    const x = (e.dentes || {})[l[CAB_DENTE.indexOf('dente')]] || {}, fs = x.status === 'presente' ? x.faces || {} : {};
-    d.faces_com_carie = ['O', 'V', 'L', 'M', 'D'].filter(function (f) { return ['ca', 'cc', 'restc'].indexOf(fs[f]) >= 0; }).length;
-    d.tem_carie = d.faces_com_carie > 0 ? 'sim' : 'não';
-    return CAB_AN_DENTES.map(function (k) { return k in d ? d[k] : o[k] == null ? '' : o[k]; });
   });
+  return { dentes: dentes, procs: procs };
 }
-function planilhaAnalise() {
-  let id = propriedade('ANALISE_ID'), ss = null;
-  try { if (id) ss = SpreadsheetApp.openById(id); } catch (x) { ss = null; }
-  if (!ss) {
-    ss = SpreadsheetApp.create(ANALISE_NOME);
-    try { const pastas = DriveApp.getFoldersByName(PASTA_BACKUP); const pasta = pastas.hasNext() ? pastas.next() : DriveApp.createFolder(PASTA_BACKUP); DriveApp.getFileById(ss.getId()).moveTo(pasta); } catch (x) {}
-    PropertiesService.getScriptProperties().setProperty('ANALISE_ID', ss.getId());
-  }
-  return ss;
+/** Linhas da aba Faces de um exame: as cinco faces de cada dente presente. @param {any} e */
+function linhasFaces(e) {
+  const o = valoresDoExame(e, false); /** @type {any[]} */ const l = [];
+  dentesDoExame(e).forEach(function (x) {
+    if (!x.pres) return;
+    const lf = letrasFaces(x.n);
+    FACES_ORDEM.forEach(function (f) {
+      const v = x.fs[f] || '';
+      /** @type {any} */ const r = { dente: x.n, tipo: x.info.tipo, arcada: x.info.arcada, grupo_dente: x.info.grupo, face: /** @type {any} */ (lf)[f], face_nome: FACE_NOME[f],
+        condicao: NOMES_FACE[v] || v, tem_carie: simNao(['ca', 'cc', 'restc'].indexOf(v) >= 0), tem_carie_ativa: simNao(v === 'ca'), restaurada: simNao(v === 'rest' || v === 'restc') };
+      l.push(CAB_AN_FACES.map(function (k) { return k in r ? r[k] : o[k] == null ? '' : o[k]; }));
+    });
+  });
+  return l;
 }
-/** Refaz a planilha de análise e confere. Devolve o estado (também guardado em ANALISE_ESTADO). */
-function atualizarAnalise() {
-  const inicio = Date.now(), regs = examesValidosCompletos();
-  const exames = regs.map(function (e) { const o = valoresDoExame(e, false); return cabAnExames().map(function (k) { return o[k] == null ? '' : o[k]; }); });
-  /** @type {any[]} */ let dentes = []; regs.forEach(function (e) { dentes = dentes.concat(linhasDentesAnalise(e)); });
-  const celulas = (exames.length + 1) * cabAnExames().length + (dentes.length + 1) * CAB_AN_DENTES.length;
-  /** @type {any} */ const est = { em: new Date().toISOString(), exames: exames.length, dentes: dentes.length, celulas: celulas, pct: Math.floor(celulas / ANALISE_LIMITE * 100), ok: false };
+/** Quantas linhas de faces o exame tem (sem montar as linhas). @param {any} e */
+function contarFaces(e) { const ds = e.dentes || {}; return Object.keys(ds).filter(function (n) { return (ds[n] || {}).status === 'presente'; }).length * FACES_ORDEM.length; }
+function planilhaAnalise() { return planilhaSeparada('ANALISE_ID', ANALISE_NOME, false); }
+function planilhaAnaliseFaces() { return planilhaSeparada('ANALISE_FACES_ID', ANALISE_FACES_NOME, false); }
+/** @param {any} ss @param {Date} comeco @param {number} posicao */
+function avisoEmAndamento(ss, comeco, posicao) {
+  escreverAbaNoLugar(ss, 'Sobre', ['item', 'valor'], [['Situação', 'Atualização em andamento (começou em ' + fmtDia(comeco) + ' ' + fmtHora(comeco) + '). Se esta linha continuar aqui, a atualização não terminou: veja Erros recentes na Administração do app.']], posicao);
+}
+/** Refaz a planilha de análise (Exames, Dentes, Procedimentos) e confere. Devolve o estado (também guardado em ANALISE_ESTADO). @param {any} [b] */
+function atualizarAnalise(b) {
+  const inicio = Date.now(); b = b || baseAnalise();
+  const exames = b.regs.map(function (e) { return linhaAnExame(e, b); });
+  /** @type {any[]} */ const dentes = [], procs = [];
+  b.regs.forEach(function (e) { const x = linhasDentesEProcs(e); Array.prototype.push.apply(dentes, x.dentes); Array.prototype.push.apply(procs, x.procs); });
+  const celulas = (exames.length + 1) * cabAnExames().length + (dentes.length + 1) * CAB_AN_DENTES.length + (procs.length + 1) * CAB_AN_PROCS.length;
+  /** @type {any} */ const est = Object.assign(estadoAnalise() || {}, { em: new Date().toISOString(), exames: exames.length, dentes: dentes.length, procedimentos: procs.length,
+    celulas: celulas, pct: Math.floor(celulas / ANALISE_LIMITE * 100), ok: false, erro: '' });
   if (celulas > ANALISE_LIMITE) {
     est.erro = 'A planilha de análise ficaria com ' + celulas + ' células, acima do limite. A versão anterior foi mantida.';
     guardarEstadoAnalise(est); throw new Error('planilha de análise: ' + est.erro);
   }
-  const ss = planilhaAnalise(), comeco = new Date();
-  escreverAbaNoLugar(ss, 'Sobre', ['item', 'valor'], [['Situação', 'Atualização em andamento (começou em ' + fmtDia(comeco) + ' ' + fmtHora(comeco) + '). Se esta linha continuar aqui, a atualização não terminou: veja Erros recentes na Administração do app.']], 2);
+  const ss = planilhaAnalise();
+  avisoEmAndamento(ss, new Date(), 3);
   escreverAbaNoLugar(ss, 'Exames', cabAnExames(), exames, 0);
   escreverAbaNoLugar(ss, 'Dentes', CAB_AN_DENTES, dentes, 1);
+  escreverAbaNoLugar(ss, 'Procedimentos', CAB_AN_PROCS, procs, 2);
   const agora = new Date();
   escreverAbaNoLugar(ss, 'Sobre', ['item', 'valor'], [
-    ['O que é', 'Cópia dos exames válidos do Odontograma para análise (Looker Studio, Excel). Refeita toda madrugada: não edite, as mudanças se perdem.'],
+    ['O que é', 'Cópia dos exames válidos do Odontograma para análise (Looker Studio, Excel). Refeita toda madrugada: não edite, as mudanças se perdem. Não tem dados de acesso (senhas, códigos, tokens).'],
     ['Atualizada em (horário de Brasília)', fmtDia(agora) + ' ' + fmtHora(agora)],
-    ['Exames válidos', String(exames.length)], ['Linhas de dentes', String(dentes.length)],
+    ['Exames válidos', String(exames.length)], ['Linhas de dentes', String(dentes.length)], ['Linhas de procedimentos', String(procs.length)],
     ['Espaço usado', est.pct + '% (o Google aceita até 10 milhões de células)'],
-    ['Exames', 'Uma linha por exame válido. As colunas são as mesmas da aba Exames do app; o Dicionário do app explica cada uma.'],
-    ['Dentes', 'Uma linha por dente de cada exame (todos os dentes da dentição registrada). Use id_exame para ligar com a aba Exames.']
-  ], 2);
-  ss.getSheets().forEach(function (a) { if (['Exames', 'Dentes', 'Sobre'].indexOf(a.getName()) < 0 && ss.getSheets().length > 3) { try { ss.deleteSheet(a); } catch (x) {} } });
+    ['Exames', 'Uma linha por exame válido. As colunas são as mesmas da aba Exames do app (o Dicionário do app explica cada uma), mais o perfil do profissional no exame e hoje e contas prontas no fim.'],
+    ['Dentes', 'Uma linha por dente de cada exame (todos os dentes da dentição registrada), com arcada, lado, grupo, estado, faces, dor e abscesso. Use id_exame para ligar com a aba Exames.'],
+    ['Procedimentos', 'Uma linha por procedimento de cada dente, com momento = indicado ou realizado e a condição daquele mesmo dente (cárie, cárie ativa, dor, abscesso). Ex.: entre os dentes com cárie, quantos receberam ART.'],
+    ['Faces', 'Uma linha por face de cada dente presente, na planilha "' + ANALISE_FACES_NOME + '" (fica à parte por causa do limite de células do Google).']
+  ], 3);
+  ss.getSheets().forEach(function (a) { if (['Exames', 'Dentes', 'Procedimentos', 'Sobre'].indexOf(a.getName()) < 0 && ss.getSheets().length > 4) { try { ss.deleteSheet(a); } catch (x) {} } });
   SpreadsheetApp.flush();
   // Conferência: o que ficou na planilha de análise bate com a planilha do app?
-  const nEx = ss.getSheetByName('Exames').getLastRow() - 1, nDe = ss.getSheetByName('Dentes').getLastRow() - 1;
+  const nEx = ss.getSheetByName('Exames').getLastRow() - 1, nDe = ss.getSheetByName('Dentes').getLastRow() - 1, nPr = Math.max(ss.getSheetByName('Procedimentos').getLastRow() - 1, 0);
   const validos = lerIndice().filter(function (r) { return r.situacao !== 'cancelado'; }).length;
   est.url = ss.getUrl(); est.segundos = Math.round((Date.now() - inicio) / 1000);
-  est.ok = nEx === exames.length && nDe === dentes.length && exames.length === validos;
-  if (!est.ok) est.erro = 'Conferência: planilha de análise com ' + nEx + ' exames e ' + nDe + ' dentes; esperado ' + validos + ' exames válidos e ' + dentes.length + ' dentes.';
+  est.ok = nEx === exames.length && nDe === dentes.length && nPr === procs.length && exames.length === validos;
+  if (!est.ok) est.erro = 'Conferência: planilha de análise com ' + nEx + ' exames, ' + nDe + ' dentes e ' + nPr + ' procedimentos; esperado ' + validos + ' exames válidos, ' + dentes.length + ' dentes e ' + procs.length + ' procedimentos.';
   guardarEstadoAnalise(est);
   if (!est.ok) throw new Error('planilha de análise: ' + est.erro);
   return est;
 }
-/** Reescreve o conteúdo de uma aba sem apagá-la (o Looker continua ligado a ela). @param {any} ss @param {string} nome @param {any[]} cab @param {any[][]} linhas @param {number} posicao */
-function escreverAbaNoLugar(ss, nome, cab, linhas, posicao) {
+/** Refaz a planilha de faces, em partes (é a maior). @param {any} [b] */
+function atualizarAnaliseFaces(b) {
+  const inicio = Date.now(); b = b || baseAnalise();
+  const total = b.regs.reduce(function (t, e) { return t + contarFaces(e); }, 0), celulas = (total + 1) * CAB_AN_FACES.length;
+  /** @type {any} */ const est = { em: new Date().toISOString(), exames: b.regs.length, faces: total, celulas: celulas, pct: Math.floor(celulas / ANALISE_LIMITE * 100), ok: false, erro: '' };
+  if (celulas > ANALISE_LIMITE) {
+    est.erro = 'A planilha de faces ficaria com ' + celulas + ' células, acima do limite. A versão anterior foi mantida.';
+    guardarEstadoFaces(est); throw new Error('planilha de faces: ' + est.erro);
+  }
+  const ss = planilhaAnaliseFaces();
+  avisoEmAndamento(ss, new Date(), 1);
+  let escritas = 0;
+  escreverAbaPorPartes(ss, 'Faces', CAB_AN_FACES, total, 0, function (gravar) {
+    /** @type {any[]} */ let buf = [];
+    b.regs.forEach(function (e) { Array.prototype.push.apply(buf, linhasFaces(e)); if (buf.length >= 4000) { gravar(buf); escritas += buf.length; buf = []; } });
+    if (buf.length) { gravar(buf); escritas += buf.length; }
+  });
+  const agora = new Date();
+  escreverAbaNoLugar(ss, 'Sobre', ['item', 'valor'], [
+    ['O que é', 'Uma linha por face de cada dente presente nos exames válidos do Odontograma. Refeita toda madrugada: não edite. Use id_exame para ligar com as abas da planilha "' + ANALISE_NOME + '".'],
+    ['Atualizada em (horário de Brasília)', fmtDia(agora) + ' ' + fmtHora(agora)],
+    ['Exames válidos', String(b.regs.length)], ['Linhas de faces', String(total)],
+    ['Espaço usado', est.pct + '% (o Google aceita até 10 milhões de células)'],
+    ['Faces', 'face: a letra usada no dente (O ou I = oclusal/incisal, V = vestibular, L ou P = lingual/palatina, M = mesial, D = distal). face_nome junta oclusal com incisal e lingual com palatina, para comparar faces entre dentes. condicao: Hígida, Cárie ativa, Cárie crônica, Mancha branca ativa ou inativa, Restaurada sem ou com cárie, Selante.']
+  ], 1);
+  ss.getSheets().forEach(function (a) { if (['Faces', 'Sobre'].indexOf(a.getName()) < 0 && ss.getSheets().length > 2) { try { ss.deleteSheet(a); } catch (x) {} } });
+  SpreadsheetApp.flush();
+  const nFa = Math.max(ss.getSheetByName('Faces').getLastRow() - 1, 0);
+  est.url = ss.getUrl(); est.segundos = Math.round((Date.now() - inicio) / 1000);
+  est.ok = nFa === total && escritas === total;
+  if (!est.ok) est.erro = 'Conferência: planilha de faces com ' + nFa + ' linhas; esperado ' + total + '.';
+  guardarEstadoFaces(est);
+  if (!est.ok) throw new Error('planilha de faces: ' + est.erro);
+  return est;
+}
+/** Reescreve uma aba grande sem montar todas as linhas de uma vez (menos memória). @param {any} ss @param {string} nome @param {any[]} cab @param {number} total @param {number} posicao @param {function(function(any[][]):void):void} gerar */
+function escreverAbaPorPartes(ss, nome, cab, total, posicao, gerar) {
   let a = ss.getSheetByName(nome);
   if (!a) { a = ss.insertSheet(nome); try { ss.setActiveSheet(a); ss.moveActiveSheet(posicao + 1); } catch (x) {} }
-  const nl = Math.max(linhas.length + 1, 2), nc = cab.length;
+  const nl = Math.max(total + 1, 2), nc = cab.length;
   if (a.getMaxRows() < nl) a.insertRowsAfter(a.getMaxRows(), nl - a.getMaxRows());
   if (a.getMaxColumns() < nc) a.insertColumnsAfter(a.getMaxColumns(), nc - a.getMaxColumns());
   a.getRange(1, 1, 1, nc).setValues([cab]).setFontWeight('bold');
   a.setFrozenRows(1);
-  if (!linhas.length) a.getRange(2, 1, 1, nc).clearContent();
-  for (let i = 0; i < linhas.length; i += 4000) {
-    const bloco = linhas.slice(i, i + 4000).map(function (l) { const x = linhaSegura(l); while (x.length < nc) x.push(''); return x.slice(0, nc); });
-    a.getRange(2 + i, 1, bloco.length, nc).setValues(bloco);
-  }
-  // O que sobrou da versão anterior (linhas abaixo e colunas à direita) sai.
+  if (!total) a.getRange(2, 1, 1, nc).clearContent();
+  let linha = 2;
+  gerar(function (bloco) {
+    a.getRange(linha, 1, bloco.length, nc).setValues(bloco.map(function (l) { const x = linhaSegura(l); while (x.length < nc) x.push(''); return x.slice(0, nc); }));
+    linha += bloco.length;
+  });
   if (a.getMaxRows() > nl) a.deleteRows(nl + 1, a.getMaxRows() - nl);
   if (a.getMaxColumns() > nc) a.deleteColumns(nc + 1, a.getMaxColumns() - nc);
+}
+/** Reescreve o conteúdo de uma aba sem apagá-la (o Looker continua ligado a ela). @param {any} ss @param {string} nome @param {any[]} cab @param {any[][]} linhas @param {number} posicao */
+function escreverAbaNoLugar(ss, nome, cab, linhas, posicao) {
+  escreverAbaPorPartes(ss, nome, cab, linhas.length, posicao, function (gravar) { for (let i = 0; i < linhas.length; i += 4000) gravar(linhas.slice(i, i + 4000)); });
 }
 /** @param {any} est */
 function guardarEstadoAnalise(est) { PropertiesService.getScriptProperties().setProperty('ANALISE_ESTADO', JSON.stringify(est)); }
 function estadoAnalise() { try { return JSON.parse(propriedade('ANALISE_ESTADO') || 'null'); } catch (x) { return null; } }
+/** @param {any} est */
+function guardarEstadoFaces(est) { PropertiesService.getScriptProperties().setProperty('ANALISE_FACES_ESTADO', JSON.stringify(est)); }
+function estadoFaces() { try { return JSON.parse(propriedade('ANALISE_FACES_ESTADO') || 'null'); } catch (x) { return null; } }
+/** O que a Administração mostra: a planilha de análise e, dentro, a de faces. */
+function estadoAnalises() { const a = estadoAnalise(); return a || estadoFaces() ? Object.assign({}, a || {}, { faces: estadoFaces() }) : {}; }
 /** @param {any} d @param {any} u */
 function atualizarAnalisePelaTitular(d, u) {
   if (!u.titular) return { ok: false, erro: 'Só a coordenação titular atualiza a planilha de análise.' };
-  try { return { ok: true, analise: atualizarAnalise() }; }
+  try { const b = baseAnalise(); atualizarAnalise(b); atualizarAnaliseFaces(b); return { ok: true, analise: estadoAnalises() }; }
   catch (err) {
     // Para a titular, a mensagem diz o motivo e o que fazer (ex.: falta autorizar no editor do Apps Script).
     const e = registrarErro(err, 'atualizar planilha de análise', u), t = TIPOS_ERRO[e.tipo] || TIPOS_ERRO.nao_identificado;
-    return { ok: false, erro: t.titulo + '. ' + (e.tipo === 'autorizacao' ? 'No Apps Script, escolha atualizarPlanilhaAnalise, clique em Executar e autorize.' : t.fazer), analise: estadoAnalise() || {} };
+    return { ok: false, erro: t.titulo + '. ' + (e.tipo === 'autorizacao' ? 'No Apps Script, escolha atualizarPlanilhaAnalise, clique em Executar e autorize.' : t.fazer), analise: estadoAnalises() };
   }
 }
-// Rode no editor para criar ou refazer a planilha de análise agora.
+// Rode no editor para criar ou refazer as planilhas de análise agora.
 function atualizarPlanilhaAnalise() {
-  const r = atualizarAnalise();
-  Logger.log('Planilha de análise atualizada: ' + r.exames + ' exames, ' + r.dentes + ' linhas de dentes, ' + r.pct + '% do espaço, em ' + r.segundos + ' s.\n' + r.url);
+  const b = baseAnalise(), r = atualizarAnalise(b), f = atualizarAnaliseFaces(b);
+  Logger.log('Planilha de análise atualizada: ' + r.exames + ' exames, ' + r.dentes + ' linhas de dentes, ' + r.procedimentos + ' procedimentos, ' + r.pct + '% do espaço, em ' + r.segundos + ' s.\n' + r.url);
+  Logger.log('Planilha de faces atualizada: ' + f.faces + ' linhas, ' + f.pct + '% do espaço, em ' + f.segundos + ' s.\n' + f.url);
+}
+// Tarefa da madrugada só para as faces (roda separada da tarefa diária: cada uma tem os seus 6 minutos no Google).
+function tarefaFaces() {
+  try { return atualizarAnaliseFaces().faces; } catch (x) { registrarErro(x, 'tarefa da madrugada: planilha de faces', null); return null; }
 }
 
 /* ---------- erros: explicados para a coordenação titular ----------
@@ -366,16 +857,18 @@ const TIPOS_ERRO = {
   planilha_alterada: { titulo: 'A planilha foi alterada à mão', motivo: 'Uma aba foi renomeada, uma coluna foi apagada ou o cabeçalho mudou.', fazer: 'Desfazer a mudança (na planilha: Arquivo > Histórico de versões).' },
   limite_planilha: { titulo: 'A planilha está perto do limite', motivo: 'O Google aceita até 10 milhões de células por planilha.', fazer: 'Avise a equipe técnica para planejar uma planilha nova.' },
   autorizacao: { titulo: 'Falta autorização do Google', motivo: 'O código novo foi colado, mas ainda não foi autorizado.', fazer: 'No Apps Script, rode testarInstalacao, autorize e publique pelo lápis.' },
-  analise: { titulo: 'A planilha de análise não foi atualizada', motivo: 'A cópia para o Looker Studio ("Odontograma - análise") não foi refeita ou os números não bateram com a planilha do app.', fazer: 'Em Administração, toque em "Atualizar agora". Se continuar, copie o detalhe e mande para a equipe técnica. Os exames do app não foram afetados.' },
+  analise: { titulo: 'A planilha de análise não foi atualizada', motivo: 'A cópia para o Looker Studio ("Odontograma - análise" ou "Odontograma - análise - faces") não foi refeita ou os números não bateram com a planilha do app.', fazer: 'Em Administração, toque em "Atualizar agora". Se continuar, copie o detalhe e mande para a equipe técnica. Os exames do app não foram afetados.' },
+  backup: { titulo: 'O backup não foi feito', motivo: 'O backup incremental ("Odontograma - backup") parou no meio ou não conseguiu ler a planilha do app. O que já estava no backup continua lá.', fazer: 'Em Administração, toque em "Fazer backup agora". Se continuar, copie o detalhe e mande para a equipe técnica.' },
   nao_identificado: { titulo: 'Erro não identificado', motivo: 'Algo inesperado aconteceu no servidor.', fazer: 'Copie o detalhe técnico e mande para a equipe técnica.' }
 };
 /** @param {string} t */
 function tipoDoErro(t) {
-  if (/planilha de análise/i.test(t)) return 'analise';
+  if (/planilha de (análise|faces)/i.test(t)) return 'analise';
   if (/lock|trava|bloqueio/i.test(t)) return 'fila';
   if (/too many times|muitas vezes|quota|cota/i.test(t)) return /mail|e-mail|email/i.test(t) ? 'cota_email' : 'cota';
   if (/10000000|10\.000\.000|células|cells.*limit|limit.*cells/i.test(t)) return 'limite_planilha';
   if (/authoriz|autoriza|permission|permiss/i.test(t)) return 'autorizacao';
+  if (/backup:/i.test(t)) return 'backup';
   if (/timed out|tempo limite|unavailable|indispon|server error|erro de servidor|exceeded maximum execution|tempo máximo/i.test(t)) return 'google_lento';
   if (/number of columns|número de colunas|number of rows|número de linhas|cabeçalho|header|coordinates|coordenadas/i.test(t)) return 'planilha_alterada';
   return 'nao_identificado';
@@ -497,8 +990,8 @@ function reorganizarPelaTitular(d, u) {
 function reorganizarAgora() {
   const ss = planilha();
   /** @type {any} */ const r = { exames: 0, acessos: 0, uso: 0, backup: '', relatorio: null };
-  // Backup obrigatório: sem cópia, nada é reescrito.
-  try { r.backup = fazerBackup('reorganizar'); }
+  // Backup obrigatório: sem o backup em dia, nada é reescrito.
+  try { r.backup = fazerBackup('antes da reorganização').resumo; }
   catch (x) { throw new Error('Reorganização cancelada: não foi possível fazer o backup antes (' + x + '). Nada foi alterado na planilha.'); }
   MIGRANDO = true;
   try {
@@ -731,6 +1224,7 @@ const ACOES = {
   dadosAnalise:   { fn: dadosAnalise },
   limparErros:    { perfis: ['coord'], escreve: true, fn: limparErros },
   atualizarAnalise: { perfis: ['coord'], fn: atualizarAnalisePelaTitular },
+  fazerBackup:    { perfis: ['coord'], fn: fazerBackupPelaTitular },
   painel:         { fn: painel },
   meusExames:     { fn: meusExames },
   verExame:       { fn: verExame },
@@ -1370,7 +1864,7 @@ function gravarRegistro(reg) {
     vinculo: (reg.vinculo || {}).anteriorId ? { anteriorId: reg.vinculo.anteriorId, codigoIndividuo: codigoIndividuoDe(reg) } : null };
   if (m.indice) { if (i) Object.assign(i, novo); else m.indice.push(novo); }
   if (m.completos) m.completos[novo._linha] = reg;
-  m.resumos = null;
+  m.resumos = null; m.todosCompletos = null;
   m.mudados[novo.id] = { t: valores[colEx().resumo_json - 1], linha: novo._linha };
 }
 // Muda a cada gravação de exame (o Painel guardado deixa de valer).
@@ -1422,7 +1916,7 @@ function camposPermitidos(reg, u) {
   if (r.protese) r.protese = soCampos(r.protese, ['sup', 'inf', 'usoSup', 'usoInf', 'naoAvaliado'], 'protese.', fora);
   if (r.vinculo) r.vinculo = soCampos(r.vinculo, ['codigoIndividuo', 'chaves', 'numero'], 'vinculo.', fora);
   if (r.resultado) r.resultado = soCampos(r.resultado, ['classe', 'risco', 'descricao', 'motivos', 'ceod', 'cpod', 'agrupamento'], 'resultado.', fora);
-  if (r.profissional) r.profissional = soCampos(r.profissional, ['nome', 'cro'], 'profissional.', fora);
+  if (r.profissional) r.profissional = soCampos(r.profissional, ['nome', 'cro', 'perfil', 'dsei'], 'profissional.', fora);
   if (r.dentes && typeof r.dentes === 'object') {
     /** @type {any} */ const ds = {};
     Object.keys(r.dentes).forEach(function (n) {
@@ -1467,7 +1961,8 @@ function processarExame(reg, u, emLote) {
   if (classeDoApp && classeDoApp !== reg.resultado.classe) registrar(u, 'Resultado recalculado', 'Exame ' + reg.id + ': o app mandou classe ' + classeDoApp + ', o servidor calculou ' + reg.resultado.classe);
   if (u.id === 'coord') return { ok: false, erro: 'A coordenação titular não registra exames.' };
   if (u.perfil === 'coord' && !u.dsei) return { ok: false, erro: 'Para registrar exames, a pessoa da coordenação precisa ser também RT de um DSEI.' };
-  reg.profissional = { nome: u.nome, cro: u.cro };
+  // Quem fez o exame e como era o cadastro naquele momento (perfil e DSEI): não muda se o cadastro mudar depois.
+  reg.profissional = { nome: u.nome, cro: u.cro, perfil: perfilTexto(u), dsei: u.dsei || '' };
   reg.usuarioId = u.id;
   reg.situacao = 'valido'; delete reg.cancelamento;
   if (anterior && anterior.criadoEm) reg.criadoEm = anterior.criadoEm;
@@ -1537,7 +2032,7 @@ function cancelarExame(d, u) {
   if (MOTIVOS_CANCELAMENTO.indexOf(motivo) < 0) return { ok: false, erro: 'Escolha o motivo do cancelamento.' };
   if (motivo === 'Outro' && !obs) return { ok: false, erro: 'Explique o motivo em "Outro motivo".' };
   r.situacao = 'cancelado';
-  r.cancelamento = { motivo: motivo, observacao: obs, em: new Date().toISOString(), por: u.nome };
+  r.cancelamento = { motivo: motivo, observacao: obs, em: new Date().toISOString(), por: u.nome, porId: u.id };
   r.atualizadoEm = new Date().toISOString();
   gravarRegistro(r);
   renumerarPessoa(codigoIndividuoDe(r), r);
@@ -2054,7 +2549,7 @@ function admin(d, u) {
   return { ok: true, usuarios: us.map(publico), acessos: acessos, dseisRT: dseisRT, qtdEquipe: qtdEquipe, titular: !!u.titular, convites: listaConvites(u, ''), populacao: populacaoInfo(d, u),
     reorganizacaoPendente: !formatoAtual(), senhaCurta: !!u.titular && chaveCfg().length < SENHA_MINIMA,
     instalacao: diagnostico(), versaoServidor: VERSAO,
-    erros: u.titular ? errosRecentes() : null, espaco: u.titular ? espacoPlanilha() : null, analise: u.titular ? (estadoAnalise() || {}) : null,
+    erros: u.titular ? errosRecentes() : null, espaco: u.titular ? espacoPlanilha() : null, analise: u.titular ? estadoAnalises() : null, backup: u.titular ? (estadoBackup() || {}) : null,
     tarefaDiaria: u.titular ? { criada: (function () { try { return !garantirTarefaDiaria(); } catch (x) { return false; } })(), ultima: propriedade('TAREFA_DIARIA_EM') || '' } : null,
     auditoria: { falhas: Number(propriedade('AUDITORIA_FALHAS') || 0), ultima: propriedade('AUDITORIA_ULTIMA') || '' } };
 }

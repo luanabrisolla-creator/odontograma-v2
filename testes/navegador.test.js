@@ -462,6 +462,11 @@ for (let i = 0; i < 8; i++) {
   await pg.click("#admPlanAnalise"); await pg.waitForTimeout(2500);
   const blocoPA = await pg.textContent("#admConteudo");
   T("Criar agora: a planilha é criada e o quadro mostra quando, quantos exames e o link", /Atualizada em \d{2}\/\d{2}\/\d{4}/.test(blocoPA) && !!(await pg.$('a.sec[href*="docs.google.com"]')) && (await pg.textContent("#admPlanAnalise")).trim() === "Atualizar agora", blocoPA.slice(blocoPA.indexOf("Planilha de análise"), blocoPA.indexOf("Planilha de análise") + 300));
+  T("a planilha de faces aparece com o seu link", !!(await pg.$('#admPlanFaces[href*="docs.google.com"]')) && /Faces: atualizada em/.test(blocoPA));
+  // Backup incremental (planilha única).
+  T("Administração mostra o backup (planilha única) e quando foi o último", /Backup \(planilha única\)/.test(blocoPA) && /Último backup em \d{2}\/\d{2}\/\d{4}/.test(blocoPA), blocoPA.slice(blocoPA.indexOf("Backup ("), blocoPA.indexOf("Backup (") + 300));
+  await pg.click("#admBackup"); await pg.waitForTimeout(2500);
+  T("Fazer backup agora: o quadro mostra o link da planilha de backup", !!(await pg.$('#admBackupAbrir[href*="docs.google.com"]')) && /Backup feito/.test(await pg.textContent("body")));
   await foto(pg, "9_planilha_analise_pc", "#admConteudo");
   T("sem erros na Administração", !pg.erros.length, pg.erros);
   await ctx.close();

@@ -1196,7 +1196,7 @@ function avisarSemEspaco() {
   a.classList.add("aviso-servidor"); a.hidden = false;
 }
 // Versão do app: a mesma do número no sw.js (odontograma-vNN). Vai junto em cada pedido ao servidor.
-const VERSAO_APP = 38;
+const VERSAO_APP = 39;
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_LEG = "odonto.legenda.v1";
 const K_SESSAO = "odonto.sessao.v1";
@@ -4091,7 +4091,7 @@ document.addEventListener("click", async e => {
         ${(r.exemplos || []).length ? `<p class="dica" style="margin-top:8px">Exemplos (antes → depois):</p><ul class="totais">${r.exemplos.slice(0, 10).map(x => `<li>${esc(x.codigo)} (${esc(fmtData(x.data))}): classe ${esc(x.classe[0])} → ${esc(x.classe[1])}; ceo-d ${esc(x.ceod[0])} → ${esc(x.ceod[1])}; CPO-D ${esc(x.cpod[0])} → ${esc(x.cpod[1])}</li>`).join("")}</ul>` : ""}
         <p class="nota">A lista completa vai para a aba "Relatório da reorganização" da planilha. Formato ${esc(j.formatoAtual || "antigo")} → ${esc(j.formatoNovo)}.</p>`;
       fazer.hidden = false;
-    } else if (confirm("Fazer o backup completo e atualizar a planilha agora? Pode levar alguns minutos.")) {
+    } else if (confirm("Atualizar o backup e a planilha agora? Pode levar alguns minutos.")) {
       const j = await api("reorganizar", {}, {tempo: 300000});
       toast(j.jaFeito ? "A planilha já estava atualizada." : `Planilha atualizada. Backup: ${j.resultado.backup}.`);
       carregarAdmin();
@@ -4728,14 +4728,32 @@ const dataHoraErro = t => { const m = /^(\d{4})-(\d{2})-(\d{2}) ?(.*)$/.exec(Str
 // Planilha de análise (só a coordenação titular): a cópia que o Looker Studio lê, refeita toda madrugada.
 function blocoPlanAnalise(a) {
   if (a == null) return "";
+  const f = a.faces || {};
   const st = !a.em ? `<p class="dica" style="margin:4px 0 0">Ainda não foi criada. Toque em <b>Criar agora</b> (ou espere a tarefa da madrugada).</p>`
-    : `<p class="dica" style="margin:4px 0 0">Atualizada em <b>${esc(fmtDataHora(a.em))}</b> · ${fmtN(a.exames || 0)} exames · ${fmtN(a.dentes || 0)} linhas de dentes · ${a.pct || 0}% do espaço</p>`
-      + (a.ok ? "" : `<p class="dica" style="margin:6px 0 0;color:var(--erro-ink)"><b>Não foi atualizada:</b> ${esc(a.erro || "veja em Erros recentes")}</p>`);
+    : `<p class="dica" style="margin:4px 0 0">Atualizada em <b>${esc(fmtDataHora(a.em))}</b> · ${fmtN(a.exames || 0)} exames · ${fmtN(a.dentes || 0)} linhas de dentes · ${fmtN(a.procedimentos || 0)} ${a.procedimentos === 1 ? "procedimento" : "procedimentos"} · ${a.pct || 0}% do espaço</p>`
+      + (a.ok ? "" : `<p class="dica" style="margin:6px 0 0;color:var(--erro-ink)"><b>Não foi atualizada:</b> ${esc(a.erro || "veja em Erros recentes")}</p>`)
+      + (f.em ? `<p class="dica" style="margin:4px 0 0">Faces: atualizada em <b>${esc(fmtDataHora(f.em))}</b> · ${fmtN(f.faces || 0)} linhas · ${f.pct || 0}% do espaço</p>` : "")
+      + (f.em && !f.ok ? `<p class="dica" style="margin:6px 0 0;color:var(--erro-ink)"><b>Faces não foi atualizada:</b> ${esc(f.erro || "veja em Erros recentes")}</p>` : "");
   return `<div class="bloco"><h3>Planilha de análise (Looker Studio)</h3>
-    <p class="dica" style="margin:4px 0 0">Cópia dos exames válidos, com uma linha por exame e uma linha por dente, refeita toda madrugada. É ela que o Looker Studio lê; a planilha do app não é tocada.</p>
+    <p class="dica" style="margin:4px 0 0">Cópia dos exames válidos em quatro níveis, refeita toda madrugada: uma linha por <b>exame</b>, por <b>dente</b> e por <b>procedimento</b> de cada dente e, numa planilha à parte (por causa do limite de células do Google), uma linha por <b>face</b>. É ela que o Looker Studio lê; a planilha do app não é tocada. Não leva dados de acesso (senhas, códigos, tokens).</p>
     ${st}
-    <div class="acoes-l" style="margin-top:10px">${a.url ? `<a class="sec" href="${esc(a.url)}" target="_blank" rel="noopener">Abrir planilha</a>` : ""}<button class="prim" id="admPlanAnalise">${a.em ? "Atualizar agora" : "Criar agora"}</button></div>
+    <div class="acoes-l" style="margin-top:10px">${a.url ? `<a class="sec" href="${esc(a.url)}" target="_blank" rel="noopener">Abrir planilha</a>` : ""}${f.url ? `<a class="sec" href="${esc(f.url)}" target="_blank" rel="noopener" id="admPlanFaces">Abrir planilha de faces</a>` : ""}<button class="prim" id="admPlanAnalise">${a.em ? "Atualizar agora" : "Criar agora"}</button></div>
     <p class="dica" id="admPlanStatus" aria-live="polite"></p></div>`;
+}
+// Backup incremental (só a coordenação titular): uma planilha só, que acrescenta e nunca apaga.
+function blocoBackup(b) {
+  if (b == null) return "";
+  const ex = b.exames || {}, alertas = Number(b.alertas || 0), novos = Number(b.alertasNovos || 0);
+  const st = !b.em ? `<p class="dica" style="margin:4px 0 0">Ainda não foi feito. Toque em <b>Fazer backup agora</b> (ou espere a tarefa da madrugada).</p>`
+    : b.ok ? `<p class="dica" style="margin:4px 0 0">Último backup em <b>${esc(fmtDataHora(b.em))}</b> · ${fmtN(ex.total || 0)} exames guardados · ${fmtN(ex.novos || 0)} novos · ${fmtN(ex.versoes || 0)} ${ex.versoes === 1 ? "versão nova" : "versões novas"}</p>`
+      : `<p class="dica" style="margin:4px 0 0;color:var(--erro-ink)"><b>O último backup não terminou</b> (${esc(fmtDataHora(b.em))}): ${esc(b.erro || "veja em Erros recentes")}. O que já estava no backup continua lá.</p>`;
+  const al = novos ? `<p class="dica" style="margin:6px 0 0;color:var(--erro-ink)"><b>${novos} ${novos === 1 ? "alerta novo" : "alertas novos"}</b>: ${esc((b.alertasExemplos || []).join(" · "))}${novos > (b.alertasExemplos || []).length ? " …" : ""}. Veja a aba Alertas do backup.</p>`
+    : alertas ? `<p class="dica" style="margin:4px 0 0">${alertas} ${alertas === 1 ? "alerta" : "alertas"} no total, na aba Alertas do backup.</p>` : "";
+  return `<div class="bloco"${novos ? ' style="border-left:5px solid var(--sesai-amarelo)"' : ""}><h3>Backup (planilha única)</h3>
+    <p class="dica" style="margin:4px 0 0">Uma pasta e uma planilha só ("Odontograma - backup"), atualizada toda madrugada. Ela só acrescenta: exames novos, versões novas e a situação atual. Nada é apagado; o que some da planilha do app fica guardado e gera alerta.</p>
+    ${st}${al}
+    <div class="acoes-l" style="margin-top:10px">${b.url ? `<a class="sec" href="${esc(b.url)}" target="_blank" rel="noopener" id="admBackupAbrir">Abrir backup</a>` : ""}<button class="prim" id="admBackup">Fazer backup agora</button></div>
+    <p class="dica" id="admBackupStatus" aria-live="polite"></p></div>`;
 }
 function blocoAnalise() {
   return `<div class="bloco"><h3>Dados para análise</h3><p class="dica" style="margin:4px 0 10px">Arquivo do Excel com uma linha por exame: o exame, as contas prontas e cada dente. Escolha o período (ou deixe em branco para todos).</p>
@@ -4748,6 +4766,12 @@ document.addEventListener("click", async e => {
     e.target.disabled = true; $("#admPlanStatus").textContent = "Atualizando… pode levar alguns minutos.";
     try { const j = await api("atualizarAnalise", {}, {tempo: 360000}); toast(`Planilha de análise atualizada: ${fmtN(j.analise.exames)} exames.`); carregarAdmin(); }
     catch (err) { $("#admPlanStatus").textContent = err.message; e.target.disabled = false; }
+    return;
+  }
+  if (e.target.id === "admBackup") {
+    e.target.disabled = true; $("#admBackupStatus").textContent = "Fazendo o backup… pode levar alguns minutos.";
+    try { const j = await api("fazerBackup", {}, {tempo: 360000}); toast(`Backup feito: ${fmtN(j.backup.exames.total)} exames guardados${j.backup.alertasNovos ? `, ${j.backup.alertasNovos} ${j.backup.alertasNovos === 1 ? "alerta novo" : "alertas novos"}` : ""}.`); carregarAdmin(); }
+    catch (err) { $("#admBackupStatus").textContent = err.message; e.target.disabled = false; }
     return;
   }
   if (e.target.id === "admAnBaixar") { e.target.disabled = true; await baixarAnalise({de: $("#admAnDe").value, ate: $("#admAnAte").value, dsei: $("#admAnDsei").value}, $("#admAnStatus")); e.target.disabled = false; return; }
@@ -4821,14 +4845,14 @@ function renderAdmin() {
     <div class="acoes-l"><button class="prim" id="admCoordAdd">Adicionar e enviar código</button><span class="dica">A pessoa recebe o código pessoal por e-mail. Ela vê tudo e aprova RTs, mas não adiciona nem desativa outras pessoas da coordenação. Se o e-mail já for de uma RT, ela continua RT e passa a ser também coordenação, com o mesmo código.</span></div></div>`;
   // Atualização da planilha pendente (código novo com mudança de formato e planilha com exames): só a titular confirma.
   const reorg = d.reorganizacaoPendente ? (d.titular ? `<div class="bloco" id="admReorg" style="border-left:5px solid var(--sesai-amarelo)"><h3>Atualização da planilha pendente</h3>
-      <p class="dica" style="margin:4px 0 10px">O código novo do servidor muda o formato da planilha. Enquanto você não confirmar, os profissionais conseguem consultar, mas os exames novos esperam guardados nos aparelhos. Antes de mudar qualquer coisa, o app faz um backup completo no seu Drive; se o backup falhar, nada é alterado.</p>
+      <p class="dica" style="margin:4px 0 10px">O código novo do servidor muda o formato da planilha. Enquanto você não confirmar, os profissionais conseguem consultar, mas os exames novos esperam guardados nos aparelhos. Antes de mudar qualquer coisa, o servidor atualiza o backup no seu Drive; se o backup falhar, nada é alterado.</p>
       <div id="admReorgPrevia"></div>
       <div class="acoes-l"><button class="sec" data-reorg="previa">Ver o que vai mudar</button><button class="prim" data-reorg="fazer" hidden>Fazer o backup e atualizar a planilha</button></div></div>`
     : `<div class="aviso">A planilha está esperando uma atualização que só a coordenação titular pode confirmar, na Administração.</div>`) : "";
   const senha = "";
   const aud = d.auditoria && d.auditoria.falhas ? `<div class="aviso-servidor" style="padding:12px 14px;border-radius:10px"><b>${d.auditoria.falhas} ${d.auditoria.falhas === 1 ? "registro" : "registros"} de acesso não ${d.auditoria.falhas === 1 ? "pôde" : "puderam"} ser gravado${d.auditoria.falhas === 1 ? "" : "s"} na aba Acessos.</b> O atendimento continuou normalmente, mas a trilha de auditoria ficou incompleta. Última falha: ${esc(textoFalha(d.auditoria.ultima))}. Isso costuma acontecer só quando duas pessoas usam o app no mesmo instante em que a aba Acessos está sendo recriada (depois de publicar o servidor ou reorganizar a planilha).${d.titular ? ` <button class="sec mini" type="button" id="limparAuditoria" style="margin-left:6px">Entendi, limpar aviso</button>` : ""}</div>` : "";
   setTimeout(mostrarDiagnostico, 0);
-  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + blocoPlanAnalise(d.analise) + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
+  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + blocoPlanAnalise(d.analise) + blocoBackup(d.backup) + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
   if ($("#admRtDsei")) preencherDsei($("#admRtDsei"), "", "");
   if ($("#admCoordDsei")) preencherDsei($("#admCoordDsei"), "", "");
 }
