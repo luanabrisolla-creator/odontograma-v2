@@ -62,14 +62,14 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 42;
+const VERSAO = 43;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
 const TIPO_ACAO = { 'Pediu acesso': 'Cadastro', 'Pediu reativação': 'Cadastro', 'Pediu novo código': 'Cadastro', 'Confirmou novo código': 'Cadastro', 'Aprovou acesso': 'Gestão de acesso', 'Recusou acesso': 'Gestão de acesso',
   'Desativou acesso': 'Gestão de acesso', 'Reativou acesso': 'Gestão de acesso', 'Gerou novo código': 'Gestão de acesso', 'Substituiu referência técnica': 'Gestão de acesso',
   'Adicionou coordenação': 'Gestão de acesso', 'Definiu coordenação como RT': 'Gestão de acesso', 'Tirou RT da coordenação': 'Gestão de acesso', 'Tentativa de acesso recusada': 'Segurança', 'Código em mais de um DSEI': 'Segurança', 'Código repetido': 'Exame', 'Resultado recalculado': 'Exame', 'Viu um exame': 'Consulta', 'Viu o acompanhamento de uma pessoa': 'Consulta',
-  'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Limpou aviso de auditoria': 'Sistema', 'Limpou a lista de erros': 'Sistema', 'Campos descartados de um exame': 'Segurança', 'Baixou dados para análise': 'Consulta', 'Reorganizou a planilha': 'Sistema', 'Resetou todos os acessos': 'Segurança' };
+  'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Limpou aviso de auditoria': 'Sistema', 'Limpou a lista de erros': 'Sistema', 'Campos descartados de um exame': 'Segurança', 'Baixou dados para análise': 'Consulta', 'Reorganizou a planilha': 'Sistema', 'Resetou todos os acessos': 'Segurança', 'Corrigiu e-mail do cadastro': 'Gestão de acesso' };
 let MIGRANDO = false;
 const NOME_PERFIL = { dentista: 'cirurgião-dentista', rt: 'referência técnica', coord: 'coordenação' };
 
@@ -1272,6 +1272,7 @@ const ACOES = {
   desativar:      { perfis: ['rt', 'coord'], escreve: true, fn: function (d, u) { return mudarStatus(d, u, 'desativado'); } },
   reativar:       { perfis: ['rt', 'coord'], escreve: true, fn: function (d, u) { return mudarStatus(d, u, 'ativo'); } },
   novoCodigo:     { perfis: ['rt', 'coord'], escreve: true, fn: novoCodigoPara },
+  corrigirEmail:  { perfis: ['coord'], escreve: true, fn: corrigirEmail },
   admin:          { perfis: ['coord'], fn: admin },
   limparAvisoAuditoria: { perfis: ['coord'], escreve: true, fn: limparAvisoAuditoria },
   substituirRT:   { perfis: ['coord'], escreve: true, fn: substituirRT },
@@ -2658,6 +2659,31 @@ function mudarStatus(d, u, status) {
   if (!novo) return { ok: true };
   const foi = emailCodigo(a, novo, '', true);
   return { ok: true, codigoNovo: true, emailEnviado: foi, codigo: foi ? '' : novo };
+}
+/* Corrigir o e-mail de um cadastro (só a coordenação titular). Ex.: uma dentista aceitou o convite feito para a RT e o
+ * cadastro dela ficou com o e-mail da RT. O cadastro (id, nome, CRO, DSEI, perfil e exames) continua o mesmo; muda só o e-mail.
+ * O código antigo e as sessões abertas deixam de valer, e um código novo vai para o e-mail certo. O e-mail antigo fica livre
+ * (por exemplo, para convidar a RT de novo). A mudança fica em Acessos e, no backup, no Historico. @param {any} d @param {any} u */
+function corrigirEmail(d, u) {
+  if (!u.titular) return { ok: false, erro: 'Só a coordenação titular corrige o e-mail de um cadastro.' };
+  const a = alvoDe(d), novo = normEmail(d.emailNovo);
+  if (!a) return { ok: false, erro: 'Cadastro não encontrado.' };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(novo)) return { ok: false, erro: 'E-mail novo inválido.' };
+  if (novo === normEmail(a.email)) return { ok: false, erro: 'O e-mail novo é igual ao atual.' };
+  if (novo === emailCoord()) return { ok: false, erro: 'Este é o e-mail da coordenação titular.' };
+  const outro = lerUsuarios().filter(function (x) { return x.id !== a.id && normEmail(x.email) === novo && x.status !== 'recusado'; })[0];
+  if (outro) return { ok: false, erro: 'O e-mail ' + novo + ' já é do cadastro de ' + outro.nome + ' (' + outro.status + '). Use outro e-mail ou corrija aquele cadastro primeiro.' };
+  const antigo = a.email;
+  a.email = novo;
+  // Código novo para o e-mail certo (quem sabia o código antigo não entra mais). Cadastro desativado continua desativado, sem código:
+  // ao ser reativado, recebe um código novo.
+  const c = a.status === 'ativo' ? gerarCodigo() : '';
+  a.codigo_hash = c ? hashCodigo(c) : '';
+  salvarUsuario(a);
+  const sessoes = revogarSessoes(a.id);
+  const foi = c ? emailCodigo(a, c, '', true) : false;
+  registrar(u, 'Corrigiu e-mail do cadastro', a.nome + ' · ' + antigo + ' → ' + novo + (sessoes ? ' · ' + sessoes + (sessoes === 1 ? ' sessão encerrada' : ' sessões encerradas') : ''));
+  return { ok: true, emailEnviado: foi, codigo: c && !foi ? c : '', ativo: a.status === 'ativo', usuario: publico(a) };
 }
 /** @param {any} d @param {any} u */
 function novoCodigoPara(d, u) {

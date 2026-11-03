@@ -1,7 +1,27 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 42 · servidor 42 · formato da planilha 25**.
+Versão atual: **app 43 · servidor 43 · formato da planilha 25**.
+
+## Versão 43 (app 43 · servidor 43): corrigir o e-mail de um cadastro
+
+Quem aceita um convite fica com o e-mail **do convite**. Se outra pessoa abrir o link (por exemplo, uma dentista abrir o convite feito para a RT), o cadastro dela fica com o e-mail errado. Agora a **coordenação titular** pode corrigir isso:
+
+- **Administração > Usuários > Corrigir e-mail**, na linha da pessoa. Digite o e-mail certo e confirme.
+- **O que continua igual:** o cadastro (nome, CRO, DSEI, perfil) e os exames, que continuam ligados a ela.
+- **O que muda:** só o e-mail. O código antigo e os aparelhos conectados deixam de valer, e um **código novo vai para o e-mail certo**. Se o e-mail falhar, o código aparece na tela para repassar. Se o acesso estiver desativado, ele continua desativado e recebe um código novo ao ser reativado.
+- **O e-mail antigo fica livre:** dá para convidar de novo a pessoa certa (no exemplo, a RT).
+- A correção fica em Acessos ("Corrigiu e-mail do cadastro", com o e-mail antigo e o novo) e no Historico do backup.
+- Só a titular faz isso. O e-mail novo não pode ser de outro cadastro nem o da titular.
+
+**Exemplo (dentista que entrou pelo convite da RT):**
+1. Se ainda não fez, mude o perfil dela para cirurgiã-dentista.
+2. **Corrigir e-mail** na linha dela, com o e-mail dela. Ela recebe o código novo e passa a entrar com o e-mail dela.
+3. Convide de novo a RT, no e-mail da RT.
+
+Os exames que ela registrou enquanto o cadastro estava como RT continuam dizendo "referência técnica" no perfil da época, porque era assim que o cadastro estava quando os exames foram feitos.
+
+**Como instalar a 43:** cole o `Codigo.gs` no Apps Script e publique **pelo lápis**. Confira o /exec: `"versao":43`.
 
 ## Versão 42 (app 42 · servidor 42): resetar todos os acessos
 
