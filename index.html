@@ -1196,7 +1196,7 @@ function avisarSemEspaco() {
   a.classList.add("aviso-servidor"); a.hidden = false;
 }
 // Versão do app: a mesma do número no sw.js (odontograma-vNN). Vai junto em cada pedido ao servidor.
-const VERSAO_APP = 41;
+const VERSAO_APP = 42;
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_LEG = "odonto.legenda.v1";
 const K_SESSAO = "odonto.sessao.v1";
@@ -4225,7 +4225,7 @@ function renderAcesso() {
       <label class="campo" style="margin-top:10px">Endereço do servidor<input id="acUrl" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"></label></div>`;
   const msg = estAc.msg ? `<div class="aviso">${esc(estAc.msg)}</div>` : "";
   if (estAc.vista === "enviado") {
-    box.innerHTML = `<div class="bloco acesso-enviado">${estAc.reativacao ? `<h2>Pedido de reativação enviado</h2><p class="cad-status ok" style="margin-top:12px">Este e-mail já teve acesso, que foi desativado. Seu pedido para voltar foi encaminhado para <b>${esc(estAc.para)}</b>. Se o acesso for reativado, você entra com o seu código de antes ou usa "Esqueci meu código".</p>${estAc.reativacao.mudou ? `<p class="dica" style="margin-top:8px">Seu cadastro continua no DSEI ${esc(estAc.reativacao.dsei)} e com o mesmo perfil. Para mudar de DSEI ou de perfil, fale com a coordenação.</p>` : ""}` : `<h2>Pedido enviado</h2><p class="cad-status ok" style="margin-top:12px">Seu pedido foi encaminhado para <b>${esc(estAc.para)}</b>. Quando o acesso for aprovado, você receberá um código por e-mail.</p>`}
+    box.innerHTML = `<div class="bloco acesso-enviado">${estAc.reativacao ? `<h2>Pedido de reativação enviado</h2><p class="cad-status ok" style="margin-top:12px">Este e-mail já teve acesso, que foi desativado. Seu pedido para voltar foi encaminhado para <b>${esc(estAc.para)}</b>. ${estAc.reativacao.codigoNovo ? "Se o acesso for reativado, você recebe um código novo por e-mail (o código de antes não vale mais)." : `Se o acesso for reativado, você entra com o seu código de antes ou usa "Esqueci meu código".`}</p>${estAc.reativacao.mudou ? `<p class="dica" style="margin-top:8px">Seu cadastro continua no DSEI ${esc(estAc.reativacao.dsei)} e com o mesmo perfil. Para mudar de DSEI ou de perfil, fale com a coordenação.</p>` : ""}` : `<h2>Pedido enviado</h2><p class="cad-status ok" style="margin-top:12px">Seu pedido foi encaminhado para <b>${esc(estAc.para)}</b>. Quando o acesso for aprovado, você receberá um código por e-mail.</p>`}
       <div class="acoes-l"><button class="sec" data-ac="entrar">Já recebi meu código</button></div></div>`;
     return;
   }
@@ -4441,7 +4441,7 @@ $("#acessoConteudo").addEventListener("click", async e => {
     if (!d.nome || !d.cro || !d.email || !d.uf || !d.dsei) return toast("Preencha nome, CRO, e-mail, UF e DSEI.");
     if (!$("#acTermo").checked) return toast("Marque a declaração para enviar o pedido.");
     b.disabled = true;
-    try { const j = await api("pedirAcesso", d, {publica: true}); estAc.vista = "enviado"; estAc.para = j.para; estAc.reativacao = j.reativacao ? {dsei: j.dseiCadastro || "", mudou: !!j.mudouDados} : null; salvarCfg({polo: d.polo}); renderAcesso(); }
+    try { const j = await api("pedirAcesso", d, {publica: true}); estAc.vista = "enviado"; estAc.para = j.para; estAc.reativacao = j.reativacao ? {dsei: j.dseiCadastro || "", mudou: !!j.mudouDados, codigoNovo: !!j.codigoNovo} : null; salvarCfg({polo: d.polo}); renderAcesso(); }
     catch (err) { toast(err.message); } finally { b.disabled = false; }
   }
   if (b.id === "acEntrar") {
@@ -4623,7 +4623,7 @@ $("#eqConteudo").addEventListener("click", async e => {
   try {
     const j = await api(acao, {id: b.dataset.id});
     toast({aprovar: `${nome} aprovado(a).`, recusar: "Pedido recusado.", desativar: "Acesso desativado.", reativar: "Acesso reativado.", novoCodigo: "Novo código gerado."}[acao] +
-      (acao === "aprovar" || acao === "novoCodigo" ? (j.emailEnviado ? " O código foi enviado por e-mail." : ` O e-mail não pôde ser enviado: passe este código à pessoa: ${j.codigo}`) : ""));
+      (acao === "aprovar" || acao === "novoCodigo" || j.codigoNovo ? (j.emailEnviado ? ` ${j.codigoNovo ? "Um código novo" : "O código"} foi enviado por e-mail.` : ` O e-mail não pôde ser enviado: passe este código à pessoa: ${j.codigo}`) : ""));
     carregarEquipe();
   } catch (err) { toast(err.message); b.disabled = false; }
 });
@@ -4965,7 +4965,7 @@ $("#admConteudo").addEventListener("click", async e => {
   b.disabled = true;
   try { const j = await api(acao, {id: b.dataset.id});
     toast({aprovar: `${nome} aprovado(a).`, recusar: "Pedido recusado.", desativar: "Acesso desativado.", reativar: "Acesso reativado.", novoCodigo: "Novo código gerado."}[acao] +
-      (acao === "aprovar" || acao === "novoCodigo" ? (j.emailEnviado ? " O código foi enviado por e-mail." : ` O e-mail não pôde ser enviado: passe este código à pessoa: ${j.codigo}`) : ""));
+      (acao === "aprovar" || acao === "novoCodigo" || j.codigoNovo ? (j.emailEnviado ? ` ${j.codigoNovo ? "Um código novo" : "O código"} foi enviado por e-mail.` : ` O e-mail não pôde ser enviado: passe este código à pessoa: ${j.codigo}`) : ""));
     carregarAdmin(); }
   catch (err) { toast(err.message); b.disabled = false; }
 });
