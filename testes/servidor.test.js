@@ -891,5 +891,35 @@ parte("resetar acessos");
   T("nenhum código em texto na planilha depois do reset", !JSON.stringify(G2.est.sheets).includes(codRT) && !JSON.stringify(G2.est.sheets).includes(codAna));
 }
 
+/* ---------------------------------------------------------------- corrigir o e-mail de um cadastro (cenário separado) */
+parte("corrigir e-mail");
+{
+  const R = cenario(), G3 = R.G, aba3 = n => G3.est.sheets[n] || [], mails3 = e => G3.est.mails.filter(m => m.to === e);
+  // A titular convida a RT; quem aceita o link é uma dentista, e o cadastro fica com o e-mail da RT.
+  let q = R.P(R.C, { acao: "convidar", perfil: "rt", dsei: "Xavante", emails: "rt.xavante@teste.org" });
+  const tok = ((mails3("rt.xavante@teste.org").at(-1) || {}).body || "").match(/convite=([0-9a-f]+)/)[1];
+  q = G3.post({ acao: "aceitarConvite", convite: tok, nome: "Diana Dentista", cro: "MT 900", uf: "MT" });
+  const codDiana = q.codigo, idD = aba3("Usuarios").find(l => l[3] === "rt.xavante@teste.org")[0];
+  const cP = aba3("Usuarios")[0].indexOf("perfil"); aba3("Usuarios").find(l => l[0] === idD)[cP] = "dentista"; G3.ctx.onEdit({ range: { getSheet: () => ({ getName: () => "Usuarios" }) } });
+  const DI = { email: "rt.xavante@teste.org", codigo: codDiana };
+  const sDi = R.P(DI, { acao: "entrar" }).sessao;
+  const exD = R.P(DI, { acao: "enviarExame", registro: exame({ id: "DIANA1", dsei: "Xavante", uf: "MT", sufixo: "DXANAAA2", codigo: "MT-SUR-SAU-DXANAAA2" }) });
+  T("(cenário: a dentista entrou pelo convite da RT e ficou com o e-mail da RT)", !!codDiana && !!sDi && exD.ok, [q, exD]);
+  T("outra pessoa da coordenação não corrige e-mail", !R.P(R.PAULA, { acao: "corrigirEmail", id: idD, emailNovo: "diana@teste.org" }).ok);
+  T("e-mail já usado por outro cadastro é recusado", /já é do cadastro/.test(R.P(R.C, { acao: "corrigirEmail", id: idD, emailNovo: R.ANA.email }).erro || ""));
+  T("e-mail inválido é recusado", !R.P(R.C, { acao: "corrigirEmail", id: idD, emailNovo: "diana@" }).ok);
+  G3.est.mails.length = 0;
+  q = R.P(R.C, { acao: "corrigirEmail", id: idD, emailNovo: "Diana@Teste.org" });
+  const codNovo = ((mails3("diana@teste.org").at(-1) || {}).body || "").match(/Código: (\S+)/);
+  const linD = aba3("Usuarios").find(l => l[0] === idD);
+  T("a titular corrige o e-mail: mesmo cadastro (id, nome, perfil, DSEI), e-mail novo e código novo por e-mail", q.ok && q.emailEnviado && linD[3] === "diana@teste.org" && linD[1] === "Diana Dentista" && linD[cP] === "dentista" && !!codNovo, q);
+  T("o código antigo, o e-mail antigo e a sessão antiga não entram mais", R.P(DI, { acao: "entrar" }).semAcesso === true && R.P({ email: "diana@teste.org", codigo: codDiana }, { acao: "entrar" }).semAcesso === true && R.P({ email: "rt.xavante@teste.org", sessao: sDi }, { acao: "inicio" }).semAcesso === true);
+  const DI2 = { email: "diana@teste.org", codigo: codNovo[1] };
+  T("ela entra com o e-mail certo e o código novo, e os exames dela continuam com ela", R.P(DI2, { acao: "entrar" }).ok && (R.P(DI2, { acao: "meusExames" }).exames || []).some(e => e.id === "DIANA1"));
+  T("a correção fica em Acessos, com o e-mail antigo e o novo", aba3("Acessos").some(l => l[7] === "Corrigiu e-mail do cadastro" && /rt\.xavante@teste\.org → diana@teste\.org/.test(l[8])));
+  q = R.P(R.C, { acao: "convidar", perfil: "rt", dsei: "Xavante", emails: "rt.xavante@teste.org" });
+  T("o e-mail da RT fica livre: a titular convida a RT de novo", q.ok && q.resultados[0].res === "enviado", q.resultados);
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);

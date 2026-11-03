@@ -1196,7 +1196,7 @@ function avisarSemEspaco() {
   a.classList.add("aviso-servidor"); a.hidden = false;
 }
 // Versão do app: a mesma do número no sw.js (odontograma-vNN). Vai junto em cada pedido ao servidor.
-const VERSAO_APP = 42;
+const VERSAO_APP = 43;
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_LEG = "odonto.legenda.v1";
 const K_SESSAO = "odonto.sessao.v1";
@@ -4867,7 +4867,7 @@ function renderAdmin() {
     <div class="tabela"><table class="esq"><thead><tr><th>Nome</th><th>Perfil</th><th>DSEI</th><th>E-mail</th><th>Aprovado por</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead><tbody>
     ${filtrados.map(u => `<tr><td><b>${esc(u.nome)}</b><br><span class="dica">CRO ${esc(u.cro)}</span></td><td><span class="pill-p ${u.perfil}">${NOME_PERFIL[u.perfil]}</span></td><td>${esc(u.dsei)}</td><td>${esc(u.email)}</td><td>${esc(u.aprovado_por || "–")}</td><td>${quando(u.ultimo_acesso)}</td>
       <td><span class="estado ${u.status === "ativo" ? "enviado" : "inativo"}">${u.status === "ativo" ? "Ativo" : "Desativado"}</span>${pediuVoltar(u) ? ` <span class="estado pendente">pediu reativação ${quando(u.pedido_em)}</span>` : ""}</td>
-      <td><div class="bts">${u.status === "ativo" ? `<button class="sec mini" data-adm="novoCodigo" data-id="${u.id}" data-nome="${esc(u.nome)}">Novo código</button><button class="sec mini perigo-t" data-adm="desativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Desativar</button>` : `<button class="sec mini" data-adm="reativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Reativar</button>`}</div></td></tr>`).join("") || `<tr><td colspan="8" class="dica">Nenhum usuário neste filtro.</td></tr>`}
+      <td><div class="bts">${u.status === "ativo" ? `<button class="sec mini" data-adm="novoCodigo" data-id="${u.id}" data-nome="${esc(u.nome)}">Novo código</button><button class="sec mini perigo-t" data-adm="desativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Desativar</button>` : `<button class="sec mini" data-adm="reativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Reativar</button>`}${d.titular && u.status !== "pendente" ? `<button class="sec mini" data-adm-email="${u.id}" data-nome="${esc(u.nome)}" data-email="${esc(u.email)}">Corrigir e-mail</button>` : ""}</div></td></tr>`).join("") || `<tr><td colspan="8" class="dica">Nenhum usuário neste filtro.</td></tr>`}
     </tbody></table></div></div>`;
   const linhaAc = a => Array.isArray(a) ? {data: fmtDataHora(a[0]), hora: "", quem: a[2] || a[1], perfil: "", tipo: "", acao: a[3], detalhe: a[4]} : Object.assign({}, a, {data: fmtData(a.data)});
   const acessos = `<div class="bloco"><div class="bloco-topo"><h2>Registro de acessos</h2><span class="dica">Os 200 mais recentes. A lista completa fica na aba "Acessos" da planilha; as entradas no app são contadas na aba "Uso".</span></div>
@@ -4956,6 +4956,18 @@ $("#admConteudo").addEventListener("click", async e => {
     try { const j = await api("substituirRT", {antigaId: sb.dataset.admSubst, novaId: $("#admNova").value, destinoAntiga: document.querySelector('input[name="admAntiga"]:checked').value});
       estAdm.subst = null; toast("Substituição feita." + (j.emailEnviado ? " Quem assume foi avisado(a) por e-mail." : ` O e-mail não pôde ser enviado: passe este código: ${j.codigo}`)); carregarAdmin(); }
     catch (err) { toast(err.message); sb.disabled = false; }
+    return;
+  }
+  // Corrigir o e-mail de um cadastro (só a titular): o cadastro e os exames continuam; muda o e-mail e vai um código novo.
+  const be = e.target.closest("[data-adm-email]");
+  if (be) {
+    const nomeE = be.dataset.nome, novo = (prompt(`E-mail certo de ${nomeE} (hoje: ${be.dataset.email}):`) || "").trim().toLowerCase();
+    if (!novo) return;
+    if (!confirm(`Trocar o e-mail de ${nomeE} de ${be.dataset.email} para ${novo}?\n\nO código atual e os aparelhos conectados deixam de valer, e um código novo vai para ${novo}. O cadastro e os exames continuam os mesmos. O e-mail ${be.dataset.email} fica livre (por exemplo, para convidar a pessoa certa).`)) return;
+    be.disabled = true;
+    try { const j = await api("corrigirEmail", {id: be.dataset.admEmail, emailNovo: novo});
+      toast(`E-mail de ${nomeE} corrigido.` + (!j.ativo ? " O acesso está desativado: ao reativar, vai um código novo para o e-mail novo." : j.emailEnviado ? ` O código novo foi enviado para ${novo}.` : ` O e-mail não pôde ser enviado: passe este código à pessoa: ${j.codigo}`)); carregarAdmin(); }
+    catch (err) { toast(err.message); be.disabled = false; }
     return;
   }
   const b = e.target.closest("[data-adm]"); if (!b) return;
