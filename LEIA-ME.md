@@ -1,7 +1,27 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 41 · servidor 41 · formato da planilha 25**.
+Versão atual: **app 42 · servidor 42 · formato da planilha 25**.
+
+## Versão 42 (app 42 · servidor 42): resetar todos os acessos
+
+Para recomeçar os acessos do zero (por exemplo, quando há dúvida sobre quem ainda tem código), a coordenação titular roda uma vez no editor do Apps Script a função **`resetarTodosOsAcessos`**:
+- todas as pessoas da aba Usuarios que tinham acesso (ativas ou desativadas) ficam **desativadas**, menos a coordenação titular, que entra pelas Propriedades do script;
+- os **códigos são apagados**: nenhum código antigo volta a funcionar;
+- as **sessões de todos os aparelhos** acabam na hora;
+- **cadastros, exames e histórico continuam** como estão. O reset fica anotado em Acessos, e cada mudança aparece no Historico do backup;
+- pedidos pendentes e convites em aberto não mudam.
+
+**Como as pessoas voltam:**
+1. A pessoa abre o app e pede acesso com o mesmo e-mail. Isso vira um **pedido de reativação**, e o app avisa que vai chegar um código novo.
+2. Quem gere o acesso (RT do DSEI, coordenação ou titular) toca em **Reativar**, em Equipe ou na Administração. A pessoa recebe um **código novo por e-mail**. Se o e-mail falhar, o código aparece na tela de quem reativou, para repassar.
+3. **Comece reativando as RTs** (e as pessoas da coordenação). Enquanto um DSEI não tiver RT ativa, os pedidos dos dentistas desse DSEI vão para a coordenação.
+
+O Google envia cerca de 100 e-mails por dia numa conta Gmail comum. Se houver muita gente para reativar, faça isso ao longo de alguns dias, ou repasse o código que aparece na tela.
+
+**Como instalar a 42:**
+1. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":42`.
+2. **Só quando quiser resetar:** no editor, escolha `resetarTodosOsAcessos` e clique em **Executar**. O registro de execução mostra quantos acessos foram resetados.
 
 ## Versão 41 (app 41 · servidor 41): aparelho compartilhado, sessões e cancelamento com aviso
 

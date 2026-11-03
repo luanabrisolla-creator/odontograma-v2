@@ -62,14 +62,14 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 41;
+const VERSAO = 42;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
 const TIPO_ACAO = { 'Pediu acesso': 'Cadastro', 'Pediu reativação': 'Cadastro', 'Pediu novo código': 'Cadastro', 'Confirmou novo código': 'Cadastro', 'Aprovou acesso': 'Gestão de acesso', 'Recusou acesso': 'Gestão de acesso',
   'Desativou acesso': 'Gestão de acesso', 'Reativou acesso': 'Gestão de acesso', 'Gerou novo código': 'Gestão de acesso', 'Substituiu referência técnica': 'Gestão de acesso',
   'Adicionou coordenação': 'Gestão de acesso', 'Definiu coordenação como RT': 'Gestão de acesso', 'Tirou RT da coordenação': 'Gestão de acesso', 'Tentativa de acesso recusada': 'Segurança', 'Código em mais de um DSEI': 'Segurança', 'Código repetido': 'Exame', 'Resultado recalculado': 'Exame', 'Viu um exame': 'Consulta', 'Viu o acompanhamento de uma pessoa': 'Consulta',
-  'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Limpou aviso de auditoria': 'Sistema', 'Limpou a lista de erros': 'Sistema', 'Campos descartados de um exame': 'Segurança', 'Baixou dados para análise': 'Consulta', 'Reorganizou a planilha': 'Sistema' };
+  'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Limpou aviso de auditoria': 'Sistema', 'Limpou a lista de erros': 'Sistema', 'Campos descartados de um exame': 'Segurança', 'Baixou dados para análise': 'Consulta', 'Reorganizou a planilha': 'Sistema', 'Resetou todos os acessos': 'Segurança' };
 let MIGRANDO = false;
 const NOME_PERFIL = { dentista: 'cirurgião-dentista', rt: 'referência técnica', coord: 'coordenação' };
 
@@ -1463,6 +1463,39 @@ function revogarSessoes(id) {
   });
   return n;
 }
+/** Apaga as sessões de várias pessoas de uma vez (uma leitura só das Propriedades). @param {string[]} ids */
+function revogarSessoesDe(ids) {
+  const pr = PropertiesService.getScriptProperties(), todas = pr.getProperties(); /** @type {any} */ const alvo = {};
+  ids.forEach(function (id) { alvo[id] = true; });
+  let n = 0;
+  Object.keys(todas).forEach(function (k) {
+    if (k.indexOf(PREFIXO_SESSAO) !== 0) return;
+    let u = ''; try { u = JSON.parse(todas[k]).u; } catch (x) {}
+    if (alvo[u]) { pr.deleteProperty(k); n++; }
+  });
+  return n;
+}
+/* Rode UMA VEZ no editor do Apps Script (escolha resetarTodosOsAcessos e clique em Executar) para recomeçar os acessos:
+ * - todas as pessoas com acesso (ativas ou desativadas) ficam DESATIVADAS, menos a coordenação titular, que entra pelas
+ *   Propriedades do script e não está na aba Usuarios;
+ * - os códigos de acesso são apagados (nenhum código antigo volta a funcionar) e as sessões de todos os aparelhos acabam;
+ * - cadastros, exames e histórico continuam como estão (no backup, a mudança aparece no Historico).
+ * Para voltar, cada pessoa pede acesso no app (vira um pedido de reativação) ou é reativada em Equipe/Administração:
+ * ao ser reativada, recebe um código NOVO por e-mail. Pedidos pendentes e convites em aberto não mudam. */
+function resetarTodosOsAcessos() {
+  const t = LockService.getScriptLock(); t.waitLock(30000); COM_TRAVA = true;
+  try {
+    MEMO = null; cadastrosMudaram();
+    const us = lerUsuarios().filter(function (x) { return x.status === 'ativo' || x.status === 'desativado'; });
+    const eramAtivos = us.filter(function (x) { return x.status === 'ativo'; }).length;
+    us.forEach(function (a) { a.status = 'desativado'; a.codigo_hash = ''; salvarUsuario(a); });
+    const sessoes = revogarSessoesDe(us.map(function (a) { return a.id; }));
+    const detalhe = us.length + ' acessos sem código (' + eramAtivos + ' estavam ativos) · ' + sessoes + ' sessões encerradas';
+    registrar({ email: emailCoord(), nome: propriedade('NOME_COORDENACAO') || 'Coordenação titular' }, 'Resetou todos os acessos', detalhe);
+    Logger.log('Acessos resetados: ' + detalhe + '.\nPara voltar, cada pessoa pede acesso no app (pedido de reativação) ou é reativada em Equipe/Administração, e recebe um código novo por e-mail.\nComece reativando as RTs: enquanto um DSEI não tiver RT ativa, os pedidos dos dentistas vão para a coordenação.');
+    return { acessos: us.length, ativos: eramAtivos, sessoes: sessoes };
+  } finally { COM_TRAVA = false; t.releaseLock(); }
+}
 /** "Sair deste aparelho": a sessão deste aparelho deixa de valer no servidor. @param {any} d @param {any} u */
 function sairDoAparelho(d, u) {
   if (d.sessao) { try { PropertiesService.getScriptProperties().deleteProperty(PREFIXO_SESSAO + hashSessao(String(d.sessao))); } catch (x) {} }
@@ -1571,7 +1604,7 @@ function pedirAcesso(d) {
 /** @param {any} ex @param {boolean} mudou */
 function pedirReativacao(ex, mudou) {
   const quem = ex.perfil === 'dentista' && rtsDo(ex.dsei).length ? 'a referência técnica do DSEI ' + ex.dsei : 'a coordenação';
-  const resposta = { ok: true, reativacao: true, para: quem, dseiCadastro: ex.dsei, mudouDados: mudou };
+  const resposta = { ok: true, reativacao: true, para: quem, dseiCadastro: ex.dsei, mudouDados: mudou, codigoNovo: !ex.codigo_hash };
   // No máximo um aviso por dia para cada e-mail (a resposta é a mesma, para não revelar nada a mais).
   if (!dentroDoLimite('reativ:' + normEmail(ex.email), 1, 86400)) return resposta;
   ex.pedido_em = new Date().toISOString();
@@ -2617,9 +2650,14 @@ function mudarStatus(d, u, status) {
   const revogadas = status !== 'ativo' ? revogarSessoes(a.id) : 0;
   // Reativar é uma nova aprovação: fica registrado quem reativou e quando (e some o aviso de "pediu reativação").
   if (status === 'ativo') Object.assign(a, { aprovado_por: u.nome, aprovado_em: new Date().toISOString() });
+  // Sem código (acessos resetados): ao reativar, a pessoa recebe um código novo por e-mail.
+  const novo = status === 'ativo' && !a.codigo_hash ? gerarCodigo() : '';
+  if (novo) a.codigo_hash = hashCodigo(novo);
   salvarUsuario(a);
-  registrar(u, status === 'ativo' ? 'Reativou acesso' : 'Desativou acesso', a.nome + ' · DSEI ' + a.dsei + (revogadas ? ' · ' + revogadas + (revogadas === 1 ? ' sessão encerrada' : ' sessões encerradas') : ''));
-  return { ok: true };
+  registrar(u, status === 'ativo' ? 'Reativou acesso' : 'Desativou acesso', a.nome + ' · DSEI ' + a.dsei + (revogadas ? ' · ' + revogadas + (revogadas === 1 ? ' sessão encerrada' : ' sessões encerradas') : '') + (novo ? ' · com código novo' : ''));
+  if (!novo) return { ok: true };
+  const foi = emailCodigo(a, novo, '', true);
+  return { ok: true, codigoNovo: true, emailEnviado: foi, codigo: foi ? '' : novo };
 }
 /** @param {any} d @param {any} u */
 function novoCodigoPara(d, u) {

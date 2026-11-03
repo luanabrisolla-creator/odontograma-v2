@@ -863,5 +863,33 @@ cmp = comparar();
 T("no fim de todo o teste (envios, cancelamentos, renumerações, reorganização), a cópia rápida continua igual à planilha", cmp.indice && cmp.resumos && cmp.atual, cmp);
 T("nenhuma senha ou código de acesso gravado em texto na planilha", !JSON.stringify(G.est.sheets).includes(S.SENHA_TITULAR) && !JSON.stringify(G.est.sheets).includes(ANA.codigo));
 
+/* ---------------------------------------------------------------- resetar todos os acessos (cenário separado) */
+parte("resetar acessos");
+{
+  const R = cenario(), G2 = R.G, aba2 = n => G2.est.sheets[n] || [];
+  const ex = R.P(R.ANA, { acao: "enviarExame", registro: exame({ id: "RST1", sufixo: "RSTRSTR2" }) });
+  const sAna = R.P(R.ANA, { acao: "entrar" }).sessao, nExames = aba2("Exames").length;
+  const res = G2.ctx.resetarTodosOsAcessos();
+  const us = aba2("Usuarios").slice(1), cS = aba2("Usuarios")[0].indexOf("status"), cH = aba2("Usuarios")[0].indexOf("codigo_hash");
+  T("resetar: todos os acessos ficam desativados e sem código", ex.ok && res.acessos === us.length && us.every(l => l[cS] === "desativado" && l[cH] === ""), [res, us.map(l => l[cS])]);
+  T("ninguém entra com o código antigo nem com a sessão antiga do celular", R.P(R.ANA, { acao: "entrar" }).semAcesso === true && R.P({ email: R.ANA.email, sessao: sAna }, { acao: "inicio" }).semAcesso === true && R.P(R.PAULA, { acao: "entrar" }).semAcesso === true
+    && !Object.keys(G2.est.props).some(k => k.startsWith("sessao_") && JSON.parse(G2.est.props[k]).u !== "coord"));
+  T("a coordenação titular continua entrando", R.P(R.C, { acao: "entrar" }).ok);
+  T("exames, cadastros e histórico continuam; o reset fica anotado em Acessos", aba2("Exames").length === nExames && us.length > 5 && aba2("Acessos").some(l => l[7] === "Resetou todos os acessos" && /sessões encerradas/.test(l[8])));
+  const pedido = G2.post({ acao: "pedirAcesso", nome: "Ana Dentista", cro: "RR 1", email: R.ANA.email, uf: "RR", dsei: "Yanomami", perfil: "dentista" });
+  T("a pessoa pede acesso de novo: vira pedido de reativação, avisando que virá um código novo", pedido.ok && pedido.reativacao && pedido.codigoNovo === true, pedido);
+  G2.est.mails.length = 0;
+  let r2 = R.P(R.C, { acao: "reativar", id: R.idDe("rt@teste.org") });
+  const codRT = R.codigoDoEmail("rt@teste.org");
+  T("ao reativar, a pessoa recebe um código novo por e-mail", r2.ok && r2.codigoNovo && r2.emailEnviado && !!codRT && codRT !== R.RT.codigo, r2);
+  T("entra com o código novo; o antigo não vale", R.P({ email: "rt@teste.org", codigo: codRT }, { acao: "entrar" }).ok && R.P(R.RT, { acao: "entrar" }).semAcesso === true);
+  r2 = R.P({ email: "rt@teste.org", codigo: codRT }, { acao: "reativar", id: R.idDe("ana@teste.org") });
+  const codAna = R.codigoDoEmail("ana@teste.org");
+  T("a RT reativa a dentista do DSEI, que também recebe código novo", r2.ok && r2.codigoNovo && R.P({ email: R.ANA.email, codigo: codAna }, { acao: "entrar" }).ok, r2);
+  r2 = R.P(R.C, { acao: "desativar", id: R.idDe("bruno@teste.org") });
+  T("quem ainda não foi reativado continua sem entrar", r2.ok && R.P(R.BRUNO, { acao: "entrar" }).semAcesso === true);
+  T("nenhum código em texto na planilha depois do reset", !JSON.stringify(G2.est.sheets).includes(codRT) && !JSON.stringify(G2.est.sheets).includes(codAna));
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);
