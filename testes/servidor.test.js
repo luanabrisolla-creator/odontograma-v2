@@ -921,5 +921,35 @@ parte("corrigir e-mail");
   T("o e-mail da RT fica livre: a titular convida a RT de novo", q.ok && q.resultados[0].res === "enviado", q.resultados);
 }
 
+/* ---------------------------------------------------------------- zerar a base de exames (cenário separado) */
+parte("zerar exames");
+{
+  const R = cenario(), G4 = R.G, aba4 = n => G4.est.sheets[n] || [], extra = nome => Object.values(G4.est.extras).find(x => x.nome === nome);
+  const ontem = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  ["ZA1", "ZA2", "ZA3"].forEach((id, i) => R.P(R.ANA, { acao: "enviarExame", registro: exame({ id, sufixo: "ZAZAZA" + "234"[i] + "2", data: ontem }) }));
+  const ed = JSON.parse(aba4("Exames").find(l => l[0] === "ZA1").at(-1)); ed.dentes[16].faces.O = "ca"; ed.atualizadoEm = new Date().toISOString();
+  R.P(R.ANA, { acao: "enviarExame", registro: ed });
+  R.P(R.ANA, { acao: "cancelarExame", id: "ZA3", motivo: "Digitado errado" });
+  G4.ctx.fazerBackup("teste");
+  const nUsuarios = aba4("Usuarios").length, idBkAntigo = G4.est.props.BACKUP_ID, nAntes = aba4("Exames").length - 1;
+  const res = G4.ctx.zerarExames();
+  const arq = Object.values(G4.est.extras).find(x => /^Odontograma - exames arquivados até /.test(x.nome));
+  T("zerar: todos os exames (e as versões anteriores) vão para a planilha de arquivo, antes de sair da base", res.exames === nAntes && nAntes === 3 && arq && arq.abas.Exames.length - 1 === 3 && arq.abas._versoes_exames.length - 1 === 1, [res, arq && arq.ordem]);
+  T("a base de exames fica vazia, com o cabeçalho certo", aba4("Exames").length === 1 && aba4("Exames")[0].join() === G4.ctx.CAB_EXAME.join() && !aba4("_versoes_exames").length);
+  T("cadastros e acessos não mudam: as pessoas continuam entrando", aba4("Usuarios").length === nUsuarios && R.P(R.ANA, { acao: "entrar" }).ok && R.P(R.C, { acao: "entrar" }).ok);
+  T("o backup antigo fica com outro nome e um backup novo começa limpo (sem alertas de exames sumidos)", G4.est.extras[idBkAntigo].nome === "Odontograma - backup (exames até " + G4.ctx.fmtDia(new Date()) + ")"
+    && G4.est.props.BACKUP_ID !== idBkAntigo && extra("Odontograma - backup").abas.Exames.length === 1 && !extra("Odontograma - backup").abas.Alertas.slice(1).length && extra("Odontograma - backup").abas.Cadastros.length === nUsuarios, [G4.est.extras[idBkAntigo].nome]);
+  T("o backup antigo continua com os exames, as versões e os alertas", G4.est.extras[idBkAntigo].abas.Exames.length - 1 === 3);
+  T("painel e meus exames recomeçam do zero", (R.P(R.ANA, { acao: "meusExames" }).exames || []).length === 0);
+  let r4 = R.P(R.ANA, { acao: "enviarExame", registro: exame({ id: "ZVELHO", sufixo: "ZVZVZVZ2", data: ontem }) });
+  T("exame criado antes do recomeço (guardado no celular) é recusado com explicação e fica no aparelho", !r4.ok && r4.antesDoRecomeco && !r4.passageiro && /antes de a base de exames recomeçar/.test(r4.erro) && aba4("Exames").length === 1, r4);
+  r4 = R.P(R.ANA, { acao: "enviarExame", registro: ed });
+  T("correção de um exame antigo também não volta para a base", !r4.ok && r4.antesDoRecomeco);
+  const hojeISO = new Date().toISOString().slice(0, 10), novo = exame({ id: "ZNOVO", sufixo: "ZNZNZNZ2", data: hojeISO }); novo.criadoEm = new Date().toISOString(); novo.atualizadoEm = novo.criadoEm;
+  r4 = R.P(R.ANA, { acao: "enviarExame", registro: novo });
+  T("exame novo entra normalmente", r4.ok && aba4("Exames").length === 2, r4);
+  T("o recomeço fica anotado em Acessos", aba4("Acessos").some(l => l[7] === "Zerou a base de exames" && /3 exames arquivados/.test(l[8])));
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);

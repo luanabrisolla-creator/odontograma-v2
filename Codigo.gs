@@ -62,14 +62,14 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 43;
+const VERSAO = 44;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
 const TIPO_ACAO = { 'Pediu acesso': 'Cadastro', 'Pediu reativação': 'Cadastro', 'Pediu novo código': 'Cadastro', 'Confirmou novo código': 'Cadastro', 'Aprovou acesso': 'Gestão de acesso', 'Recusou acesso': 'Gestão de acesso',
   'Desativou acesso': 'Gestão de acesso', 'Reativou acesso': 'Gestão de acesso', 'Gerou novo código': 'Gestão de acesso', 'Substituiu referência técnica': 'Gestão de acesso',
   'Adicionou coordenação': 'Gestão de acesso', 'Definiu coordenação como RT': 'Gestão de acesso', 'Tirou RT da coordenação': 'Gestão de acesso', 'Tentativa de acesso recusada': 'Segurança', 'Código em mais de um DSEI': 'Segurança', 'Código repetido': 'Exame', 'Resultado recalculado': 'Exame', 'Viu um exame': 'Consulta', 'Viu o acompanhamento de uma pessoa': 'Consulta',
-  'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Limpou aviso de auditoria': 'Sistema', 'Limpou a lista de erros': 'Sistema', 'Campos descartados de um exame': 'Segurança', 'Baixou dados para análise': 'Consulta', 'Reorganizou a planilha': 'Sistema', 'Resetou todos os acessos': 'Segurança', 'Corrigiu e-mail do cadastro': 'Gestão de acesso' };
+  'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Limpou aviso de auditoria': 'Sistema', 'Limpou a lista de erros': 'Sistema', 'Campos descartados de um exame': 'Segurança', 'Baixou dados para análise': 'Consulta', 'Reorganizou a planilha': 'Sistema', 'Resetou todos os acessos': 'Segurança', 'Corrigiu e-mail do cadastro': 'Gestão de acesso', 'Zerou a base de exames': 'Sistema' };
 let MIGRANDO = false;
 const NOME_PERFIL = { dentista: 'cirurgião-dentista', rt: 'referência técnica', coord: 'coordenação' };
 
@@ -1476,6 +1476,63 @@ function revogarSessoesDe(ids) {
   });
   return n;
 }
+/* Rode UMA VEZ no editor do Apps Script (escolha zerarExames e clique em Executar) para a base de exames recomeçar do zero.
+ * Cadastros, códigos de acesso, convites, ações do Dia B e população NÃO mudam. O que acontece, nesta ordem:
+ * 1. o backup é atualizado (se falhar, nada muda);
+ * 2. todos os exames (e as versões anteriores guardadas) vão para uma planilha de arquivo, "Odontograma - exames arquivados
+ *    até AAAA-MM-DD", na pasta do backup. Nada é apagado de verdade;
+ * 3. a aba Exames fica vazia (o painel, a página inicial e o Looker recomeçam do zero);
+ * 4. o backup antigo é renomeado para "Odontograma - backup (exames até AAAA-MM-DD)" e um backup novo começa, limpo;
+ * 5. daí em diante, exames criados antes do recomeço (guardados ou corrigidos num celular) são recusados, com explicação. */
+function zerarExames() {
+  const t = LockService.getScriptLock(); t.waitLock(30000); COM_TRAVA = true;
+  try {
+    MEMO = null; esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+');
+    const ss = planilha(), agora = new Date(), dia = fmtDia(agora);
+    // 1. Backup em dia antes de mexer.
+    try { fazerBackup('antes de zerar os exames'); }
+    catch (x) { throw new Error('Nada foi alterado: o backup antes de zerar os exames falhou (' + (x && x.message || x) + ').'); }
+    // 2. Arquivo com tudo o que sai da base.
+    const arq = SpreadsheetApp.create('Odontograma - exames arquivados até ' + dia);
+    try { DriveApp.getFileById(arq.getId()).moveTo(pastaBackup()); } catch (x) {}
+    /** @type {any} */ const copiadas = {};
+    ss.getSheets().forEach(function (a) {
+      const nome = a.getName();
+      if ((nome.indexOf('Exames') !== 0 && nome !== ABA_VERSOES) || a.getLastRow() < 1) return;
+      const v = a.getRange(1, 1, a.getLastRow(), Math.max(a.getLastColumn(), 1)).getValues().map(function (l) { return l.map(textoCelula); });
+      const cab = v[0].map(String);
+      const destino = arq.insertSheet(nome);
+      if (destino.getMaxColumns() < cab.length) destino.insertColumnsAfter(destino.getMaxColumns(), cab.length - destino.getMaxColumns());
+      destino.getRange(1, 1, 1, cab.length).setValues([cab]);
+      gravarBloco(destino, 2, 1, v.slice(1));
+      copiadas[nome] = v.length - 1;
+    });
+    arq.getSheets().forEach(function (a) { if (!copiadas.hasOwnProperty(a.getName()) && a.getLastRow() === 0) { try { arq.deleteSheet(a); } catch (x) {} } });
+    SpreadsheetApp.flush();
+    // Conferência: o arquivo tem todas as linhas antes de esvaziar a base.
+    Object.keys(copiadas).forEach(function (nome) {
+      const n = Math.max(arq.getSheetByName(nome).getLastRow() - 1, 0);
+      if (n !== copiadas[nome]) throw new Error('Nada foi apagado: o arquivo ficou com ' + n + ' linhas na aba ' + nome + ', esperado ' + copiadas[nome] + '.');
+    });
+    // 3. Base de exames vazia.
+    Object.keys(copiadas).forEach(function (nome) { if (nome !== 'Exames') { const a = ss.getSheetByName(nome); if (a) ss.deleteSheet(a); } });
+    reescreverAba(ss, 'Exames', CAB_EXAME, [], 0);
+    PropertiesService.getScriptProperties().setProperty('EXAMES_DESDE', agora.toISOString());
+    MEMO = null;
+    // 4. Backup novo, limpo; o antigo fica com outro nome.
+    const idAntigo = propriedade('BACKUP_ID');
+    if (idAntigo) { try { DriveApp.getFileById(idAntigo).setName(BACKUP_NOME + ' (exames até ' + dia + ')'); } catch (x) {} PropertiesService.getScriptProperties().deleteProperty('BACKUP_ID'); }
+    PropertiesService.getScriptProperties().deleteProperty('BACKUP_ESTADO');
+    let novoBackup = '';
+    try { novoBackup = fazerBackup('base de exames recomeçada').url; } catch (x) { registrarErro(x, 'zerarExames: backup novo', null); }
+    try { recalcularUso(ss, []); } catch (x) {}
+    try { atualizarAnalise(); } catch (x) {}
+    const n = copiadas.Exames || 0, detalhe = n + ' exames arquivados em "' + arq.getName() + '" · backup antigo renomeado · base recomeçada em ' + dia + ' ' + fmtHora(agora);
+    registrar({ email: emailCoord(), nome: propriedade('NOME_COORDENACAO') || 'Coordenação titular' }, 'Zerou a base de exames', detalhe);
+    Logger.log('Base de exames zerada: ' + detalhe + '.\nArquivo: ' + arq.getUrl() + (novoBackup ? '\nBackup novo: ' + novoBackup : '') + '\nCadastros e códigos de acesso continuam iguais.');
+    return { exames: n, arquivo: arq.getUrl(), backup: novoBackup, desde: agora.toISOString() };
+  } finally { COM_TRAVA = false; t.releaseLock(); }
+}
 /* Rode UMA VEZ no editor do Apps Script (escolha resetarTodosOsAcessos e clique em Executar) para recomeçar os acessos:
  * - todas as pessoas com acesso (ativas ou desativadas) ficam DESATIVADAS, menos a coordenação titular, que entra pelas
  *   Propriedades do script e não está na aba Usuarios;
@@ -2044,6 +2101,10 @@ function processarExame(reg, u, emLote) {
       : 'Seu cadastro está sem DSEI. Peça à coordenação para corrigir o seu cadastro antes de enviar exames.' };
   }
   const anterior = lerIndice().filter(function (r) { return r.id === reg.id; })[0];
+  // Base de exames recomeçada (zerarExames): exames criados antes disso não entram na base nova, nem por correção.
+  const desde = propriedade('EXAMES_DESDE');
+  if (desde && !anterior && String(reg.criadoEm || reg.dataExame || '') < desde)
+    return { ok: false, antesDoRecomeco: true, erro: 'Este exame foi criado em ' + dataBR(reg.criadoEm || reg.dataExame) + ', antes de a base de exames recomeçar (' + dataBR(desde) + '), e não foi enviado. Ele continua guardado neste aparelho. Se ele precisa entrar, faça um exame novo com os mesmos dados.' };
   // Só quem fez o exame pode alterá-lo.
   if (anterior && !ehDoUsuario(anterior, u)) return { ok: false, erro: 'Só o profissional que fez este exame pode alterá-lo.' };
   if (anterior && !exameValido(anterior)) return { ok: false, erro: 'Este exame foi cancelado e não pode ser alterado.' };

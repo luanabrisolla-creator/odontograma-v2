@@ -1,7 +1,26 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 43 · servidor 43 · formato da planilha 25**.
+Versão atual: **app 43 · servidor 44 · formato da planilha 25**.
+
+## Servidor 44: recomeçar a base de exames do zero
+
+Para a base de exames recomeçar do zero **sem mexer nos cadastros**, a coordenação titular roda uma vez, no editor do Apps Script, a função **`zerarExames`**. Nesta ordem, ela:
+1. **atualiza o backup.** Se o backup falhar, nada muda;
+2. **arquiva tudo:** todos os exames (válidos e cancelados) e as versões anteriores vão para uma planilha nova, **"Odontograma - exames arquivados até AAAA-MM-DD"**, na pasta do backup. Antes de esvaziar a base, ela confere se o arquivo tem todas as linhas;
+3. **esvazia a aba Exames:** o painel, a página inicial, Meus exames e o Looker recomeçam do zero;
+4. **troca o backup:** o backup antigo passa a se chamar **"Odontograma - backup (exames até AAAA-MM-DD)"**, com os exames, as versões e os alertas de antes, e um backup novo começa limpo;
+5. **recusa exames de antes do recomeço:** um exame criado antes (guardado num celular sem internet, ou um exame antigo corrigido) é recusado com explicação e fica no aparelho como "Precisa de correção". Se ele precisar entrar, o profissional faz um exame novo.
+
+**Não mudam:** cadastros, códigos de acesso, sessões, convites, ações do Dia B, população e Acessos. O recomeço fica anotado em Acessos ("Zerou a base de exames").
+
+Uma pessoa examinada antes do recomeço entra como **pessoa nova**: o código de acompanhamento antigo não tem mais exames na base.
+
+**Como fazer:**
+1. Peça para todos enviarem os exames pendentes **antes** do recomeço (em Meus exames, nada "A enviar").
+2. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":44`.
+3. No editor, escolha **`zerarExames`** e clique em **Executar**. O registro de execução mostra quantos exames foram arquivados e os links do arquivo e do backup novo.
+4. No Looker, as fontes continuam ligadas às mesmas abas: os gráficos ficam vazios até chegarem exames novos.
 
 ## Versão 43 (app 43 · servidor 43): corrigir o e-mail de um cadastro
 
