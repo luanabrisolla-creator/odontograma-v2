@@ -1,7 +1,46 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 43 · servidor 44 · formato da planilha 25**.
+Versão atual: **app 45 · servidor 45 · formato da planilha 25**.
+
+## Versão 45 (app 45 · servidor 45): odontograma opcional e condições gerais sem pular
+
+### Odontograma opcional, incentivado
+- Depois de Local e Indivíduo, o app pergunta: **"O odontograma foi preenchido neste atendimento?"**. Vigilância e prótese esperam essa resposta.
+- **Sim:** o odontograma abre como antes.
+- **Não:** aparece a mensagem *Registro odontológico* ("O preenchimento do odontograma contribui para o acompanhamento das condições de saúde bucal e o planejamento do cuidado. Sempre que possível, realize esse registro.") e a pergunta **"Qual foi o principal motivo?"**, com uma resposta obrigatória:
+  1. Tempo insuficiente para realizar o odontograma
+  2. A pessoa recusou o exame odontológico
+  3. Não foi possível realizar o exame por dificuldade de colaboração
+  4. Falta de condições adequadas (iluminação, espaço ou materiais)
+  5. Condição clínica impediu a realização do exame
+  6. Atendimento direcionado exclusivamente a ações coletivas
+  7. Outro motivo (especifique): o texto é obrigatório
+- **Sem odontograma, o app não registra nada que dependa do exame clínico:** vigilância, prótese, placa visível, gengivite, profilaxia/remoção de placa e raspagem supragengival. Continuam os outros procedimentos coletivos (inclusive o encaminhamento para especialidade), os insumos e as observações. O servidor confere tudo isso.
+- **Sem odontograma não é dente hígido:** o exame não tem classe de risco nem ceo-d/CPO-D. Na planilha, no backup e no Looker, as contas por dente, os índices, a placa, a gengivite, a vigilância e a prótese ficam **vazias** (nunca 0 ou "não"). Esse exame não gera linhas em Dentes, Procedimentos e Faces e fica fora do acompanhamento da pessoa.
+- **Painel:** um quadro novo, **Atendimentos e odontograma**, mostra:
+  - atendimentos individuais registrados;
+  - atendimentos com odontograma preenchido e sem odontograma (número e %), com os motivos;
+  - atendimentos exclusivamente coletivos (motivo 6), à parte.
+
+  A classe de risco, o ceo-d e o CPO-D contam só quem teve odontograma, pelo último exame clínico da pessoa. A comparação entre DSEI ganha o % de odontogramas preenchidos.
+- **Looker (aba Exames):** colunas novas no fim: `odontograma_preenchido`, `motivo_sem_odontograma`, `motivo_sem_odontograma_outro`, `tipo_atendimento` (individual ou exclusivamente coletivo), `fez_procedimentos_coletivos` e `entregou_insumos`.
+
+### Condições gerais e procedimentos
+- Duas perguntas novas, com resposta obrigatória:
+  - **"Foram realizados procedimentos coletivos ou de boca toda?"**: Não, ou Sim e quais;
+  - **"Foram fornecidos insumos de higiene bucal?"**: Não, ou Sim e quais.
+- O resumo só libera com todas as respostas, inclusive placa e gengivite quando há odontograma. A página não pula mais para o resumo antes de os coletivos e os insumos serem respondidos.
+
+### Compatibilidade
+- Este app precisa do servidor 45 (o aviso de servidor desatualizado aparece até ele ser publicado).
+- O servidor 45 continua aceitando exames do app antigo, que contam como "odontograma preenchido".
+
+**Como instalar a 45:**
+1. **GitHub:** junte o pull request (ele inclui o servidor 44, do recomeço da base).
+2. **Apps Script:** cole o `Codigo.gs`, salve e publique **pelo lápis**. Confira o /exec: `"versao":45`.
+3. **Celular:** feche e abra o app com internet. Em Conta deve aparecer "app versão 45 · servidor versão 45".
+4. **Looker:** em Exames, **Atualizar campos**.
 
 ## Servidor 44: recomeçar a base de exames do zero
 
