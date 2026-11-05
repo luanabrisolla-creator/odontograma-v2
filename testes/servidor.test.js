@@ -987,6 +987,7 @@ parte("odontograma opcional");
   // Painel: atendimentos separados; o sem odontograma não entra nas contas clínicas.
   const pn = R.P(R.ANA, { acao: "painel", minha: true }).resumo, at = pn.atend;
   T("painel: atendimentos individuais, com e sem odontograma, e coletivos à parte", at.registrados === 5 && at.preenchidos === 2 && at.naoPreenchidos === 3 && at.coletivos === 1, at);
+  T("painel: pessoas sem classificação de risco (só atendimentos sem odontograma no período)", at.pessoasSemClassificacao === 4, at.pessoasSemClassificacao);
   T("painel: os motivos aparecem; a classe de risco conta só quem teve odontograma", at.motivos[MOT[0]] === 1 && at.motivos[MOT[1]] === 1 && at.motivos["Outro motivo"] === 1 && pn.n === 2 && pn.nExames === 6, [at.motivos, pn.n, pn.nExames]);
   // Planilha de análise (Looker).
   q = R.P(R.C, { acao: "atualizarAnalise" });

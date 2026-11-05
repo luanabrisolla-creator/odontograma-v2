@@ -498,6 +498,9 @@ for (let i = 0; i < 8; i++) {
   await pg.click("#salvarFim"); await pg.waitForTimeout(2500);
   const linhaSem = (G.est.sheets.Exames || []).find(l => l[0] === idSem), jSem = linhaSem && JSON.parse(linhaSem.at(-1));
   T("salvo e enviado: na planilha, odontograma = não, com o motivo e sem dentes, vigilância ou placa", !!jSem && jSem.odontograma === "nao" && jSem.odontogramaMotivo === "A pessoa recusou o exame odontológico" && !Object.keys(jSem.dentes).length && jSem.placa === null && jSem.fezColetivos === "sim" && jSem.insumos.includes("Escova dental"), jSem && { o: jSem.odontograma, m: jSem.odontogramaMotivo });
+  await irAba(pg, "inicio"); await pg.waitForTimeout(800);
+  const linhaIni = await pg.$eval(`#iniUltimos [data-ini-ex="${idSem}"]`, el => el.textContent).catch(() => "");
+  T("início: o exame sem odontograma aparece \"Sem classificação\" (nunca \"Baixo\")", /Sem classificação/.test(linhaIni) && !/Baixo/.test(linhaIni) && /–/.test(linhaIni), linhaIni);
   T("sem erros na página (sem odontograma)", !pg.erros.length, pg.erros);
   await ctx.close();
   // Administração (titular): espaço, erros explicados e dados para análise.

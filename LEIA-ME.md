@@ -1,7 +1,15 @@
 # Odontograma · Saúde Bucal Indígena
 
 Guia do aplicativo: o que ele é, como instalar do zero, como atualizar e como funciona por dentro.
-Versão atual: **app 45 · servidor 45 · formato da planilha 25**.
+Versão atual: **app 46 · servidor 46 · formato da planilha 25**.
+
+## Versão 46 (app 46 · servidor 46): pessoas sem classificação de risco
+
+- **Sem odontograma, sem classificação:** na página inicial ("Últimos exames"), o atendimento sem odontograma aparece com **"–"** e a etiqueta **"Sem classificação"**. Antes ele aparecia, por engano, como "?" e "Baixo".
+- **Painel:** o quadro "Atendimentos e odontograma" mostra também as **pessoas sem classificação de risco**, que só tiveram atendimentos sem odontograma no período. Quem teve pelo menos um exame com odontograma no período tem classificação.
+- **Rótulo:** o número em destaque do painel passa a se chamar "pessoas com classificação de risco". A conta é a mesma de antes: pessoas com exame clínico.
+
+**Como instalar a 46:** cole o `Codigo.gs` no Apps Script e publique **pelo lápis**. Confira o /exec: `"versao":46`. No celular, feche e abra o app com internet.
 
 ## Versão 45 (app 45 · servidor 45): odontograma opcional e condições gerais sem pular
 

@@ -591,7 +591,7 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .ini-ex .risco{display:inline-flex;align-items:center;gap:8px}
 .ini-ex .risco .classe{width:26px;height:26px;border-radius:8px;font-size:.82rem;font-weight:700}
 .pill-risco{display:inline-block;font-weight:600;font-size:.82rem;border-radius:999px;padding:4px 12px}
-.pill-risco.baixo{background:#D6F0DE;color:#135E2D}.pill-risco.moderado{background:#FFE9A6;color:#5E4300}.pill-risco.alto{background:#FAD4D1;color:#8E1A14}
+.pill-risco.sem{background:var(--surface-2);color:var(--muted)}.pill-risco.baixo{background:#D6F0DE;color:#135E2D}.pill-risco.moderado{background:#FFE9A6;color:#5E4300}.pill-risco.alto{background:#FAD4D1;color:#8E1A14}
 .ini-ex .env{font-weight:600;font-size:.86rem;color:#135E2D}
 .ini-ex .env.pend{color:#7A5600}.ini-ex .env.erro{color:var(--erro-ink)}
 .ini-ex .chev{color:#7A879B;width:20px;height:20px}
@@ -1210,7 +1210,7 @@ function avisarSemEspaco() {
   a.classList.add("aviso-servidor"); a.hidden = false;
 }
 // Versão do app: a mesma do número no sw.js (odontograma-vNN). Vai junto em cada pedido ao servidor.
-const VERSAO_APP = 45;
+const VERSAO_APP = 46;
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_LEG = "odonto.legenda.v1";
 const K_SESSAO = "odonto.sessao.v1";
@@ -2978,12 +2978,15 @@ function agregarExames(regs, agrup, ult) {
   var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
     ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
     vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0},
-    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}}};
+    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}, pessoasSemClassificacao: 0}};
+  // Pessoas com classificação de risco (algum exame com odontograma) e sem (só atendimentos sem odontograma no recorte).
+  /** @type {any} */ var comClasse = {}, semClasse = {};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
   regs.forEach(function (/** @type {any} */ e) {
     var res = e.resultado || {};
     var c = CL.indexOf(res.classe) >= 0 ? res.classe : null, sem = semOdontograma(e);
     if (!c && !sem) return;
+    (c ? comClasse : semClasse)[codigoIndividuoDe(e) || e.id] = true;
     // Atendimentos: os individuais (com e sem odontograma, com o motivo) e, à parte, os exclusivamente coletivos.
     if (tipoAtendimento(e) === "exclusivamente coletivo") r.atend.coletivos++;
     else {
@@ -3031,6 +3034,7 @@ function agregarExames(regs, agrup, ult) {
   });
   /** @param {any} o */
   function media(o) { return o.n ? Math.round(o.soma / o.n * 100) / 100 : null; }
+  r.atend.pessoasSemClassificacao = Object.keys(semClasse).filter(function (k) { return !comClasse[k]; }).length;
   r.ceodMedia = media(r.ceod); r.cpodMedia = media(r.cpod); r.cpod12Media = media(r.cpod12);
   var m = r.cpod12Media == null ? null : Math.round(r.cpod12Media * 10) / 10;
   r.cpod12Severidade = m == null ? null : m <= 1.1 ? "Muito baixa" : m <= 2.6 ? "Baixa" : m <= 4.4 ? "Moderada" : m <= 6.5 ? "Alta" : "Muito alta";
@@ -3666,7 +3670,7 @@ function desenharPainel(d, local) {
 
   const kpis = semDados ? "" : `<div class="kpis">
     ${!local && d.participantes != null ? `<div class="kpi"><b>${fmtN(d.participantes)}</b><span>${d.participantes === 1 ? "profissional participante" : "profissionais participantes"}</span></div>` : ""}
-    <div class="kpi kpi-destaque"><b>${fmtN(r.n)}</b><span>pessoas examinadas</span></div>
+    <div class="kpi kpi-destaque"><b>${fmtN(r.n)}</b><span>pessoas com classificação de risco</span></div>
     ${r.nExames != null ? `<div class="kpi"><b>${fmtN(r.nExames)}</b><span>${r.nExames === 1 ? "exame realizado" : "exames realizados"}</span></div>` : ""}
     <div class="kpi"><b>${pctDe(r.nivel.Alto, r.n)}</b><span>em alto risco (${fmtN(r.nivel.Alto)})</span></div>
     <div class="kpi"><b>${fmtN(r.ceodMedia)}</b><span>ceo-d médio</span></div>
@@ -3731,7 +3735,8 @@ function blocoAtendimentos(a) {
       <div class="kpi"><b>${fmtN(a.registrados)}</b><span>atendimentos individuais registrados</span></div>
       <div class="kpi"><b>${fmtN(a.preenchidos)}</b><span>com odontograma preenchido ${pct(a.preenchidos)}</span></div>
       <div class="kpi"><b>${fmtN(a.naoPreenchidos)}</b><span>sem odontograma ${pct(a.naoPreenchidos)}</span></div>
-      <div class="kpi"><b>${fmtN(a.coletivos)}</b><span>exclusivamente ações coletivas (à parte)</span></div></div>
+      <div class="kpi"><b>${fmtN(a.coletivos)}</b><span>exclusivamente ações coletivas (à parte)</span></div>
+      ${a.pessoasSemClassificacao != null ? `<div class="kpi"><b>${fmtN(a.pessoasSemClassificacao)}</b><span>pessoas sem classificação de risco (nenhum odontograma no período)</span></div>` : ""}</div>
     ${mot.length ? `<h4 style="margin:12px 0 4px;font-size:.92rem">Por que o odontograma não foi preenchido</h4><ul class="totais">${mot.map(([m, n]) => `<li>${esc(m)}: <b>${fmtN(n)}</b></li>`).join("")}</ul>` : ""}
     <p class="dica" style="margin-top:8px">A proporção de odontogramas considera só os atendimentos individuais. Sem odontograma não quer dizer dentes hígidos: esses atendimentos ficam fora da classe de risco, do ceo-d e do CPO-D.</p></div>`;
 }
@@ -3858,8 +3863,9 @@ async function carregarInicio() {
   if (!navigator.onLine || !sessao() || !cfg().url) return;
   try { const j = await api("inicio"); estI.dados = j; gravarCache(K_INICIO, j); if (estado.aba === "inicio") renderInicio(); } catch (e) {}
 }
-const nivelDe = r => { const t = nivelDaClasse(((r && r.resultado) || {}).classe) || ((r && r.resultado) || {}).risco || ""; return /alto/i.test(t) ? "alto" : /moderado/i.test(t) ? "moderado" : "baixo"; };
-const NOME_NIVEL = {baixo: "Baixo", moderado: "Moderado", alto: "Alto"};
+// Sem classe de risco (atendimento sem odontograma): "sem", nunca "baixo".
+const nivelDe = r => { const cl = ((r && r.resultado) || {}).classe; if (!cl) return "sem"; const t = nivelDaClasse(cl) || ((r && r.resultado) || {}).risco || ""; return /alto/i.test(t) ? "alto" : /moderado/i.test(t) ? "moderado" : "baixo"; };
+const NOME_NIVEL = {baixo: "Baixo", moderado: "Moderado", alto: "Alto", sem: "Sem classificação"};
 // Sem internet: os números saem dos exames que o aparelho conhece.
 function resumoLocal() {
   const l = examesTodos().filter(exameValido), ult = {};
@@ -3912,7 +3918,7 @@ function renderInicio() {
     box.innerHTML = (nPar ? `<div class="aviso">${textoParados(nPar)} <button class="link" data-ir="lista">Ver em Meus exames</button></div>` : "")
       + `<div class="ini-cab"><h2>Últimos exames</h2><button class="link" data-ir="lista">Ver todos</button></div>` + (!ult.length ? `<p class="dica">Nenhum exame ainda. Toque em "Novo exame" para começar.</p>` :
       `<div class="ini-ex-cab" aria-hidden="true"><span>Pessoa (código) e data</span><span>Classificação de risco</span><span>Envio</span><span></span></div>` +
-      ult.map(e => { const n = nivelDe(e), cl = (e.resultado || {}).classe || "?", canc = !exameValido(e), rr = canc ? ["Cancelado", "erro"] : rot[e.envio.estado] || ["", ""];
+      ult.map(e => { const n = nivelDe(e), cl = (e.resultado || {}).classe || (semOdontograma(e) ? "–" : "?"), canc = !exameValido(e), rr = canc ? ["Cancelado", "erro"] : rot[e.envio.estado] || ["", ""];
         return `<button class="ini-ex" type="button" data-ini-ex="${esc(e.id)}"><span class="d">${fmtData(e.dataExame)}</span>
           <span class="pc"><span class="cod">${esc(codigoIndividuoDe(e) || "Exame sem código")}</span><span class="sub2"><span class="dt">${fmtData(e.dataExame)} · </span>${e.numeroExame || 1}º exame</span></span>
           <span class="risco"><span class="classe" data-c="${esc(cl)}">${esc(cl)}</span><span class="pill-risco ${n}">${NOME_NIVEL[n]}</span></span>
