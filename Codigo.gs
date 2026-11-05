@@ -62,7 +62,7 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 45;
+const VERSAO = 46;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -3288,14 +3288,14 @@ function ocultarNumero(v) { return typeof v === 'number' && v > 0 && v < MINIMO 
 
 /** @param {any} r */
 function ocultar(r) {
-  if (r.n > 0 && r.n < MINIMO) return { n: '<5', poucos: true, atend: r.atend ? { registrados: ocultarNumero(r.atend.registrados), preenchidos: ocultarNumero(r.atend.preenchidos), naoPreenchidos: ocultarNumero(r.atend.naoPreenchidos), coletivos: ocultarNumero(r.atend.coletivos), motivos: {} } : null };
+  if (r.n > 0 && r.n < MINIMO) return { n: '<5', poucos: true, atend: r.atend ? { registrados: ocultarNumero(r.atend.registrados), preenchidos: ocultarNumero(r.atend.preenchidos), naoPreenchidos: ocultarNumero(r.atend.naoPreenchidos), coletivos: ocultarNumero(r.atend.coletivos), pessoasSemClassificacao: ocultarNumero(r.atend.pessoasSemClassificacao), motivos: {} } : null };
   /** @param {any} x */
   function obj(x) { Object.keys(x).forEach(function (k) { x[k] = ocultarNumero(x[k]); }); }
   // Índice de um grupo: só aparece com 5 pessoas ou mais (senão, só o "<5").
   /** @param {any} x */
   function ind(x) { return x && x.n >= MINIMO ? x : { n: ocultarNumero(x ? x.n : 0) }; }
   obj(r.sexo); obj(r.classe); obj(r.nivel); obj(r.meses); obj(r.gerais); obj(r.insumos);
-  if (r.atend) { obj(r.atend.motivos); ['registrados', 'preenchidos', 'naoPreenchidos', 'coletivos'].forEach(function (k) { r.atend[k] = ocultarNumero(r.atend[k]); }); }
+  if (r.atend) { obj(r.atend.motivos); ['registrados', 'preenchidos', 'naoPreenchidos', 'coletivos', 'pessoasSemClassificacao'].forEach(function (k) { r.atend[k] = ocultarNumero(r.atend[k]); }); }
   if (r.vigilancia) obj(r.vigilancia); if (r.local) obj(r.local); if (r.protese) obj(r.protese);
   Object.keys(r.faixas).forEach(function (f) {
     const x = r.faixas[f];
@@ -3505,12 +3505,15 @@ function agregarExames(regs, agrup, ult) {
   var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
     ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
     vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0},
-    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}}};
+    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}, pessoasSemClassificacao: 0}};
+  // Pessoas com classificação de risco (algum exame com odontograma) e sem (só atendimentos sem odontograma no recorte).
+  /** @type {any} */ var comClasse = {}, semClasse = {};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
   regs.forEach(function (/** @type {any} */ e) {
     var res = e.resultado || {};
     var c = CL.indexOf(res.classe) >= 0 ? res.classe : null, sem = semOdontograma(e);
     if (!c && !sem) return;
+    (c ? comClasse : semClasse)[codigoIndividuoDe(e) || e.id] = true;
     // Atendimentos: os individuais (com e sem odontograma, com o motivo) e, à parte, os exclusivamente coletivos.
     if (tipoAtendimento(e) === "exclusivamente coletivo") r.atend.coletivos++;
     else {
@@ -3558,6 +3561,7 @@ function agregarExames(regs, agrup, ult) {
   });
   /** @param {any} o */
   function media(o) { return o.n ? Math.round(o.soma / o.n * 100) / 100 : null; }
+  r.atend.pessoasSemClassificacao = Object.keys(semClasse).filter(function (k) { return !comClasse[k]; }).length;
   r.ceodMedia = media(r.ceod); r.cpodMedia = media(r.cpod); r.cpod12Media = media(r.cpod12);
   var m = r.cpod12Media == null ? null : Math.round(r.cpod12Media * 10) / 10;
   r.cpod12Severidade = m == null ? null : m <= 1.1 ? "Muito baixa" : m <= 2.6 ? "Baixa" : m <= 4.4 ? "Moderada" : m <= 6.5 ? "Alta" : "Muito alta";

@@ -191,12 +191,15 @@ function agregarExames(regs, agrup, ult) {
   var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
     ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
     vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0},
-    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}}};
+    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}, pessoasSemClassificacao: 0}};
+  // Pessoas com classificação de risco (algum exame com odontograma) e sem (só atendimentos sem odontograma no recorte).
+  /** @type {any} */ var comClasse = {}, semClasse = {};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
   regs.forEach(function (/** @type {any} */ e) {
     var res = e.resultado || {};
     var c = CL.indexOf(res.classe) >= 0 ? res.classe : null, sem = semOdontograma(e);
     if (!c && !sem) return;
+    (c ? comClasse : semClasse)[codigoIndividuoDe(e) || e.id] = true;
     // Atendimentos: os individuais (com e sem odontograma, com o motivo) e, à parte, os exclusivamente coletivos.
     if (tipoAtendimento(e) === "exclusivamente coletivo") r.atend.coletivos++;
     else {
@@ -244,6 +247,7 @@ function agregarExames(regs, agrup, ult) {
   });
   /** @param {any} o */
   function media(o) { return o.n ? Math.round(o.soma / o.n * 100) / 100 : null; }
+  r.atend.pessoasSemClassificacao = Object.keys(semClasse).filter(function (k) { return !comClasse[k]; }).length;
   r.ceodMedia = media(r.ceod); r.cpodMedia = media(r.cpod); r.cpod12Media = media(r.cpod12);
   var m = r.cpod12Media == null ? null : Math.round(r.cpod12Media * 10) / 10;
   r.cpod12Severidade = m == null ? null : m <= 1.1 ? "Muito baixa" : m <= 2.6 ? "Baixa" : m <= 4.4 ? "Moderada" : m <= 6.5 ? "Alta" : "Muito alta";
