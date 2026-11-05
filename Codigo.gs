@@ -62,14 +62,14 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '25';
-const VERSAO = 43;
+const VERSAO = 45;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
 const TIPO_ACAO = { 'Pediu acesso': 'Cadastro', 'Pediu reativação': 'Cadastro', 'Pediu novo código': 'Cadastro', 'Confirmou novo código': 'Cadastro', 'Aprovou acesso': 'Gestão de acesso', 'Recusou acesso': 'Gestão de acesso',
   'Desativou acesso': 'Gestão de acesso', 'Reativou acesso': 'Gestão de acesso', 'Gerou novo código': 'Gestão de acesso', 'Substituiu referência técnica': 'Gestão de acesso',
   'Adicionou coordenação': 'Gestão de acesso', 'Definiu coordenação como RT': 'Gestão de acesso', 'Tirou RT da coordenação': 'Gestão de acesso', 'Tentativa de acesso recusada': 'Segurança', 'Código em mais de um DSEI': 'Segurança', 'Código repetido': 'Exame', 'Resultado recalculado': 'Exame', 'Viu um exame': 'Consulta', 'Viu o acompanhamento de uma pessoa': 'Consulta',
-  'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Limpou aviso de auditoria': 'Sistema', 'Limpou a lista de erros': 'Sistema', 'Campos descartados de um exame': 'Segurança', 'Baixou dados para análise': 'Consulta', 'Reorganizou a planilha': 'Sistema', 'Resetou todos os acessos': 'Segurança', 'Corrigiu e-mail do cadastro': 'Gestão de acesso' };
+  'Cancelou exame': 'Exame', 'Registrou novo exame de pessoa já examinada': 'Exame', 'Criou ação do Dia B': 'Ação do Dia B', 'Atualizou a população': 'Sistema', 'Enviou convite': 'Gestão de acesso', 'Reenviou convite': 'Gestão de acesso', 'Cancelou convite': 'Gestão de acesso', 'Aceitou convite': 'Cadastro', 'Cancelou ação do Dia B': 'Ação do Dia B', 'Backup da planilha': 'Sistema', 'Limpou aviso de auditoria': 'Sistema', 'Limpou a lista de erros': 'Sistema', 'Campos descartados de um exame': 'Segurança', 'Baixou dados para análise': 'Consulta', 'Reorganizou a planilha': 'Sistema', 'Resetou todos os acessos': 'Segurança', 'Corrigiu e-mail do cadastro': 'Gestão de acesso', 'Zerou a base de exames': 'Sistema' };
 let MIGRANDO = false;
 const NOME_PERFIL = { dentista: 'cirurgião-dentista', rt: 'referência técnica', coord: 'coordenação' };
 
@@ -642,7 +642,8 @@ const ANALISE_NOME = 'Odontograma - análise', ANALISE_FACES_NOME = 'Odontograma
 // Colunas a mais na aba Exames (depois das mesmas colunas da aba Exames do app, sem as duas colunas do sistema).
 const CAB_AN_EXAMES_MAIS = ['perfil_profissional_no_exame', 'perfil_profissional_atual', 'dsei_profissional_atual', 'situacao_profissional_atual',
   'n_dentes_presentes', 'n_dentes_com_carie', 'n_faces_com_carie', 'n_dentes_com_dor_ou_abscesso', 'n_procedimentos_indicados', 'n_procedimentos_realizados',
-  'cancelado_era_referencia_de', 'cancelado_com_exames_posteriores'];
+  'cancelado_era_referencia_de', 'cancelado_com_exames_posteriores',
+  'odontograma_preenchido', 'motivo_sem_odontograma', 'motivo_sem_odontograma_outro', 'tipo_atendimento', 'fez_procedimentos_coletivos', 'entregou_insumos'];
 // (CAB_EXAME vem do trecho compartilhado, no fim do arquivo: por isso é calculado na hora)
 function cabAnExames() { return CAB_EXAME.filter(function (k) { return k !== 'resumo_json' && k !== 'dados_completos_json'; }).concat(CAB_AN_EXAMES_MAIS); }
 // Dentes: as colunas antigas continuam na mesma ordem (os gráficos do Looker seguem funcionando); as novas vêm no fim.
@@ -706,6 +707,11 @@ function linhaAnExame(e, b) {
   o.n_dentes_com_dor_ou_abscesso = ds.filter(function (x) { return x.dor_ou_abscesso === 'sim'; }).length;
   o.n_procedimentos_indicados = ds.reduce(function (t, x) { return t + x.nInd; }, 0);
   o.n_procedimentos_realizados = ds.reduce(function (t, x) { return t + x.nReal; }, 0);
+  const sem = semOdontograma(e), sn2 = function (/** @type {any} */ x) { return x === 'sim' ? 'sim' : x === 'nao' ? 'não' : ''; };
+  o.odontograma_preenchido = sem ? 'não' : 'sim'; o.motivo_sem_odontograma = sem ? e.odontogramaMotivo || '' : ''; o.motivo_sem_odontograma_outro = sem ? e.odontogramaMotivoOutro || '' : '';
+  o.tipo_atendimento = tipoAtendimento(e); o.fez_procedimentos_coletivos = sn2(e.fezColetivos); o.entregou_insumos = sn2(e.deuInsumos);
+  // Sem odontograma, as contas por dente ficam vazias (sem informação), nunca 0.
+  if (sem) ['n_dentes_presentes', 'n_dentes_com_carie', 'n_faces_com_carie', 'n_dentes_com_dor_ou_abscesso', 'n_procedimentos_indicados', 'n_procedimentos_realizados'].forEach(function (k) { o[k] = ''; });
   const c = e.cancelamento || {}; o.cancelado_era_referencia_de = (c.referenciaDe || []).join('; '); o.cancelado_com_exames_posteriores = (c.examesPosteriores || []).join('; ');
   return cabAnExames().map(function (k) { return o[k] == null ? '' : o[k]; });
 }
@@ -1476,6 +1482,63 @@ function revogarSessoesDe(ids) {
   });
   return n;
 }
+/* Rode UMA VEZ no editor do Apps Script (escolha zerarExames e clique em Executar) para a base de exames recomeçar do zero.
+ * Cadastros, códigos de acesso, convites, ações do Dia B e população NÃO mudam. O que acontece, nesta ordem:
+ * 1. o backup é atualizado (se falhar, nada muda);
+ * 2. todos os exames (e as versões anteriores guardadas) vão para uma planilha de arquivo, "Odontograma - exames arquivados
+ *    até AAAA-MM-DD", na pasta do backup. Nada é apagado de verdade;
+ * 3. a aba Exames fica vazia (o painel, a página inicial e o Looker recomeçam do zero);
+ * 4. o backup antigo é renomeado para "Odontograma - backup (exames até AAAA-MM-DD)" e um backup novo começa, limpo;
+ * 5. daí em diante, exames criados antes do recomeço (guardados ou corrigidos num celular) são recusados, com explicação. */
+function zerarExames() {
+  const t = LockService.getScriptLock(); t.waitLock(30000); COM_TRAVA = true;
+  try {
+    MEMO = null; esquecerDaMemoria('indice+'); esquecerDaMemoria('resumos+');
+    const ss = planilha(), agora = new Date(), dia = fmtDia(agora);
+    // 1. Backup em dia antes de mexer.
+    try { fazerBackup('antes de zerar os exames'); }
+    catch (x) { throw new Error('Nada foi alterado: o backup antes de zerar os exames falhou (' + (x && x.message || x) + ').'); }
+    // 2. Arquivo com tudo o que sai da base.
+    const arq = SpreadsheetApp.create('Odontograma - exames arquivados até ' + dia);
+    try { DriveApp.getFileById(arq.getId()).moveTo(pastaBackup()); } catch (x) {}
+    /** @type {any} */ const copiadas = {};
+    ss.getSheets().forEach(function (a) {
+      const nome = a.getName();
+      if ((nome.indexOf('Exames') !== 0 && nome !== ABA_VERSOES) || a.getLastRow() < 1) return;
+      const v = a.getRange(1, 1, a.getLastRow(), Math.max(a.getLastColumn(), 1)).getValues().map(function (l) { return l.map(textoCelula); });
+      const cab = v[0].map(String);
+      const destino = arq.insertSheet(nome);
+      if (destino.getMaxColumns() < cab.length) destino.insertColumnsAfter(destino.getMaxColumns(), cab.length - destino.getMaxColumns());
+      destino.getRange(1, 1, 1, cab.length).setValues([cab]);
+      gravarBloco(destino, 2, 1, v.slice(1));
+      copiadas[nome] = v.length - 1;
+    });
+    arq.getSheets().forEach(function (a) { if (!copiadas.hasOwnProperty(a.getName()) && a.getLastRow() === 0) { try { arq.deleteSheet(a); } catch (x) {} } });
+    SpreadsheetApp.flush();
+    // Conferência: o arquivo tem todas as linhas antes de esvaziar a base.
+    Object.keys(copiadas).forEach(function (nome) {
+      const n = Math.max(arq.getSheetByName(nome).getLastRow() - 1, 0);
+      if (n !== copiadas[nome]) throw new Error('Nada foi apagado: o arquivo ficou com ' + n + ' linhas na aba ' + nome + ', esperado ' + copiadas[nome] + '.');
+    });
+    // 3. Base de exames vazia.
+    Object.keys(copiadas).forEach(function (nome) { if (nome !== 'Exames') { const a = ss.getSheetByName(nome); if (a) ss.deleteSheet(a); } });
+    reescreverAba(ss, 'Exames', CAB_EXAME, [], 0);
+    PropertiesService.getScriptProperties().setProperty('EXAMES_DESDE', agora.toISOString());
+    MEMO = null;
+    // 4. Backup novo, limpo; o antigo fica com outro nome.
+    const idAntigo = propriedade('BACKUP_ID');
+    if (idAntigo) { try { DriveApp.getFileById(idAntigo).setName(BACKUP_NOME + ' (exames até ' + dia + ')'); } catch (x) {} PropertiesService.getScriptProperties().deleteProperty('BACKUP_ID'); }
+    PropertiesService.getScriptProperties().deleteProperty('BACKUP_ESTADO');
+    let novoBackup = '';
+    try { novoBackup = fazerBackup('base de exames recomeçada').url; } catch (x) { registrarErro(x, 'zerarExames: backup novo', null); }
+    try { recalcularUso(ss, []); } catch (x) {}
+    try { atualizarAnalise(); } catch (x) {}
+    const n = copiadas.Exames || 0, detalhe = n + ' exames arquivados em "' + arq.getName() + '" · backup antigo renomeado · base recomeçada em ' + dia + ' ' + fmtHora(agora);
+    registrar({ email: emailCoord(), nome: propriedade('NOME_COORDENACAO') || 'Coordenação titular' }, 'Zerou a base de exames', detalhe);
+    Logger.log('Base de exames zerada: ' + detalhe + '.\nArquivo: ' + arq.getUrl() + (novoBackup ? '\nBackup novo: ' + novoBackup : '') + '\nCadastros e códigos de acesso continuam iguais.');
+    return { exames: n, arquivo: arq.getUrl(), backup: novoBackup, desde: agora.toISOString() };
+  } finally { COM_TRAVA = false; t.releaseLock(); }
+}
 /* Rode UMA VEZ no editor do Apps Script (escolha resetarTodosOsAcessos e clique em Executar) para recomeçar os acessos:
  * - todas as pessoas com acesso (ativas ou desativadas) ficam DESATIVADAS, menos a coordenação titular, que entra pelas
  *   Propriedades do script e não está na aba Usuarios;
@@ -1988,7 +2051,8 @@ function enviarExames(d, u) {
 // Campos que um exame pode ter. O que vier além disso é descartado (e fica anotado em Acessos).
 const CAMPOS_EXAME = ['id', 'versao', 'dono', 'criadoEm', 'atualizadoEm', 'dataExame', 'profissional', 'municipio', 'uf', 'codPolo', 'codAldeia', 'codTI', 'ti', 'codMunicipio',
   'dsei', 'polo', 'aldeia', 'sufixo', 'codigo', 'crianca', 'idadeAnos', 'denticao', 'localAtendimento', 'vigilancia', 'protese', 'placa', 'gengivite', 'fluorose', 'gerais',
-  'insumos', 'observacoes', 'dentes', 'resultado', 'codigoIndividuo', 'numeroExame', 'vinculo', 'situacao'];
+  'insumos', 'observacoes', 'dentes', 'resultado', 'codigoIndividuo', 'numeroExame', 'vinculo', 'situacao',
+  'odontograma', 'odontogramaMotivo', 'odontogramaMotivoOutro', 'fezColetivos', 'deuInsumos'];
 const CAMPOS_DENTE = ['status', 'faces', 'dor', 'abscesso', 'procs', 'obs'];
 /** @param {any} o @param {string[]} campos @param {string} onde @param {string[]} fora */
 function soCampos(o, campos, onde, fora) {
@@ -2044,6 +2108,10 @@ function processarExame(reg, u, emLote) {
       : 'Seu cadastro está sem DSEI. Peça à coordenação para corrigir o seu cadastro antes de enviar exames.' };
   }
   const anterior = lerIndice().filter(function (r) { return r.id === reg.id; })[0];
+  // Base de exames recomeçada (zerarExames): exames criados antes disso não entram na base nova, nem por correção.
+  const desde = propriedade('EXAMES_DESDE');
+  if (desde && !anterior && String(reg.criadoEm || reg.dataExame || '') < desde)
+    return { ok: false, antesDoRecomeco: true, erro: 'Este exame foi criado em ' + dataBR(reg.criadoEm || reg.dataExame) + ', antes de a base de exames recomeçar (' + dataBR(desde) + '), e não foi enviado. Ele continua guardado neste aparelho. Se ele precisa entrar, faça um exame novo com os mesmos dados.' };
   // Só quem fez o exame pode alterá-lo.
   if (anterior && !ehDoUsuario(anterior, u)) return { ok: false, erro: 'Só o profissional que fez este exame pode alterá-lo.' };
   if (anterior && !exameValido(anterior)) return { ok: false, erro: 'Este exame foi cancelado e não pode ser alterado.' };
@@ -2061,8 +2129,13 @@ function processarExame(reg, u, emLote) {
   if (faltas.length) return { ok: false, exameIncompleto: true, faltam: faltas,
     erro: 'O exame não foi gravado. Falta ou está errado: ' + faltas.join('; ') + '. Abra o exame no app, corrija e salve de novo. Se o app não pedir esses campos, atualize o app (feche e abra de novo com internet).' };
   const classeDoApp = (reg.resultado || {}).classe;
-  recalcularResultado(reg);
-  if (classeDoApp && classeDoApp !== reg.resultado.classe) registrar(u, 'Resultado recalculado', 'Exame ' + reg.id + ': o app mandou classe ' + classeDoApp + ', o servidor calculou ' + reg.resultado.classe);
+  // Sem odontograma, não há classe de risco nem ceo-d/CPO-D (o servidor não confia no que o app mandou).
+  if (semOdontograma(reg)) {
+    reg.dentes = {}; reg.vigilancia = []; reg.placa = null; reg.gengivite = null; reg.fluorose = false; reg.protese = { sup: '', inf: '', usoSup: '', usoInf: '', naoAvaliado: false };
+    reg.resultado = { classe: '', risco: 'Sem odontograma', descricao: 'O odontograma não foi preenchido: sem classe de risco nem ceo-d/CPO-D.', motivos: [], ceod: null, cpod: null };
+  } else { delete reg.odontogramaMotivo; delete reg.odontogramaMotivoOutro; }
+  if (!semOdontograma(reg)) recalcularResultado(reg);
+  if (classeDoApp && reg.resultado.classe && classeDoApp !== reg.resultado.classe) registrar(u, 'Resultado recalculado', 'Exame ' + reg.id + ': o app mandou classe ' + classeDoApp + ', o servidor calculou ' + reg.resultado.classe);
   if (u.id === 'coord') return { ok: false, erro: 'A coordenação titular não registra exames.' };
   if (u.perfil === 'coord' && !u.dsei) return { ok: false, erro: 'Para registrar exames, a pessoa da coordenação precisa ser também RT de um DSEI.' };
   // Correção de um exame já enviado: a versão que está na planilha é lida antes (para guardá-la e manter o profissional da época).
@@ -2209,11 +2282,25 @@ function problemasDoExame(r) {
   if (!String(r.polo || '').trim() || String(r.polo).length > 150) f.push('polo base');
   if (!String(r.aldeia || '').trim() || String(r.aldeia).length > 150) f.push('aldeia ou comunidade');
   if (LOCAIS_ATENDIMENTO.indexOf(r.localAtendimento) < 0) f.push('local de atendimento');
-  const vig = Array.isArray(r.vigilancia) ? r.vigilancia : [];
-  if (!vig.length || vig.some(function (v) { return VIGILANCIA.indexOf(v) < 0; }) || (vig.length > 1 && vig.indexOf(VIG_NENHUM) >= 0)) f.push('vigilância em saúde bucal');
   if (!Array.isArray(r.gerais || []) || (r.gerais || []).some(function (g) { return GERAIS.indexOf(g) < 0; })) f.push('procedimentos coletivos (fora da lista)');
   if (!Array.isArray(r.insumos || []) || (r.insumos || []).some(function (g) { return INSUMOS.indexOf(g) < 0; })) f.push('insumos (fora da lista)');
   if (r.observacoes != null && (typeof r.observacoes !== 'string' || r.observacoes.length > 2000)) f.push('observações (texto até 2.000 caracteres)');
+  // Perguntas de Sim ou Não dos coletivos e dos insumos (desde a versão 45; os apps antigos não mandam).
+  if (r.fezColetivos != null && (['sim', 'nao'].indexOf(r.fezColetivos) < 0 || (r.fezColetivos === 'sim') !== !!(r.gerais || []).length)) f.push('procedimentos coletivos (Sim e quais, ou Não)');
+  if (r.deuInsumos != null && (['sim', 'nao'].indexOf(r.deuInsumos) < 0 || (r.deuInsumos === 'sim') !== !!(r.insumos || []).length)) f.push('insumos (Sim e quais, ou Não)');
+  if (r.odontograma != null && ['sim', 'nao'].indexOf(r.odontograma) < 0) f.push('se o odontograma foi preenchido (Sim ou Não)');
+  // Sem odontograma: só o principal motivo, e nada que dependa do exame clínico (dentes, vigilância, prótese, placa, gengivite).
+  if (r.odontograma === 'nao') {
+    if (MOTIVOS_SEM_ODONTOGRAMA.indexOf(r.odontogramaMotivo) < 0) f.push('o principal motivo de não preencher o odontograma');
+    else if (r.odontogramaMotivo === MOTIVO_OUTRO && !String(r.odontogramaMotivoOutro || '').trim()) f.push('qual foi o outro motivo de não preencher o odontograma');
+    if (String(r.odontogramaMotivoOutro || '').length > 300) f.push('outro motivo (texto até 300 caracteres)');
+    if (r.dentes && Object.keys(r.dentes).length) f.push('dentes (o odontograma foi marcado como não preenchido)');
+    if ((r.vigilancia || []).length || r.placa != null || r.gengivite != null) f.push('vigilância, placa e gengivite (precisam do odontograma)');
+    if ((r.gerais || []).some(function (g) { return GERAIS_CLINICOS.indexOf(g) >= 0; })) f.push('profilaxia e raspagem (precisam do odontograma)');
+    return f;
+  }
+  const vig = Array.isArray(r.vigilancia) ? r.vigilancia : [];
+  if (!vig.length || vig.some(function (v) { return VIGILANCIA.indexOf(v) < 0; }) || (vig.length > 1 && vig.indexOf(VIG_NENHUM) >= 0)) f.push('vigilância em saúde bucal');
   if (typeof r.placa !== 'boolean') f.push('placa visível (Sim ou Não)');
   if (typeof r.gengivite !== 'boolean') f.push('gengivite (Sim ou Não)');
   // Prótese: necessidade e uso nas duas arcadas, todos respondidos, ou nenhum ("Não foi possível avaliar").
@@ -2419,7 +2506,8 @@ function mesesEntre(a, b) {
 // Acompanhamento: pessoas com 2 ou mais exames, primeiro × último exame.
 /** @param {any} p @param {any} u */
 function acompanhamento(p, u) {
-  const regs = lerResumos().filter(exameValido);
+  // A evolução compara exames clínicos: os atendimentos sem odontograma ficam de fora.
+  const regs = lerResumos().filter(function (r) { return exameValido(r) && !semOdontograma(r); });
   /** @type {any} */ const grupos = {};
   regs.forEach(function (r) { const k = codigoIndividuoDe(r); (grupos[k] = grupos[k] || []).push(r); });
   let pessoas = Object.keys(grupos).map(function (k) { return { cod: k, l: grupos[k].sort(ordemExame) }; });
@@ -3035,7 +3123,7 @@ function calcularPainel(p, u) {
   // Na produção do próprio profissional não há ocultação: são os exames dele.
   if (!p.minha) Object.keys(blocos).forEach(function (k) { blocos[k] = ocultar(blocos[k]); });
 
-  const porDsei = {}, ultP = idsUltimoPorPessoa(noPeriodo.filter(exameValido));
+  const porDsei = {}, ultP = idsUltimoPorPessoa(noPeriodo.filter(function (r) { return exameValido(r) && !semOdontograma(r); }));
   noPeriodo.filter(function (r) { return exameCombina(r, filtros); }).forEach(function (r) { (porDsei[r.dsei] = porDsei[r.dsei] || []).push(r); });
   const comparacao = p.minha ? [] : Object.keys(porDsei).map(function (d) {
     const a = agregarExames(porDsei[d], agrup, ultP);
@@ -3043,7 +3131,8 @@ function calcularPainel(p, u) {
     // O percentual some junto quando o número (ou o que falta para o total) é de 1 a 4 pessoas: senão ele revelaria o número.
     const alto = a.nivel.Alto, pctOk = !(alto > 0 && alto < MINIMO) && !(a.n - alto > 0 && a.n - alto < MINIMO);
     return { dsei: d, n: a.n, alto: ocultarNumero(alto), pctAlto: pctOk ? Math.round(alto / a.n * 100) : null,
-             ceod: a.ceod.n >= MINIMO ? a.ceodMedia : null, cpod: a.cpod.n >= MINIMO ? a.cpodMedia : null, procs: a.procsRealizados };
+             ceod: a.ceod.n >= MINIMO ? a.ceodMedia : null, cpod: a.cpod.n >= MINIMO ? a.cpodMedia : null, procs: a.procsRealizados,
+             pctOdonto: a.atend.registrados >= MINIMO ? Math.round(a.atend.preenchidos / a.atend.registrados * 100) : null };
   }).sort(function (x, y) { return (typeof y.n === 'number' ? y.n : 0) - (typeof x.n === 'number' ? x.n : 0); });
 
   const profs = {};
@@ -3199,13 +3288,14 @@ function ocultarNumero(v) { return typeof v === 'number' && v > 0 && v < MINIMO 
 
 /** @param {any} r */
 function ocultar(r) {
-  if (r.n > 0 && r.n < MINIMO) return { n: '<5', poucos: true };
+  if (r.n > 0 && r.n < MINIMO) return { n: '<5', poucos: true, atend: r.atend ? { registrados: ocultarNumero(r.atend.registrados), preenchidos: ocultarNumero(r.atend.preenchidos), naoPreenchidos: ocultarNumero(r.atend.naoPreenchidos), coletivos: ocultarNumero(r.atend.coletivos), motivos: {} } : null };
   /** @param {any} x */
   function obj(x) { Object.keys(x).forEach(function (k) { x[k] = ocultarNumero(x[k]); }); }
   // Índice de um grupo: só aparece com 5 pessoas ou mais (senão, só o "<5").
   /** @param {any} x */
   function ind(x) { return x && x.n >= MINIMO ? x : { n: ocultarNumero(x ? x.n : 0) }; }
   obj(r.sexo); obj(r.classe); obj(r.nivel); obj(r.meses); obj(r.gerais); obj(r.insumos);
+  if (r.atend) { obj(r.atend.motivos); ['registrados', 'preenchidos', 'naoPreenchidos', 'coletivos'].forEach(function (k) { r.atend[k] = ocultarNumero(r.atend[k]); }); }
   if (r.vigilancia) obj(r.vigilancia); if (r.local) obj(r.local); if (r.protese) obj(r.protese);
   Object.keys(r.faixas).forEach(function (f) {
     const x = r.faixas[f];
@@ -3245,6 +3335,16 @@ var INSUMOS = ["Escova dental","Creme dental","Fio dental"];
 var GERAIS = ["Escovação supervisionada","Aplicação tópica de flúor","Orientação de higiene e dieta","Profilaxia / remoção de placa","Raspagem supragengival","Encaminhamento para especialidade"];
 var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", "Fendas ou fissuras lábio palatais", "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
 var VIG_FLUOROSE = "Fluorose dentária moderada ou severa", VIG_NENHUM = "Não identificado";
+// Odontograma opcional: quando não é preenchido, o profissional escolhe o principal motivo (um só).
+var MOTIVOS_SEM_ODONTOGRAMA = ["Tempo insuficiente para realizar o odontograma", "A pessoa recusou o exame odontológico", "Não foi possível realizar o exame por dificuldade de colaboração",
+  "Falta de condições adequadas (iluminação, espaço ou materiais)", "Condição clínica impediu a realização do exame", "Atendimento direcionado exclusivamente a ações coletivas", "Outro motivo"];
+var MOTIVO_SO_COLETIVO = "Atendimento direcionado exclusivamente a ações coletivas", MOTIVO_OUTRO = "Outro motivo";
+// Sem exame clínico, estes procedimentos não aparecem (precisam do odontograma).
+var GERAIS_CLINICOS = ["Profilaxia / remoção de placa", "Raspagem supragengival"];
+/** Exame registrado sem odontograma (os exames de antes do odontograma opcional sempre têm). @param {any} e */
+function semOdontograma(e) { return !!e && e.odontograma === "nao"; }
+/** "individual" ou "exclusivamente coletivo" (este só sem odontograma, com o motivo das ações coletivas). @param {any} e */
+function tipoAtendimento(e) { return semOdontograma(e) && e.odontogramaMotivo === MOTIVO_SO_COLETIVO ? "exclusivamente coletivo" : "individual"; }
 /** @type {any} */
 var NOMES_PROTESE = {"": "Não avaliado", nao: "Não", sim: "Sim"};
 // Situação do dente. Só o dente presente tem faces, sinais e tratamento.
@@ -3309,7 +3409,8 @@ function exameCombina(e, f, exceto) {
 // Cada bloco do painel ignora o próprio filtro, para continuar mostrando as outras opções.
 /** @param {any} regs @param {any} f @param {any} agrup */
 function montarPainel(regs, f, agrup) {
-  var validos = regs.filter(exameValido), ult = idsUltimoPorPessoa(validos);
+  // A situação de cada pessoa vem do último exame COM odontograma (o atendimento sem exame clínico não diz nada sobre os dentes).
+  var validos = regs.filter(exameValido), ult = idsUltimoPorPessoa(validos.filter(function (e) { return !semOdontograma(e); }));
   /** @param {any} exceto */
   function ag(exceto) { return agregarExames(validos.filter(function (e) { return exameCombina(e, f, exceto); }), agrup, ult); }
   return {resumo: ag([]), risco: ag(["classe"]), tabela: ag(["faixa", "sexo", "classe"]), faixa: ag(["faixa"]), proc: ag(["proc"]), coletivo: ag(["coletivo"]), vig: ag(["vig"])};
@@ -3403,12 +3504,20 @@ function agregarExames(regs, agrup, ult) {
   /** @type {any} */
   var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
     ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
-    vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0}};
+    vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0},
+    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}}};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
   regs.forEach(function (/** @type {any} */ e) {
     var res = e.resultado || {};
-    var c = CL.indexOf(res.classe) >= 0 ? res.classe : null;
-    if (!c) return;
+    var c = CL.indexOf(res.classe) >= 0 ? res.classe : null, sem = semOdontograma(e);
+    if (!c && !sem) return;
+    // Atendimentos: os individuais (com e sem odontograma, com o motivo) e, à parte, os exclusivamente coletivos.
+    if (tipoAtendimento(e) === "exclusivamente coletivo") r.atend.coletivos++;
+    else {
+      r.atend.registrados++;
+      if (sem) { r.atend.naoPreenchidos++; var mo = e.odontogramaMotivo || MOTIVO_OUTRO; r.atend.motivos[mo] = (r.atend.motivos[mo] || 0) + 1; }
+      else r.atend.preenchidos++;
+    }
     // produção: todos os exames
     r.nExames++;
     var mes = String(e.dataExame || "").slice(0, 7);
@@ -3416,6 +3525,8 @@ function agregarExames(regs, agrup, ult) {
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
     if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
+    // Daqui em diante, só o que vem do exame clínico (o atendimento sem odontograma não entra nas contas por dente nem na classe).
+    if (sem) return;
     var pe = procsDe(e);
     Object.keys(pe).forEach(function (k) {
       if (!r.procs[k]) r.procs[k] = {indicado: 0, realizado: 0};
@@ -3599,6 +3710,13 @@ function valoresDoExame(e, completo) {
   }
   var pe = procsDe(e);
   Object.keys(NOMES_PROC).forEach(function (k) { o["n_" + k + "_indicado"] = (pe[k] || {}).indicado || 0; o["n_" + k + "_realizado"] = (pe[k] || {}).realizado || 0; });
+  // Sem odontograma, tudo o que depende do exame clínico fica VAZIO (sem informação), nunca "não" ou 0:
+  // a falta do odontograma nunca pode ser lida como dente hígido nem como ausência de necessidade.
+  if (semOdontograma(e)) {
+    CAB_P2.concat(["classe_risco", "nivel_risco", "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod", "placa_visivel", "gengivite",
+      "protese_sup_necessita", "protese_inf_necessita", "protese_sup_usa", "protese_inf_usa"], Object.keys(COL_VIG).map(function (k) { return COL_VIG[k]; }))
+      .forEach(function (k) { o[k] = ""; });
+  }
   if (completo) {
     ORDEM_DENTES.forEach(function (n) {
       var d = (e.dentes || {})[n], lf = letrasFaces(n), p = "d" + n + "_", pres = !!d && d.status === "presente", fc = (d && d.faces) || {}, pp = (d && d.procs) || {};

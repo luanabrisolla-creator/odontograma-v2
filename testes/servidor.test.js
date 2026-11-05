@@ -921,5 +921,81 @@ parte("corrigir e-mail");
   T("o e-mail da RT fica livre: a titular convida a RT de novo", q.ok && q.resultados[0].res === "enviado", q.resultados);
 }
 
+/* ---------------------------------------------------------------- zerar a base de exames (cenário separado) */
+parte("zerar exames");
+{
+  const R = cenario(), G4 = R.G, aba4 = n => G4.est.sheets[n] || [], extra = nome => Object.values(G4.est.extras).find(x => x.nome === nome);
+  const ontem = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  ["ZA1", "ZA2", "ZA3"].forEach((id, i) => R.P(R.ANA, { acao: "enviarExame", registro: exame({ id, sufixo: "ZAZAZA" + "234"[i] + "2", data: ontem }) }));
+  const ed = JSON.parse(aba4("Exames").find(l => l[0] === "ZA1").at(-1)); ed.dentes[16].faces.O = "ca"; ed.atualizadoEm = new Date().toISOString();
+  R.P(R.ANA, { acao: "enviarExame", registro: ed });
+  R.P(R.ANA, { acao: "cancelarExame", id: "ZA3", motivo: "Digitado errado" });
+  G4.ctx.fazerBackup("teste");
+  const nUsuarios = aba4("Usuarios").length, idBkAntigo = G4.est.props.BACKUP_ID, nAntes = aba4("Exames").length - 1;
+  const res = G4.ctx.zerarExames();
+  const arq = Object.values(G4.est.extras).find(x => /^Odontograma - exames arquivados até /.test(x.nome));
+  T("zerar: todos os exames (e as versões anteriores) vão para a planilha de arquivo, antes de sair da base", res.exames === nAntes && nAntes === 3 && arq && arq.abas.Exames.length - 1 === 3 && arq.abas._versoes_exames.length - 1 === 1, [res, arq && arq.ordem]);
+  T("a base de exames fica vazia, com o cabeçalho certo", aba4("Exames").length === 1 && aba4("Exames")[0].join() === G4.ctx.CAB_EXAME.join() && !aba4("_versoes_exames").length);
+  T("cadastros e acessos não mudam: as pessoas continuam entrando", aba4("Usuarios").length === nUsuarios && R.P(R.ANA, { acao: "entrar" }).ok && R.P(R.C, { acao: "entrar" }).ok);
+  T("o backup antigo fica com outro nome e um backup novo começa limpo (sem alertas de exames sumidos)", G4.est.extras[idBkAntigo].nome === "Odontograma - backup (exames até " + G4.ctx.fmtDia(new Date()) + ")"
+    && G4.est.props.BACKUP_ID !== idBkAntigo && extra("Odontograma - backup").abas.Exames.length === 1 && !extra("Odontograma - backup").abas.Alertas.slice(1).length && extra("Odontograma - backup").abas.Cadastros.length === nUsuarios, [G4.est.extras[idBkAntigo].nome]);
+  T("o backup antigo continua com os exames, as versões e os alertas", G4.est.extras[idBkAntigo].abas.Exames.length - 1 === 3);
+  T("painel e meus exames recomeçam do zero", (R.P(R.ANA, { acao: "meusExames" }).exames || []).length === 0);
+  let r4 = R.P(R.ANA, { acao: "enviarExame", registro: exame({ id: "ZVELHO", sufixo: "ZVZVZVZ2", data: ontem }) });
+  T("exame criado antes do recomeço (guardado no celular) é recusado com explicação e fica no aparelho", !r4.ok && r4.antesDoRecomeco && !r4.passageiro && /antes de a base de exames recomeçar/.test(r4.erro) && aba4("Exames").length === 1, r4);
+  r4 = R.P(R.ANA, { acao: "enviarExame", registro: ed });
+  T("correção de um exame antigo também não volta para a base", !r4.ok && r4.antesDoRecomeco);
+  const hojeISO = new Date().toISOString().slice(0, 10), novo = exame({ id: "ZNOVO", sufixo: "ZNZNZNZ2", data: hojeISO }); novo.criadoEm = new Date().toISOString(); novo.atualizadoEm = novo.criadoEm;
+  r4 = R.P(R.ANA, { acao: "enviarExame", registro: novo });
+  T("exame novo entra normalmente", r4.ok && aba4("Exames").length === 2, r4);
+  T("o recomeço fica anotado em Acessos", aba4("Acessos").some(l => l[7] === "Zerou a base de exames" && /3 exames arquivados/.test(l[8])));
+}
+
+/* ---------------------------------------------------------------- odontograma opcional (cenário separado) */
+parte("odontograma opcional");
+{
+  const R = cenario(), G5 = R.G, aba5 = n => G5.est.sheets[n] || [];
+  const MOT = require("vm").runInContext("MOTIVOS_SEM_ODONTOGRAMA", G5.ctx);
+  // Exame sem odontograma, como o app 45 monta.
+  const sem = (o) => { const e = exame(Object.assign({ sufixo: o.suf }, o)); Object.assign(e, { odontograma: "nao", odontogramaMotivo: o.motivo, odontogramaMotivoOutro: o.outro || "", dentes: {}, vigilancia: [],
+    protese: { sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false }, placa: null, gengivite: null, fezColetivos: o.gerais && o.gerais.length ? "sim" : "nao", deuInsumos: "nao", insumos: [],
+    resultado: { classe: "", risco: "Sem odontograma", motivos: [], ceod: null, cpod: null } }); return e; };
+  let q = R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO1", suf: "SQSQSQ22", motivo: MOT[0] }) });
+  T("exame sem odontograma, com o motivo, é aceito e fica sem classe de risco", q.ok && q.resultado.classe === "" && /Sem odontograma/.test(q.resultado.risco), q);
+  const lSO1 = aba5("Exames").find(l => l[0] === "SO1"), cX = k => aba5("Exames")[0].indexOf(k), jSO1 = JSON.parse(lSO1.at(-1));
+  T("no exame guardado: odontograma = não, o motivo e nada do exame clínico", jSO1.odontograma === "nao" && jSO1.odontogramaMotivo === MOT[0] && !Object.keys(jSO1.dentes).length && jSO1.placa === null && !jSO1.vigilancia.length);
+  T("sem odontograma, as contas por dente, índices, placa e vigilância ficam vazias (nunca 0 ou \"não\")", ["n_dentes_presentes", "n_dentes_carie_ativa", "n_art_indicado", "ceod", "cpod", "classe_risco", "placa_visivel", "gengivite", "vig_dor_de_dente", "protese_sup_necessita"].every(k => lSO1[cX(k)] === ""),
+    ["n_dentes_presentes", "n_art_indicado", "ceod", "placa_visivel", "vig_dor_de_dente"].map(k => [k, lSO1[cX(k)]]));
+  T("sem motivo é recusado", /principal motivo/.test(R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO2", suf: "SQSQSQ32", motivo: "" }) }).erro || ""));
+  T("\"Outro motivo\" sem o texto é recusado", /outro motivo/.test(R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO3", suf: "SQSQSQ42", motivo: "Outro motivo" }) }).erro || ""));
+  q = R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO4", suf: "SQSQSQ52", motivo: "Outro motivo", outro: "Quebra do equipamento" }) });
+  T("\"Outro motivo\" com o texto é aceito", q.ok && JSON.parse(aba5("Exames").find(l => l[0] === "SO4").at(-1)).odontogramaMotivoOutro === "Quebra do equipamento", q);
+  const comDentes = sem({ id: "SO5", suf: "SQSQSQ62", motivo: MOT[1] }); comDentes.dentes = exame().dentes;
+  T("sem odontograma, mas com dentes, é recusado", /odontograma foi marcado como não preenchido/.test(R.P(R.ANA, { acao: "enviarExame", registro: comDentes }).erro || ""));
+  const comPlaca = sem({ id: "SO6", suf: "SQSQSQ72", motivo: MOT[1] }); comPlaca.placa = true;
+  T("sem odontograma, mas com placa visível, é recusado", /precisam do odontograma/.test(R.P(R.ANA, { acao: "enviarExame", registro: comPlaca }).erro || ""));
+  T("sem odontograma, profilaxia e raspagem são recusadas; encaminhamento é aceito", /profilaxia e raspagem/.test(R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO7", suf: "SQSQSQ82", motivo: MOT[1], gerais: ["Raspagem supragengival"] }) }).erro || "")
+    && R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO8", suf: "SQSQSQ92", motivo: MOT[1], gerais: ["Encaminhamento para especialidade", "Escovação supervisionada"] }) }).ok);
+  q = R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SC1", suf: "SCSCSC22", motivo: MOT[5], gerais: ["Escovação supervisionada"] }) });
+  T("atendimento exclusivamente coletivo (motivo 6) é aceito", q.ok, q);
+  // Perguntas de Sim ou Não dos coletivos e dos insumos.
+  const inc = exame({ id: "SN1", sufixo: "SNSNSN22", gerais: [] }); inc.fezColetivos = "sim"; inc.deuInsumos = "nao";
+  T("\"Sim\" nos coletivos sem marcar nenhum é recusado", /procedimentos coletivos \(Sim e quais, ou Não\)/.test(R.P(R.ANA, { acao: "enviarExame", registro: inc }).erro || ""));
+  const ok1 = exame({ id: "SN2", sufixo: "SNSNSN32", gerais: ["Escovação supervisionada"], insumos: ["Escova dental"] }); ok1.fezColetivos = "sim"; ok1.deuInsumos = "sim"; ok1.odontograma = "sim";
+  T("exame com odontograma e as respostas novas é aceito", R.P(R.ANA, { acao: "enviarExame", registro: ok1 }).ok);
+  T("exame do jeito antigo (sem as perguntas novas) continua aceito", R.P(R.ANA, { acao: "enviarExame", registro: exame({ id: "SN3", sufixo: "SNSNSN42", mud: { 46: { faces: { O: "ca" } } } }) }).ok);
+  // Painel: atendimentos separados; o sem odontograma não entra nas contas clínicas.
+  const pn = R.P(R.ANA, { acao: "painel", minha: true }).resumo, at = pn.atend;
+  T("painel: atendimentos individuais, com e sem odontograma, e coletivos à parte", at.registrados === 5 && at.preenchidos === 2 && at.naoPreenchidos === 3 && at.coletivos === 1, at);
+  T("painel: os motivos aparecem; a classe de risco conta só quem teve odontograma", at.motivos[MOT[0]] === 1 && at.motivos[MOT[1]] === 1 && at.motivos["Outro motivo"] === 1 && pn.n === 2 && pn.nExames === 6, [at.motivos, pn.n, pn.nExames]);
+  // Planilha de análise (Looker).
+  q = R.P(R.C, { acao: "atualizarAnalise" });
+  const an = Object.values(G5.est.extras).find(x => x.nome === "Odontograma - análise"), aE = an.abas.Exames, cA = k => aE[0].indexOf(k), lA = id => aE.find(l => l[0] === id);
+  T("análise: odontograma_preenchido, motivo, outro motivo e tipo de atendimento", q.ok && lA("SO4")[cA("odontograma_preenchido")] === "não" && lA("SO4")[cA("motivo_sem_odontograma")] === "Outro motivo" && lA("SO4")[cA("motivo_sem_odontograma_outro")] === "Quebra do equipamento"
+    && lA("SC1")[cA("tipo_atendimento")] === "exclusivamente coletivo" && lA("SO1")[cA("tipo_atendimento")] === "individual" && lA("SN2")[cA("odontograma_preenchido")] === "sim" && lA("SN2")[cA("fez_procedimentos_coletivos")] === "sim", q);
+  T("análise: sem odontograma não tem linhas de dentes nem de faces, e as contas ficam vazias", !an.abas.Dentes.some(l => l[0] === "SO1") && lA("SO1")[cA("n_dentes_com_carie")] === "" && lA("SO1")[cA("n_dentes_presentes")] === ""
+    && !Object.values(G5.est.extras).find(x => x.nome === "Odontograma - análise - faces").abas.Faces.some(l => l[0] === "SO1"));
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);

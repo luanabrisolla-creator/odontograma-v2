@@ -72,7 +72,7 @@ function criar(opcoes) {
         setName: novo => { abas[novo] = abas[n]; maxx[novo] = maxx[n]; ids[novo] = ids[n]; delete abas[n]; delete maxx[n]; delete ids[n]; ordem[ordem.indexOf(n)] = novo; n = novo; return sh; } };
       return sh;
     };
-    const ss = { nome, abas, ordem, getId: () => id, getName: () => nome, getUrl: () => "https://docs.google.com/spreadsheets/d/" + id,
+    const ss = { nome, abas, ordem, getId: () => id, getName: () => ss.nome, getUrl: () => "https://docs.google.com/spreadsheets/d/" + id,
       getSheetByName: n => abas[n] ? mk(n) : null,
       insertSheet: n => { abas[n] = []; maxx[n] = { r: 1000, c: 26 }; ids[n] = proxId++; ordem.push(n); return mk(n); },
       getSheets: () => ordem.map(mk),
@@ -107,7 +107,7 @@ function criar(opcoes) {
       Access: { PRIVATE: "PRIVATE" }, Permission: { NONE: "NONE" },
       getFoldersByName: n => iter(pastas[n] ? [pastas[n]] : []),
       createFolder: n => pasta(n),
-      getFileById: () => ({ moveTo() {}, makeCopy: (nome, p) => {
+      getFileById: fid => ({ moveTo() {}, setName: n => { if (est.extras[fid]) est.extras[fid].nome = n; }, makeCopy: (nome, p) => {
         if (est.falharBackup) throw new Error("Drive indisponível (simulado)");
         const f = { nome, criado: new Date(), lixo: false, getName: () => nome, getDateCreated: () => f.criado, setTrashed: v => { f.lixo = v; } };
         p.arquivos.push(f); est.backups.push({ nome, copia: JSON.parse(JSON.stringify(est.sheets)) }); return f; } })

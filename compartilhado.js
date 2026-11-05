@@ -21,6 +21,16 @@ var INSUMOS = ["Escova dental","Creme dental","Fio dental"];
 var GERAIS = ["Escovação supervisionada","Aplicação tópica de flúor","Orientação de higiene e dieta","Profilaxia / remoção de placa","Raspagem supragengival","Encaminhamento para especialidade"];
 var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", "Fendas ou fissuras lábio palatais", "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
 var VIG_FLUOROSE = "Fluorose dentária moderada ou severa", VIG_NENHUM = "Não identificado";
+// Odontograma opcional: quando não é preenchido, o profissional escolhe o principal motivo (um só).
+var MOTIVOS_SEM_ODONTOGRAMA = ["Tempo insuficiente para realizar o odontograma", "A pessoa recusou o exame odontológico", "Não foi possível realizar o exame por dificuldade de colaboração",
+  "Falta de condições adequadas (iluminação, espaço ou materiais)", "Condição clínica impediu a realização do exame", "Atendimento direcionado exclusivamente a ações coletivas", "Outro motivo"];
+var MOTIVO_SO_COLETIVO = "Atendimento direcionado exclusivamente a ações coletivas", MOTIVO_OUTRO = "Outro motivo";
+// Sem exame clínico, estes procedimentos não aparecem (precisam do odontograma).
+var GERAIS_CLINICOS = ["Profilaxia / remoção de placa", "Raspagem supragengival"];
+/** Exame registrado sem odontograma (os exames de antes do odontograma opcional sempre têm). @param {any} e */
+function semOdontograma(e) { return !!e && e.odontograma === "nao"; }
+/** "individual" ou "exclusivamente coletivo" (este só sem odontograma, com o motivo das ações coletivas). @param {any} e */
+function tipoAtendimento(e) { return semOdontograma(e) && e.odontogramaMotivo === MOTIVO_SO_COLETIVO ? "exclusivamente coletivo" : "individual"; }
 /** @type {any} */
 var NOMES_PROTESE = {"": "Não avaliado", nao: "Não", sim: "Sim"};
 // Situação do dente. Só o dente presente tem faces, sinais e tratamento.
@@ -85,7 +95,8 @@ function exameCombina(e, f, exceto) {
 // Cada bloco do painel ignora o próprio filtro, para continuar mostrando as outras opções.
 /** @param {any} regs @param {any} f @param {any} agrup */
 function montarPainel(regs, f, agrup) {
-  var validos = regs.filter(exameValido), ult = idsUltimoPorPessoa(validos);
+  // A situação de cada pessoa vem do último exame COM odontograma (o atendimento sem exame clínico não diz nada sobre os dentes).
+  var validos = regs.filter(exameValido), ult = idsUltimoPorPessoa(validos.filter(function (e) { return !semOdontograma(e); }));
   /** @param {any} exceto */
   function ag(exceto) { return agregarExames(validos.filter(function (e) { return exameCombina(e, f, exceto); }), agrup, ult); }
   return {resumo: ag([]), risco: ag(["classe"]), tabela: ag(["faixa", "sexo", "classe"]), faixa: ag(["faixa"]), proc: ag(["proc"]), coletivo: ag(["coletivo"]), vig: ag(["vig"])};
@@ -179,12 +190,20 @@ function agregarExames(regs, agrup, ult) {
   /** @type {any} */
   var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
     ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
-    vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0}};
+    vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0},
+    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}}};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
   regs.forEach(function (/** @type {any} */ e) {
     var res = e.resultado || {};
-    var c = CL.indexOf(res.classe) >= 0 ? res.classe : null;
-    if (!c) return;
+    var c = CL.indexOf(res.classe) >= 0 ? res.classe : null, sem = semOdontograma(e);
+    if (!c && !sem) return;
+    // Atendimentos: os individuais (com e sem odontograma, com o motivo) e, à parte, os exclusivamente coletivos.
+    if (tipoAtendimento(e) === "exclusivamente coletivo") r.atend.coletivos++;
+    else {
+      r.atend.registrados++;
+      if (sem) { r.atend.naoPreenchidos++; var mo = e.odontogramaMotivo || MOTIVO_OUTRO; r.atend.motivos[mo] = (r.atend.motivos[mo] || 0) + 1; }
+      else r.atend.preenchidos++;
+    }
     // produção: todos os exames
     r.nExames++;
     var mes = String(e.dataExame || "").slice(0, 7);
@@ -192,6 +211,8 @@ function agregarExames(regs, agrup, ult) {
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
     if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
+    // Daqui em diante, só o que vem do exame clínico (o atendimento sem odontograma não entra nas contas por dente nem na classe).
+    if (sem) return;
     var pe = procsDe(e);
     Object.keys(pe).forEach(function (k) {
       if (!r.procs[k]) r.procs[k] = {indicado: 0, realizado: 0};
@@ -375,6 +396,13 @@ function valoresDoExame(e, completo) {
   }
   var pe = procsDe(e);
   Object.keys(NOMES_PROC).forEach(function (k) { o["n_" + k + "_indicado"] = (pe[k] || {}).indicado || 0; o["n_" + k + "_realizado"] = (pe[k] || {}).realizado || 0; });
+  // Sem odontograma, tudo o que depende do exame clínico fica VAZIO (sem informação), nunca "não" ou 0:
+  // a falta do odontograma nunca pode ser lida como dente hígido nem como ausência de necessidade.
+  if (semOdontograma(e)) {
+    CAB_P2.concat(["classe_risco", "nivel_risco", "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod", "placa_visivel", "gengivite",
+      "protese_sup_necessita", "protese_inf_necessita", "protese_sup_usa", "protese_inf_usa"], Object.keys(COL_VIG).map(function (k) { return COL_VIG[k]; }))
+      .forEach(function (k) { o[k] = ""; });
+  }
   if (completo) {
     ORDEM_DENTES.forEach(function (n) {
       var d = (e.dentes || {})[n], lf = letrasFaces(n), p = "d" + n + "_", pres = !!d && d.status === "presente", fc = (d && d.faces) || {}, pp = (d && d.procs) || {};
