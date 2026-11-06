@@ -1,6 +1,6 @@
 // Guarda o aplicativo no aparelho para funcionar sem internet.
 // Ao publicar uma nova versão do index.html, troque o número abaixo (e a VERSAO_APP do index.html).
-const CACHE = "odontograma-v46";
+const CACHE = "odontograma-v47";
 // O essencial precisa existir; os demais são guardados se estiverem no site (um arquivo faltando não impede o resto).
 const ESSENCIAIS = ["./", "./index.html"];
 const EXTRAS = ["./manifest.webmanifest", "./icon.svg", "./icon-192.png", "./icon-512.png", "./mapa-ti.json", "./paisagem.webp", "./paisagem-faixa.webp"];
@@ -35,6 +35,7 @@ self.addEventListener("fetch", e => {
   if (r.method !== "GET") return;
   const u = new URL(r.url);
   if (u.hostname.endsWith("script.google.com") || u.hostname.endsWith("googleusercontent.com")) return; // envio: sempre pela rede
+  if (u.pathname.includes("/dados/")) return; // arquivo do histórico do SIASI: grande e usado uma vez, não fica guardado
   if (r.mode === "navigate") {
     // Página: tenta a versão mais nova. Se não vier o Odontograma (sem internet, Wi-Fi com login, erro), usa a guardada.
     e.respondWith((async () => {

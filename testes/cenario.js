@@ -52,6 +52,7 @@ function exame(o) {
     crianca: { nascimento: o.nasc || "2018-05-12", sexo: o.sexo || "F" }, idadeAnos: o.idade != null ? o.idade : 8.4, denticao: den,
     localAtendimento: o.local || "UBSI", vigilancia: o.vig || ["Não identificado"], protese: o.protese || { sup: "nao", inf: "nao", usoSup: "nao", usoInf: "nao", naoAvaliado: false },
     placa: !!o.placa, gengivite: !!o.gengivite, fluorose: false, gerais: o.gerais || [], insumos: o.insumos || [], observacoes: "",
+    odontograma: "sim", fezColetivos: (o.gerais || []).length ? "sim" : "nao", deuInsumos: (o.insumos || []).length ? "sim" : "nao",
     dentes, resultado: { classe: "A", risco: "Baixo risco", descricao: "", motivos: [], ceod: { c: 0, e: 0, o: 0, total: 0 }, cpod: { c: 0, p: 0, o: 0, total: 0 } },
     codigoIndividuo: o.codigo || `${o.uf || "RR"}-SUR-SAU-${suf}`, numeroExame: 1, vinculo: o.vinculo || null
   }, o.extra || {});

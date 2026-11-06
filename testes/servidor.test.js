@@ -668,7 +668,7 @@ const anPr = pAn.abas.Procedimentos, cP = k => anPr[0].indexOf(k);
 const procsEsperados = todosIdx.reduce((t, x) => t + Object.values(JSON.parse(linhaEx(x.id).at(-1)).dentes).reduce((s, d) => s + Object.values(d.procs || {}).filter(v => v === "indicado" || v === "realizado").length, 0), 0);
 T("Procedimentos: uma linha por procedimento indicado ou realizado em cada dente", anPr.length - 1 === procsEsperados && procsEsperados > 0, [anPr.length - 1, procsEsperados]);
 const exOK2 = validosIdx.find(x => x.id === "OK2"), prOK2 = anPr.slice(1).filter(l => l[cP("id_exame")] === "OK2" && l[cP("dente")] === 16);
-T("Procedimentos: selante realizado e verniz indicado no mesmo dente viram duas linhas, cada uma com o momento", !exOK2 || (prOK2.length === 2 && prOK2.some(l => l[cP("codigo_procedimento")] === "selante" && l[cP("momento")] === "realizado" && l[cP("procedimento")] === "Selante") && prOK2.some(l => l[cP("codigo_procedimento")] === "verniz" && l[cP("momento")] === "indicado")), prOK2);
+T("Procedimentos: selante realizado e verniz indicado no mesmo dente viram duas linhas, cada uma com o momento", !exOK2 || (prOK2.length === 2 && prOK2.some(l => l[cP("codigo_procedimento")] === "selante" && l[cP("momento")] === "realizado" && l[cP("procedimento")] === "Aplicação de selante") && prOK2.some(l => l[cP("codigo_procedimento")] === "verniz" && l[cP("momento")] === "indicado")), prOK2);
 T("Procedimentos: cada linha traz a condição do dente (cárie, dor, abscesso) e o exame dele", anPr.slice(1).every(l => ["sim", "não"].includes(l[cP("tem_carie")]) && ["sim", "não"].includes(l[cP("dor_ou_abscesso")]) && anEx.some(e => e[0] === l[0])));
 T("Exames: perfil do profissional no exame e hoje, e contas prontas", ["perfil_profissional_no_exame", "perfil_profissional_atual", "n_dentes_com_carie", "n_procedimentos_realizados"].every(k => anEx[0].includes(k))
   && anEx.slice(1).every(l => l[cE("perfil_profissional_no_exame")] !== ""), anEx.slice(1).map(l => l[cE("perfil_profissional_no_exame")]).slice(0, 5));
@@ -777,7 +777,7 @@ T("(o exame é enviado e corrigido duas vezes antes do backup)", r.ok && r1.ok &
 rb = G.ctx.fazerBackup("teste");
 const bky = bkEx("BKY"), versY = bkObj("Exames_versoes").filter(x => x.id_exame === "BKY");
 T("o original no backup é o primeiro envio, não a versão da hora do backup", JSON.parse(bky.dados_originais_json).dentes[36].faces.O === "" && JSON.parse(bky.dados_originais_json).dentes[46].faces.O === "", bky.versao_atual);
-T("as duas correções feitas antes do backup viram as versões 2 e 3, cada uma com o que mudou", bky.versao_atual === "3" && versY.map(x => x.versao + ":" + x.o_que_mudou).join() === "2:dentes 36,3:dentes 46", versY.map(x => x.versao + ":" + x.o_que_mudou));
+T("as duas correções feitas antes do backup viram as versões 2 e 3, cada uma com o que mudou", bky.versao_atual === "3" && versY.map(x => x.versao + ":" + x.o_que_mudou).join() === "2:dentes 36; tratamento básico,3:dentes 46", versY.map(x => x.versao + ":" + x.o_que_mudou));
 r = P(ANA, { acao: "cancelarExame", id: "BKY", motivo: "Digitado errado" });
 T("cancelar não é uma versão nova (os dados clínicos não mudam)", r.ok && aba("_versoes_exames").filter(l => l[0] === "BKY").length === 2);
 rb = G.ctx.fazerBackup("teste");
@@ -832,9 +832,8 @@ r = P(C, { acao: "fazerBackup" });
 T("se a planilha de backup não abrir, nenhuma outra é criada no lugar", !r.ok && /backup/i.test(G.ctx.estadoBackup().erro) && Object.values(G.est.extras).filter(x => x.nome === "Odontograma - backup").length === 1, r);
 G.est.falharBackup = false;
 T("o erro do backup aparece em Erros recentes, explicado", aba("_erros").some(l => l[2] === "backup"), aba("_erros").slice(-1));
-G.ctx.ScriptApp.newTrigger("fazerBackup").timeBased().onWeekDay(1).atHour(3).create();
 G.ctx.garantirTarefaDiaria();
-T("o backup semanal antigo (cópia inteira) é desligado sozinho", !G.est.triggers.some(t => t.fn === "fazerBackup") && G.est.triggers.some(t => t.fn === "tarefaDiaria"));
+T("a tarefa diária (com o backup incremental) fica ligada", G.est.triggers.some(t => t.fn === "tarefaDiaria"));
 
 /* ---------------------------------------------------------------- sessões */
 parte("sessões");
@@ -930,11 +929,13 @@ parte("zerar exames");
   const ed = JSON.parse(aba4("Exames").find(l => l[0] === "ZA1").at(-1)); ed.dentes[16].faces.O = "ca"; ed.atualizadoEm = new Date().toISOString();
   R.P(R.ANA, { acao: "enviarExame", registro: ed });
   R.P(R.ANA, { acao: "cancelarExame", id: "ZA3", motivo: "Digitado errado" });
+  G4.ctx.salvarRetorno({ id: "RZ1", planoId: "ZA2", codigoIndividuo: "RR-SUR-SAU-ZAZAZA32", dsei: "Yanomami", dataExame: ontem, usuarioId: "x", dentes: {} });
   G4.ctx.fazerBackup("teste");
   const nUsuarios = aba4("Usuarios").length, idBkAntigo = G4.est.props.BACKUP_ID, nAntes = aba4("Exames").length - 1;
   const res = G4.ctx.zerarExames();
   const arq = Object.values(G4.est.extras).find(x => /^Odontograma - exames arquivados até /.test(x.nome));
   T("zerar: todos os exames (e as versões anteriores) vão para a planilha de arquivo, antes de sair da base", res.exames === nAntes && nAntes === 3 && arq && arq.abas.Exames.length - 1 === 3 && arq.abas._versoes_exames.length - 1 === 1, [res, arq && arq.ordem]);
+  T("os retornos vão junto para o arquivo e saem da base", arq.abas.Retornos && arq.abas.Retornos.length - 1 === 1 && !aba4("Retornos").slice(1).length && /3 exames e 1 retorno arquivados/.test(aba4("Acessos").map(l => l.join("|")).join()));
   T("a base de exames fica vazia, com o cabeçalho certo", aba4("Exames").length === 1 && aba4("Exames")[0].join() === G4.ctx.CAB_EXAME.join() && !aba4("_versoes_exames").length);
   T("cadastros e acessos não mudam: as pessoas continuam entrando", aba4("Usuarios").length === nUsuarios && R.P(R.ANA, { acao: "entrar" }).ok && R.P(R.C, { acao: "entrar" }).ok);
   T("o backup antigo fica com outro nome e um backup novo começa limpo (sem alertas de exames sumidos)", G4.est.extras[idBkAntigo].nome === "Odontograma - backup (exames até " + G4.ctx.fmtDia(new Date()) + ")"
@@ -948,7 +949,7 @@ parte("zerar exames");
   const hojeISO = new Date().toISOString().slice(0, 10), novo = exame({ id: "ZNOVO", sufixo: "ZNZNZNZ2", data: hojeISO }); novo.criadoEm = new Date().toISOString(); novo.atualizadoEm = novo.criadoEm;
   r4 = R.P(R.ANA, { acao: "enviarExame", registro: novo });
   T("exame novo entra normalmente", r4.ok && aba4("Exames").length === 2, r4);
-  T("o recomeço fica anotado em Acessos", aba4("Acessos").some(l => l[7] === "Zerou a base de exames" && /3 exames arquivados/.test(l[8])));
+  T("o recomeço fica anotado em Acessos", aba4("Acessos").some(l => l[7] === "Zerou a base de exames" && /3 exames e 1 retorno arquivados/.test(l[8])));
 }
 
 /* ---------------------------------------------------------------- odontograma opcional (cenário separado) */
@@ -974,7 +975,7 @@ parte("odontograma opcional");
   T("sem odontograma, mas com dentes, é recusado", /odontograma foi marcado como não preenchido/.test(R.P(R.ANA, { acao: "enviarExame", registro: comDentes }).erro || ""));
   const comPlaca = sem({ id: "SO6", suf: "SQSQSQ72", motivo: MOT[1] }); comPlaca.placa = true;
   T("sem odontograma, mas com placa visível, é recusado", /precisam do odontograma/.test(R.P(R.ANA, { acao: "enviarExame", registro: comPlaca }).erro || ""));
-  T("sem odontograma, profilaxia e raspagem são recusadas; encaminhamento é aceito", /profilaxia e raspagem/.test(R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO7", suf: "SQSQSQ82", motivo: MOT[1], gerais: ["Raspagem supragengival"] }) }).erro || "")
+  T("sem odontograma, a raspagem é recusada (precisa do odontograma); o encaminhamento de um app antigo é aceito", /Raspagem \(RAP\) supragengival \(precisam do odontograma\)/.test(R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO7", suf: "SQSQSQ82", motivo: MOT[1], gerais: ["Raspagem supragengival"] }) }).erro || "")
     && R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO8", suf: "SQSQSQ92", motivo: MOT[1], gerais: ["Encaminhamento para especialidade", "Escovação supervisionada"] }) }).ok);
   q = R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SC1", suf: "SCSCSC22", motivo: MOT[5], gerais: ["Escovação supervisionada"] }) });
   T("atendimento exclusivamente coletivo (motivo 6) é aceito", q.ok, q);
@@ -983,7 +984,11 @@ parte("odontograma opcional");
   T("\"Sim\" nos coletivos sem marcar nenhum é recusado", /procedimentos coletivos \(Sim e quais, ou Não\)/.test(R.P(R.ANA, { acao: "enviarExame", registro: inc }).erro || ""));
   const ok1 = exame({ id: "SN2", sufixo: "SNSNSN32", gerais: ["Escovação supervisionada"], insumos: ["Escova dental"] }); ok1.fezColetivos = "sim"; ok1.deuInsumos = "sim"; ok1.odontograma = "sim";
   T("exame com odontograma e as respostas novas é aceito", R.P(R.ANA, { acao: "enviarExame", registro: ok1 }).ok);
-  T("exame do jeito antigo (sem as perguntas novas) continua aceito", R.P(R.ANA, { acao: "enviarExame", registro: exame({ id: "SN3", sufixo: "SNSNSN42", mud: { 46: { faces: { O: "ca" } } } }) }).ok);
+  const antigo = exame({ id: "SN3", sufixo: "SNSNSN42", mud: { 46: { faces: { O: "ca" } } } }); delete antigo.odontograma; delete antigo.fezColetivos; delete antigo.deuInsumos;
+  const qa = R.P(R.ANA, { acao: "enviarExame", registro: antigo });
+  T("exame de app anterior à 45 (sem as perguntas novas) é recusado, pedindo para atualizar o app", !qa.ok && qa.appDesatualizado && /versão antiga do app/.test(qa.erro) && !aba5("Exames").some(l => l[0] === "SN3"), qa);
+  delete antigo.id; Object.assign(antigo, { id: "SN3", odontograma: "sim", fezColetivos: "nao", deuInsumos: "nao" });
+  T("o mesmo exame, com as respostas que o app atualizado pede, é aceito", R.P(R.ANA, { acao: "enviarExame", registro: antigo }).ok);
   // Painel: atendimentos separados; o sem odontograma não entra nas contas clínicas.
   const pn = R.P(R.ANA, { acao: "painel", minha: true }).resumo, at = pn.atend;
   T("painel: atendimentos individuais, com e sem odontograma, e coletivos à parte", at.registrados === 5 && at.preenchidos === 2 && at.naoPreenchidos === 3 && at.coletivos === 1, at);
@@ -996,6 +1001,268 @@ parte("odontograma opcional");
     && lA("SC1")[cA("tipo_atendimento")] === "exclusivamente coletivo" && lA("SO1")[cA("tipo_atendimento")] === "individual" && lA("SN2")[cA("odontograma_preenchido")] === "sim" && lA("SN2")[cA("fez_procedimentos_coletivos")] === "sim", q);
   T("análise: sem odontograma não tem linhas de dentes nem de faces, e as contas ficam vazias", !an.abas.Dentes.some(l => l[0] === "SO1") && lA("SO1")[cA("n_dentes_com_carie")] === "" && lA("SO1")[cA("n_dentes_presentes")] === ""
     && !Object.values(G5.est.extras).find(x => x.nome === "Odontograma - análise - faces").abas.Faces.some(l => l[0] === "SO1"));
+}
+
+/* ---------------------------------------------------------------- página inicial (cenário separado) */
+parte("página inicial");
+{
+  const R = cenario(), MOT = require("vm").runInContext("MOTIVOS_SEM_ODONTOGRAMA", R.G.ctx);
+  // A mesma pessoa: um exame com odontograma em alto risco (classe F) há mais de 6 meses e, depois, um atendimento sem odontograma.
+  const m = {}; [16, 26, 36, 46].forEach(n => { m[n] = { faces: { O: "ca" }, dor: true }; });
+  const alto = exame({ id: "IN1", sufixo: "SPSPSP22", data: "2026-03-02", mud: m, denticao: "permanente", idade: 30, nasc: "1996-01-01" });
+  alto.odontograma = "sim";
+  const semOd = exame({ id: "IN2", data: "2026-10-30", denticao: "permanente", idade: 30, nasc: "1996-01-01", vinculo: { codigoIndividuo: "RR-SUR-SAU-SPSPSP22", chaves: [] } });
+  Object.assign(semOd, { odontograma: "nao", odontogramaMotivo: MOT[0], dentes: {}, vigilancia: [], placa: null, gengivite: null, fezColetivos: "nao", deuInsumos: "nao",
+    protese: { sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false }, resultado: { classe: "", risco: "Sem odontograma", motivos: [], ceod: null, cpod: null } });
+  T("(os dois atendimentos da mesma pessoa entram)", R.P(R.ANA, { acao: "enviarExame", registro: alto }).ok && R.P(R.ANA, { acao: "enviarExame", registro: semOd }).ok);
+  const ini = R.P(R.ANA, { acao: "inicio" });
+  T("quem estava em alto risco continua em alto risco depois de um atendimento sem odontograma", ini.ok && ini.alto === 1, ini);
+  T("o prazo de reavaliação conta desde o último exame com odontograma", ini.totalReavaliar === 1 && ini.reavaliar[0].data === "2026-03-02", ini.reavaliar);
+  T("pessoas atendidas, com classificação, atendimentos e com odontograma", ini.pessoas === 1 && ini.pessoasComClasse === 1 && ini.exames === 2 && ini.comOdontograma === 1, ini);
+  T("a página inicial e o painel dão o mesmo número de pessoas com classificação", R.P(R.ANA, { acao: "painel", minha: true }).resumo.n === ini.pessoasComClasse);
+  // Quem só teve atendimento sem odontograma não tem classe: não entra no alto risco nem na reavaliação.
+  const so = Object.assign({}, semOd, { id: "IN3", sufixo: "STSTST22", codigo: "RR-SUR-SAU-STSTST22", codigoIndividuo: "RR-SUR-SAU-STSTST22", dataExame: "2026-01-05", vinculo: null });
+  R.P(R.ANA, { acao: "enviarExame", registro: so });
+  const ini2 = R.P(R.ANA, { acao: "inicio" });
+  T("só atendimento sem odontograma: conta como pessoa atendida, sem classificação e sem reavaliação", ini2.pessoas === 2 && ini2.pessoasComClasse === 1 && ini2.totalReavaliar === 1 && ini2.alto === 1, ini2);
+  T("sem recomeço da base, a data de início vem vazia", ini2.desde === "");
+}
+
+/* ---------------------------------------------------------------- campos da versão 47 (cenário separado) */
+parte("versão 47: Fichas 4 e 7");
+{
+  const R = cenario(), aba7 = n => R.G.est.sheets[n] || [], c7 = k => aba7("Exames")[0].indexOf(k), l7 = id => aba7("Exames").find(l => l[0] === id);
+  // Cada exame com um código de acompanhamento diferente (a mesma pessoa precisaria de vínculo).
+  let n7 = 0; const ALFA = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  const ex7 = (o, extra) => { const e = exame(Object.assign({ id: "V" + (++n7), sufixo: "V7" + ALFA[n7] + "QQQQ2" }, o)); Object.assign(e, { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] }, extra || {}); return e; };
+  const env = e => R.P(R.ANA, { acao: "enviarExame", registro: e });
+  const err = e => env(e).erro || "";
+  T("exame completo da versão 47 é aceito", env(ex7({})).ok);
+  T("localidade fora da lista é recusada", /localidade de residência/.test(err(ex7({}, { localidade: "Cidade" }))));
+  T("\"gestante\" para o sexo masculino é recusado", /gestante \(só para o sexo feminino/.test(err(ex7({ sexo: "M", idade: 30, nasc: "1996-01-01", denticao: "permanente" }, { gestante: "nao" }))));
+  T("gestante sem as semanas é recusada", /semanas de gestação/.test(err(ex7({ idade: 25, nasc: "2001-01-01", denticao: "permanente" }, { gestante: "sim", semanasGestacao: null }))));
+  const g = ex7({ idade: 25, nasc: "2001-01-01", denticao: "permanente" }, { gestante: "sim", semanasGestacao: 20 });
+  T("gestante com 20 semanas é aceita, e a planilha guarda", env(g).ok && l7(g.id)[c7("gestante")] === "sim" && l7(g.id)[c7("semanas_gestacao")] === 20);
+  T("índice de Dean aos 8 anos é recusado (só de 10 a 19)", /índice de Dean \(só de 10 a 19 anos/.test(err(ex7({ idade: 8.4 }, { fluoroseDean: "1" }))));
+  const d = ex7({ idade: 15.6, nasc: "2011-03-01", denticao: "permanente", vig: ["Não identificado"] }, { fluoroseDean: "4" });
+  T("Dean 4 aos 15 anos: a vigilância ganha a fluorose moderada ou severa, e a planilha mostra o índice", env(d).ok && l7(d.id)[c7("fluorose_dean")] === "4 · Moderada" && l7(d.id)[c7("vig_fluorose")] === "sim"
+    && JSON.parse(l7(d.id).at(-1)).vigilancia.includes("Fluorose dentária moderada ou severa"), l7(d.id) && [l7(d.id)[c7("fluorose_dean")], l7(d.id)[c7("vig_fluorose")]]);
+  const na = ex7({}, { placa: null, condNaoAvaliadas: ["placa"] });
+  T("placa \"não avaliada\" é aceita e aparece assim na planilha (nunca \"não\")", env(na).ok && l7(na.id)[c7("placa_visivel")] === "não avaliado" && l7(na.id)[c7("gengivite")] === "não");
+  T("placa vazia sem \"não avaliado\" é recusada", /placa visível \(Sim, Não ou Não avaliado\)/.test(err(ex7({}, { placa: null }))));
+  const pr = ex7({ protese: { sup: "parcial", inf: "nao", usoSup: "total", usoInf: "nao", naoAvaliado: false } });
+  T("prótese parcial e total é aceita, como na Ficha 4", env(pr).ok && l7(pr.id)[c7("protese_sup_necessita")] === "parcial" && l7(pr.id)[c7("protese_sup_usa")] === "total");
+  T("prótese com valor fora da lista é recusada", /prótese/.test(err(ex7({ protese: { sup: "talvez", inf: "nao", usoSup: "nao", usoInf: "nao", naoAvaliado: false } }))));
+  const en = ex7({}, { fezEncaminhamento: "sim", encaminhamentos: { endodontia: "pendente", cbmf: "realizado" }, fezPrescricao: "sim", prescricoes: ["Antibiótico"] });
+  T("encaminhamentos e prescrição vão para colunas próprias", env(en).ok && l7(en.id)[c7("encaminhamento_endodontia")] === "pendente" && l7(en.id)[c7("encaminhamento_cbmf")] === "realizado"
+    && l7(en.id)[c7("encaminhamento_ortodontia")] === "" && l7(en.id)[c7("prescricao_antibiotico")] === "sim" && l7(en.id)[c7("prescricao_analgesico")] === "não");
+  T("\"Sim\" no encaminhamento sem especialidade é recusado", /encaminhamentos \(Sim e quais, ou Não\)/.test(err(ex7({}, { fezEncaminhamento: "sim", encaminhamentos: {} }))));
+  T("especialidade fora da Ficha 7 é recusada", /encaminhamentos \(especialidade e situação\)/.test(err(ex7({}, { fezEncaminhamento: "sim", encaminhamentos: { cardiologia: "pendente" } }))));
+  T("pulpectomia em dente permanente é recusada (vira encaminhamento para endodontia)", /dentes 46/.test(err(ex7({ mud: { 46: { faces: { O: "ca" }, procs: { pulpectomia: "indicado" } } } }))));
+  T("pulpectomia em dente decíduo continua aceita", env(ex7({ mud: { 85: { faces: { O: "ca" }, procs: { pulpectomia: "indicado" } } } })).ok);
+  const pc = ex7({ mud: { 46: { faces: { O: "ca" }, procs: { pcdp: "realizado" } } } });
+  T("proteção do complexo dentino-pulpar (Ficha 7) entra como procedimento do dente", env(pc).ok && l7(pc.id)[c7("n_pcdp_realizado")] === 1);
+  const an = ex7({ gerais: ["Escovação supervisionada", "Raspagem supragengival"] }); an.fezColetivos = "sim";
+  T("nomes antigos de um app 46 viram os termos do SIASI", env(an).ok && JSON.parse(l7(an.id).at(-1)).gerais.join("|") === "Escovação dental supervisionada|Raspagem (RAP) supragengival");
+  const vf = ex7({ vig: ["Fendas ou fissuras lábio palatais"] });
+  T("\"Fendas ou fissuras\" de um app 46 vira \"Má formação: fenda ou fissura lábio palatal\"", env(vf).ok && l7(vf.id)[c7("vig_fendas_labio_palatais")] === "sim" && JSON.parse(l7(vf.id).at(-1)).vigilancia[0] === "Má formação: fenda ou fissura lábio palatal");
+  const v46 = exame({ id: "V46", sufixo: "V46QQQQ2" });
+  T("exame de um app 46 (sem os campos novos) continua aceito, com as colunas novas vazias", env(v46).ok && l7("V46")[c7("localidade_residencia")] === "" && l7("V46")[c7("prescricao_analgesico")] === "");
+}
+
+/* ---------------------------------------------------------------- tratamento básico, conduta e nível (cenário separado) */
+parte("tratamento básico (APS)");
+{
+  const R = cenario(), ab = n => R.G.est.sheets[n] || [], cE = k => ab("Exames")[0].indexOf(k), lE = id => ab("Exames").find(l => l[0] === id);
+  let n8 = 0; const ALFA = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  const ex8 = (o, extra) => { const e = exame(Object.assign({ id: "T" + (++n8), sufixo: "T8" + ALFA[n8] + "QQQQ2" }, o)); Object.assign(e, { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] }, extra || {}); return e; };
+  const env = e => R.P(R.ANA, { acao: "enviarExame", registro: e });
+  const val = (id, k) => (lE(id) || [])[cE(k)];
+  const sem = ex8({}, { tratamento: { aps: "concluido" } });
+  T("sem pendência e com a confirmação do profissional: concluído", env(sem).ok && val(sem.id, "tratamento_aps") === "concluído" && val(sem.id, "pendencias_aps") === 0, val(sem.id, "tratamento_aps"));
+  const semConf = ex8({});
+  T("sem pendência e sem resposta (app antigo): fica \"a confirmar\"", env(semConf).ok && val(semConf.id, "tratamento_aps") === "sem pendências, a confirmar");
+  const car = ex8({ mud: { 46: { faces: { O: "ca" } } } }, { tratamento: { aps: "concluido" } });
+  T("cárie ativa sem tratamento nem conduta: não concluído, mesmo que o app diga concluído", env(car).ok && val(car.id, "tratamento_aps") === "não concluído: há pendências da aps" && val(car.id, "pendencias_aps") === 1, [val(car.id, "tratamento_aps"), val(car.id, "pendencias_aps")]);
+  T("(e isso fica anotado em Acessos)", ab("Acessos").some(l => l[7] === "Tratamento não concluído" && l[8].indexOf(car.id) >= 0));
+  const ind = ex8({ mud: { 46: { faces: { O: "ca" }, procs: { art: "indicado" } } } });
+  T("ART indicado e não realizado: pendência da APS", env(ind).ok && val(ind.id, "tratamento_aps") === "não concluído: há pendências da aps");
+  const feito = ex8({ mud: { 46: { faces: { O: "ca" }, procs: { art: "realizado" } } } }, { tratamento: { aps: "concluido" } });
+  T("ART realizado: sem pendência, e o profissional conclui", env(feito).ok && val(feito.id, "tratamento_aps") === "concluído");
+  T("acompanhamento sem o motivo é recusado", /dentes 46/.test(env(ex8({ mud: { 46: { faces: { O: "cc" }, conduta: { tipo: "acompanhamento", motivo: "" } } } })).erro || ""));
+  const ac = ex8({ mud: { 75: { faces: { O: "cc" }, conduta: { tipo: "acompanhamento", motivo: "Decíduo perto da esfoliação" } } } }, { tratamento: { aps: "concluido" } });
+  T("acompanhamento com o motivo não é pendência (decisão 4) e o tratamento pode ser concluído", env(ac).ok && val(ac.id, "tratamento_aps") === "concluído" && JSON.parse(lE(ac.id).at(-1)).dentes[75].conduta.motivo === "Decíduo perto da esfoliação");
+  const enc = ex8({ mud: { 46: { faces: { O: "ca" }, dor: true, conduta: { tipo: "encaminhamento", especialidade: "endodontia" } } } }, { tratamento: { aps: "concluido" } });
+  T("encaminhamento no dente: entra nos encaminhamentos do exame, e a APS pode concluir", env(enc).ok && val(enc.id, "encaminhamento_endodontia") === "pendente" && val(enc.id, "situacao_encaminhamento") === "encaminhamento pendente" && val(enc.id, "tratamento_aps") === "concluído",
+    [val(enc.id, "encaminhamento_endodontia"), val(enc.id, "tratamento_aps")]);
+  T("\"ainda não\" sem o motivo é recusado", /por que o tratamento básico não foi concluído/.test(env(ex8({}, { tratamento: { aps: "nao_concluido", motivo: "" } })).erro || ""));
+  const nc = ex8({}, { tratamento: { aps: "nao_concluido", motivo: "Falta a orientação de dieta" } });
+  T("\"ainda não\" com o motivo fica guardado", env(nc).ok && val(nc.id, "tratamento_aps") === "não concluído" && val(nc.id, "tratamento_aps_motivo") === "Falta a orientação de dieta");
+  const MOT = require("vm").runInContext("MOTIVOS_SEM_ODONTOGRAMA", R.G.ctx), so = ex8({});
+  Object.assign(so, { odontograma: "nao", odontogramaMotivo: MOT[0], dentes: {}, vigilancia: [], placa: null, gengivite: null, protese: { sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false }, resultado: { classe: "", risco: "x", motivos: [], ceod: null, cpod: null } });
+  T("sem odontograma: tratamento não avaliado", env(so).ok && val(so.id, "tratamento_aps") === "não avaliado (sem odontograma)");
+  // Nível por DSEI: a coroa de aço passa para a atenção especializada no Yanomami.
+  T("só a coordenação muda o nível dos procedimentos", !R.P(R.ANA, { acao: "salvarNiveis", dsei: "Yanomami", ajustes: { coroa: "especializada" } }).ok);
+  const sn = R.P(R.C, { acao: "salvarNiveis", dsei: "Yanomami", ajustes: { coroa: "especializada", naoExiste: "especializada", art: "aps" } });
+  T("a coordenação passa a coroa de aço para a atenção especializada (o resto é ignorado)", sn.ok && JSON.stringify(sn.ajustes) === '{"coroa":"especializada"}', sn);
+  const t1 = R.P(R.ANA, { acao: "territorios" });
+  T("o app do DSEI recebe o nível junto com as listas", JSON.stringify(t1.niveis) === '{"Yanomami":{"coroa":"especializada"}}' && /\|/.test(t1.versao), t1.niveis);
+  const co = ex8({ mud: { 85: { faces: { O: "ca" }, procs: { coroa: "indicado" } } } }, { tratamento: { aps: "concluido" } });
+  T("coroa indicada, especializada neste DSEI: não é pendência da APS", env(co).ok && val(co.id, "tratamento_aps") === "concluído" && val(co.id, "pendencias_aps") === 0, val(co.id, "tratamento_aps"));
+  T("mudar o nível fica anotado em Acessos", ab("Acessos").some(l => l[7] === "Mudou o nível dos procedimentos" && /Coroa de aço/.test(l[8])));
+}
+
+/* ---------------------------------------------------------------- consulta de retorno (cenário separado) */
+parte("consulta de retorno");
+{
+  const R = cenario(), ab = n => R.G.est.sheets[n] || [];
+  const base = o => Object.assign(exame(o), { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] });
+  const plano = base({ id: "PL1", sufixo: "PRPRPRP2", data: "2026-10-01", mud: { 46: { faces: { O: "ca" }, procs: { art: "indicado" } }, 36: { faces: { O: "ca" } } } });
+  T("(o plano: ART indicado no 46 e cárie ativa sem conduta no 36)", R.P(R.ANA, { acao: "enviarExame", registro: plano }).ok);
+  const cod = "RR-SUR-SAU-PRPRPRP2", d46 = JSON.parse(ab("Exames").find(l => l[0] === "PL1").at(-1)).dentes[46], d36 = JSON.parse(ab("Exames").find(l => l[0] === "PL1").at(-1)).dentes[36];
+  const ret = (o) => Object.assign({ id: "RT1", planoId: "PL1", dataExame: "2026-10-20", localAtendimento: "UBSI", dentes: {}, encaminhamentos: {}, tratamento: { aps: "" } }, o);
+  T("CD de outro DSEI não registra o retorno", !R.P(R.CARLA, { acao: "enviarRetorno", retorno: ret({}) }).ok);
+  T("data antes do exame é recusada", /data do retorno/.test(R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ dataExame: "2026-09-01" }) }).erro || ""));
+  // Bruno (outro CD do mesmo DSEI) faz o ART no 46: sobra a cárie do 36 sem conduta.
+  let q = R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ dentes: { 46: Object.assign({}, d46, { procs: { art: "realizado" } }) } }) });
+  T("qualquer CD do mesmo DSEI registra o retorno; com pendência, o tratamento continua não concluído", q.ok && q.situacao === "pendente" && q.plano.dentes[46].procs.art === "realizado", q.erro || q.situacao);
+  T("o retorno fica na aba Retornos, com o plano e o que mudou", ab("Retornos").length === 2 && ab("Retornos")[1][1] === "PL1" && ab("Retornos")[1][11] === "46" && ab("Retornos")[1][12] === 1, ab("Retornos")[1]);
+  // Segundo retorno: acompanhamento no 36 e o profissional conclui.
+  q = R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ id: "RT2", dataExame: "2026-10-25", dentes: { 36: Object.assign({}, d36, { conduta: { tipo: "acompanhamento", motivo: "Lesão em controle" } }) }, tratamento: { aps: "concluido" } }) });
+  T("sem pendência e com a confirmação: tratamento básico concluído", q.ok && q.situacao === "concluido", q.erro || q.situacao);
+  const ps = R.P(R.ANA, { acao: "pessoa", codigoIndividuo: cod });
+  T("o histórico da pessoa traz os retornos, e o estado do plano soma os dois", ps.ok && ps.retornos.length === 2 && require("vm").runInContext("estadoDoPlano", R.G.ctx)(ps.exames[0], ps.retornos).tratamento.aps === "concluido");
+  T("só quem registrou o retorno pode alterá-lo", /Só quem registrou/.test(R.P(R.ANA, { acao: "enviarRetorno", retorno: ret({ id: "RT2", dataExame: "2026-10-25" }) }).erro || ""));
+  T("retorno com conduta sem o motivo é recusado", /dentes 46/.test(R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ id: "RT3", dentes: { 46: Object.assign({}, d46, { conduta: { tipo: "acompanhamento", motivo: "" } }) } }) }).erro || ""));
+  T("registrar o retorno fica anotado em Acessos", ab("Acessos").some(l => l[7] === "Registrou consulta de retorno" && l[8].indexOf(cod) >= 0));
+  // Odontograma novo da mesma pessoa fecha o plano anterior.
+  const novo = base({ id: "PL2", data: "2026-11-01", vinculo: { codigoIndividuo: cod, chaves: [] }, mud: { 46: { faces: { O: "rest" } }, 36: { faces: { O: "ca" } } } });
+  T("(um odontograma novo da mesma pessoa)", R.P(R.ANA, { acao: "enviarExame", registro: novo }).ok);
+  T("o odontograma novo fecha o plano anterior: retorno no plano antigo é recusado", R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ id: "RT4", dataExame: "2026-11-02" }) }).planoFechado === true);
+  R.G.ctx.fazerBackup("teste");
+  const bkr = Object.values(R.G.est.extras).find(x => x.nome === "Odontograma - backup").abas.Retornos;
+  T("os retornos entram no backup", bkr && bkr.length === 3, bkr && bkr.length);
+}
+
+/* ---------------------------------------------------------------- atividade coletiva e Fichas 3 e 7 (cenário separado) */
+parte("atividade coletiva e Fichas 3 e 7");
+{
+  const R = cenario(), ab = n => R.G.est.sheets[n] || [];
+  const at = o => Object.assign({ tipo: "Escovação dental supervisionada", data: "2026-10-10", polo: "Surucucu", aldeia: "Saúba", participantes: 25, nivel: "medio", local: "comunidade", escovas: 25, cremes: 10, fios: 0 }, o);
+  T("atividade sem participantes é recusada", /número de participantes/.test(R.P(R.ANA, { acao: "registrarAtividade", atividade: at({ participantes: 0 }) }).erro || ""));
+  T("atividade no futuro é recusada", /a data/.test(R.P(R.ANA, { acao: "registrarAtividade", atividade: at({ data: "2099-01-01" }) }).erro || ""));
+  const a1 = R.P(R.ANA, { acao: "registrarAtividade", atividade: at({}) });
+  T("escovação supervisionada com 25 participantes é registrada no DSEI do cadastro", a1.ok && a1.atividade.dsei === "Yanomami" && ab("Atividades").length === 2);
+  R.P(R.ANA, { acao: "registrarAtividade", atividade: at({ tipo: "Educação em saúde", nivel: "superior", local: "estabelecimento", participantes: 12, escovas: 0, cremes: 0 }) });
+  R.P(R.BRUNO, { acao: "registrarAtividade", atividade: at({ tipo: "Aplicação tópica de flúor-gel", participantes: 30, escovas: 0, cremes: 0 }) });
+  T("só quem registrou cancela a atividade", !R.P(R.BRUNO, { acao: "cancelarAtividade", id: a1.atividade.id }).ok);
+  const lt = R.P(R.RT, { acao: "atividades" });
+  T("a RT vê as atividades do DSEI", lt.ok && lt.atividades.length === 3);
+  // Atendimentos de outubro na mesma aldeia: ART realizado, exodontia de decíduo, encaminhamento realizado, analgésico e TC.
+  const e = Object.assign(exame({ id: "FX1", sufixo: "FXFXFXF2", data: "2026-10-12", insumos: ["Escova dental"], gerais: ["Raspagem (RAP) supragengival"],
+    mud: { 46: { faces: { O: "ca" }, procs: { art: "realizado" } }, 85: { faces: { O: "ca" }, procs: { exo_carie: "realizado" } } } }),
+    { localidade: "Aldeia", fezEncaminhamento: "sim", encaminhamentos: { endodontia: "realizado", periodontia: "pendente" }, fezPrescricao: "sim", prescricoes: ["Analgésico"], tratamento: { aps: "concluido" }, fezColetivos: "sim", deuInsumos: "sim" });
+  T("(o atendimento de outubro entra)", R.P(R.ANA, { acao: "enviarExame", registro: e }).ok);
+  T("a Ficha 7 é só para RT e coordenação", !R.P(R.ANA, { acao: "fichasSiasi", mes: "2026-10" }).ok);
+  const fx = R.P(R.RT, { acao: "fichasSiasi", mes: "2026-10" }), f7 = fx.ficha7[0], f3 = fx.ficha3[0];
+  T("Ficha 7: ART, exodontia de decíduo, RAP, encaminhamento realizado, analgésico e TC, e a 1ª consulta vazia", fx.ok && fx.ficha7.length === 1 && f7.tratamento_restauracao_atraumatico === 1 && f7.exodontia_deciduo === 1
+    && f7.exodontia_permanente === 0 && f7.rap_supragengival === 1 && f7.endodontia === 1 && f7.periodontia === 0 && f7.analgesico === 1 && f7.tratamento_odontologico_basico_concluido === 1 && f7.consulta_odontologica_programada === "", f7);
+  T("Ficha 3: escovação e flúor somam participantes, educação conta a atividade pelo nível e local, insumos somam", f3.educ_escovacao_dental_superv === 25 && f3.aplicacao_topica_fluor === 30 && f3.educ_prof_superior_estab === 1
+    && f3.escova_dental_distribuida === 26 && f3.creme_dental_distribuido === 10, f3);
+  T("outro mês vem vazio", R.P(R.RT, { acao: "fichasSiasi", mes: "2026-09" }).ficha7.length === 0);
+  // Retorno em novembro realiza o ART indicado do plano: entra na Ficha 7 de novembro, não na de outubro.
+  const pl = Object.assign(exame({ id: "FX2", sufixo: "FXFXFXG2", data: "2026-10-15", mud: { 16: { faces: { O: "ca" }, procs: { art: "indicado" } } } }), { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] });
+  R.P(R.ANA, { acao: "enviarExame", registro: pl });
+  const d16 = JSON.parse(ab("Exames").find(l => l[0] === "FX2").at(-1)).dentes[16];
+  R.P(R.BRUNO, { acao: "enviarRetorno", retorno: { id: "FXR", planoId: "FX2", dataExame: "2026-11-03", localAtendimento: "UBSI", dentes: { 16: Object.assign({}, d16, { procs: { art: "realizado" } }) }, encaminhamentos: {}, tratamento: { aps: "concluido" } } });
+  const nov = R.P(R.RT, { acao: "fichasSiasi", mes: "2026-11" }).ficha7[0];
+  T("o ART feito no retorno conta no mês do retorno, com o TC", nov && nov.tratamento_restauracao_atraumatico === 1 && nov.tratamento_odontologico_basico_concluido === 1, nov);
+  T("a atividade entra no backup", (R.G.ctx.fazerBackup("teste"), Object.values(R.G.est.extras).find(x => x.nome === "Odontograma - backup").abas.Atividades_coletivas.length === 4));
+}
+
+/* ---------------------------------------------------------------- histórico do SIASI, metas e dicas (cenário separado) */
+parte("histórico do SIASI, metas e dicas");
+{
+  const R = cenario(), H = JSON.parse(require("fs").readFileSync(require("path").join(__dirname, "..", "dados", "historico-siasi.json"), "utf8"));
+  // Um pedaço do arquivo de verdade: todos os indicadores oficiais e as aldeias do Litoral Sul e do Yanomami.
+  const peq = { versao: H.versao, fontes: H.fontes, oficiais: H.oficiais, aldeias: H.aldeias.filter(a => a.dsei === "Litoral Sul" || a.dsei === "Yanomami") };
+  T("o arquivo do app tem os 34 DSEIs e o Brasil, de 2020 a 2026", new Set(H.oficiais.map(r => r.dsei)).size === 35 && new Set(H.oficiais.map(r => r.ano)).size === 7);
+  T("no arquivo, o Litoral Sul em 2025 bate com o PDF do Fala.BR", (r => r && r.cop_pct === 49.3 && r.tc_pct === 48.99 && r.gest_pct === 81.08 && r.menores5_pct === 62 && r.ald_4mais_pct === 55.5)(H.oficiais.find(r => r.dsei === "Litoral Sul" && r.ano === "2025")));
+  T("só a coordenação titular envia o histórico", !R.P(R.RT, { acao: "importarHistorico", historico: peq }).ok && !R.P(R.PAULA, { acao: "importarHistorico", historico: peq }).ok);
+  T("arquivo pequeno demais é recusado", /poucos registros/.test(R.P(R.C, { acao: "importarHistorico", historico: { versao: "x", oficiais: [], aldeias: [] } }).erro || "") || /inválido/.test(R.P(R.C, { acao: "importarHistorico", historico: { versao: "x", oficiais: [], aldeias: [] } }).erro || ""));
+  const im = R.P(R.C, { acao: "importarHistorico", historico: peq });
+  T("a titular envia o histórico: vai para uma planilha separada", im.ok && !!Object.values(R.G.est.extras).find(x => x.nome === "Odontograma - histórico SIASI"), im);
+  const h = R.P(R.ANA, { acao: "historico", dsei: "Litoral Sul" });
+  T("qualquer pessoa vê o histórico de qualquer DSEI (a dentista do Yanomami vê o Litoral Sul)", h.ok && h.oficiais.some(r => r.dsei === "Litoral Sul") && h.oficiais.some(r => r.dsei === "BRASIL") && h.aldeias.length > 100 && h.aldeias.every(a => a.dsei === "Litoral Sul"));
+  T("o histórico não entra na base de exames", !(R.G.est.sheets.Exames || []).slice(1).length);
+  T("meta do PDSI só pela coordenação", !R.P(R.RT, { acao: "salvarMetaPdsi", dsei: "Litoral Sul", indicador: "tc_pct", ano: "2026", valor: 60 }).ok);
+  T("a meta do PDSI fica guardada e volta com o histórico do DSEI", R.P(R.C, { acao: "salvarMetaPdsi", dsei: "Litoral Sul", indicador: "tc_pct", ano: "2026", valor: 60 }).ok && R.P(R.ANA, { acao: "historico", dsei: "Litoral Sul" }).metasPdsi.tc_pct[2026] === 60);
+  const metaDe = require("vm").runInContext("metaDe", R.G.ctx);
+  T("a meta do PDSI vale no lugar da nacional; sem ela, vale a da NT 3", metaDe("tc_pct", 2026, { tc_pct: { 2026: 60 } }).valor === 60 && metaDe("tc_pct", 2026, {}).valor === 58 && metaDe("gest_pct", 2025, {}).valor === 50);
+  // Dicas: nada aparece antes da aprovação da titular.
+  T("antes da aprovação, nenhuma dica aparece para as equipes", h.dicas.aprovadas.length === 0 && !h.dicas.catalogo);
+  const ht = R.P(R.C, { acao: "historico", dsei: "Litoral Sul" });
+  T("a titular vê o catálogo de dicas para aprovar", ht.dicas.catalogo && ht.dicas.catalogo.length === 8);
+  T("só a titular aprova", !R.P(R.PAULA, { acao: "salvarDica", id: "tc_baixo", aprovada: true }).ok);
+  T("a titular aprova a dica com o texto dela", R.P(R.C, { acao: "salvarDica", id: "tc_baixo", aprovada: true, texto: "Priorize o retorno de quem está perto de concluir." }).ok
+    && R.P(R.ANA, { acao: "historico", dsei: "Litoral Sul" }).dicas.aprovadas.map(x => x.texto).join() === "Priorize o retorno de quem está perto de concluir.");
+  T("a RT sugere uma dica; a dentista não", R.P(R.RT, { acao: "sugerirDica", texto: "Fazer mutirão de ART nas escolas." }).ok && !R.P(R.ANA, { acao: "sugerirDica", texto: "Fazer mutirão de ART nas escolas." }).ok);
+  T("a sugestão aparece para a titular", R.P(R.C, { acao: "historico", dsei: "Litoral Sul" }).dicas.sugestoes.some(x => /mutirão/.test(x.texto)));
+  // Indicadores com os dados do app, ao lado do histórico.
+  const e = Object.assign(exame({ id: "IA1", sufixo: "HAHAHAH2", data: hojeBR(), mud: { 46: { faces: { O: "ca" }, procs: { art: "realizado" } }, 36: { faces: { O: "ca" }, procs: { resina: "realizado" } } } }),
+    { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [], tratamento: { aps: "concluido" } });
+  const env = R.P(R.ANA, { acao: "enviarExame", registro: e });
+  T("o exame de teste do indicador foi aceito", env.ok, env);
+  const pn = R.P(R.ANA, { acao: "painel", minha: true });
+  T("o painel traz os indicadores do app: ART entre as restaurações e tratamento concluído", pn.indApp && pn.indApp.art[0] === 1 && pn.indApp.art[1] === 2 && pn.indApp.tc[0] === 1 && pn.indApp.tc[1] === 1, pn.indApp);
+  T("o painel traz o tratamento básico e as idades-índice", pn.resumo.tratamento.concluido === 1 && !!pn.resumo.oficiais);
+  T("a comparação entre DSEIs está em ordem alfabética", (c => c.map(x => x.dsei).join() === c.map(x => x.dsei).sort((a, b) => a.localeCompare(b, "pt-BR")).join())(R.P(R.C, { acao: "painel" }).comparacao));
+}
+
+/* ---------------------------------------------------------------- termo de ciência e cadastro duplicado (cenário separado) */
+parte("termo de ciência");
+{
+  const R = cenario();
+  const e1 = R.P(R.ANA, { acao: "entrar", aparelho: "Teste" });
+  T("o termo vem desligado: a dentista entra sem precisar aceitar", e1.ok && e1.termo && e1.termo.ativo === false && !e1.termo.texto);
+  const t1 = R.P(R.ANA, { acao: "termo" });
+  T("mesmo desligado, o termo pode ser lido na aba Conta", t1.ok && /Termo de Ciência/.test(t1.texto) && /13\.709/.test(t1.texto) && t1.versao === 1 && !t1.versoes);
+  T("só a titular liga o termo", !R.P(R.PAULA, { acao: "salvarTermo", ativo: true }).ok && !R.P(R.RT, { acao: "salvarTermo", ativo: true }).ok);
+  const lig = R.P(R.C, { acao: "salvarTermo", ativo: true });
+  T("a titular liga o termo e vê quantos aceitaram", lig.ok && lig.ativo && lig.aceitaram === 0 && lig.ativos >= 4, lig);
+  const e2 = R.P(R.ANA, { acao: "entrar", aparelho: "Teste" });
+  T("ligado: ao entrar, a dentista recebe o texto para aceitar", e2.termo.ativo && !e2.termo.aceito && /Termo de Ciência/.test(e2.termo.texto));
+  T("a titular não precisa aceitar o termo que ela escreve", R.P(R.C, { acao: "entrar", aparelho: "Teste" }).termo.aceito);
+  T("aceitar uma versão que não é a atual é recusado", R.P(R.ANA, { acao: "aceitarTermo", versao: 7 }).termoMudou === true);
+  const ac = R.P(R.ANA, { acao: "aceitarTermo", versao: 1 });
+  T("a dentista aceita: a versão e a data ficam no cadastro", ac.ok && ac.meu.aceito && ac.meu.aceitoVersao === "1" && /^\d{4}-\d{2}-\d{2}T/.test(ac.meu.aceitoEm));
+  const lu = (G => { const c = G.est.sheets.Usuarios[0]; return email => { const l = G.est.sheets.Usuarios.find(x => x[3] === email); return { v: l[c.indexOf("termo_versao")], em: l[c.indexOf("termo_aceito_em")] }; }; })(R.G);
+  T("na planilha, as colunas termo_versao e termo_aceito_em", String(lu("ana@teste.org").v) === "1" && !!lu("ana@teste.org").em);
+  T("o aceite fica no registro de acessos", (R.G.est.sheets.Acessos || []).some(l => l.join("|").includes("Aceitou o Termo de Ciência")));
+  T("na entrada seguinte, a dentista já não precisa aceitar", R.P(R.ANA, { acao: "entrar", aparelho: "Teste" }).termo.aceito === true);
+  T("texto curto demais é recusado", !R.P(R.C, { acao: "salvarTermo", texto: "curto" }).ok);
+  const novo = "Termo de Ciência, versão revisada pela coordenação. " + "Uso os dados só para o cuidado e a gestão da saúde bucal no DSEI. ".repeat(2);
+  const v2 = R.P(R.C, { acao: "salvarTermo", texto: novo });
+  T("texto novo cria a versão 2 e guarda as duas versões", v2.ok && v2.novaVersao === 2 && v2.versao === 2 && v2.versoes.length === 2 && v2.versoes[0].versao === 1 && /13\.709/.test(v2.versoes[0].texto) && v2.versoes[1].texto === novo.trim(), v2.versoes);
+  T("salvar o mesmo texto não cria versão nova", !R.P(R.C, { acao: "salvarTermo", texto: novo }).novaVersao);
+  const e3 = R.P(R.ANA, { acao: "entrar", aparelho: "Teste" });
+  T("com a versão 2, a dentista aceita de novo", !e3.termo.aceito && e3.termo.aceitoVersao === "1" && e3.termo.texto === novo.trim());
+  T("desligar o termo volta a liberar a entrada", R.P(R.C, { acao: "salvarTermo", ativo: false }).ok && R.P(R.ANA, { acao: "entrar", aparelho: "Teste" }).termo.ativo === false);
+
+  parte("cadastro duplicado");
+  const idAna = R.idDe("ana@teste.org"), idBruno = R.idDe("bruno@teste.org");
+  const exAna = R.P(R.ANA, { acao: "enviarExame", registro: Object.assign(exame({ sufixo: "DPDPDP23" }), { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [], tratamento: { aps: "concluido" } }) });
+  T("exame do cadastro que vai ser marcado como duplicado", exAna.ok, exAna);
+  T("só a titular marca um cadastro como duplicado", !R.P(R.RT, { acao: "marcarDuplicado", id: idAna, de: idBruno }).ok && !R.P(R.PAULA, { acao: "marcarDuplicado", id: idAna, de: idBruno }).ok);
+  T("não dá para marcar um cadastro como duplicado dele mesmo", !R.P(R.C, { acao: "marcarDuplicado", id: idAna, de: idAna }).ok);
+  const nEx = (R.G.est.sheets.Exames || []).length, nUs = R.G.est.sheets.Usuarios.length;
+  const md = R.P(R.C, { acao: "marcarDuplicado", id: idAna, de: idBruno });
+  T("marcar como duplicado: desativa e guarda qual é o cadastro certo", md.ok && md.usuario.status === "desativado" && md.usuario.duplicado_de === idBruno, md);
+  T("as sessões do cadastro duplicado deixam de valer", !R.P(R.ANA, { acao: "entrar", aparelho: "Teste" }).ok);
+  T("nada é apagado: os cadastros e os exames continuam", R.G.est.sheets.Usuarios.length === nUs && (R.G.est.sheets.Exames || []).length === nEx);
+  T("fica no registro de acessos, com os dois cadastros", (R.G.est.sheets.Acessos || []).some(l => /Marcou cadastro como duplicado/.test(l.join("|")) && /é duplicado de Bruno Dentista/.test(l.join("|"))));
+  T("o cadastro certo não pode estar marcado como duplicado", !R.P(R.C, { acao: "marcarDuplicado", id: idBruno, de: idAna }).ok);
+  T("reativar tira a marca de duplicado", R.P(R.C, { acao: "reativar", id: idAna }).ok && (c => String(R.G.est.sheets.Usuarios.find(l => l[0] === idAna)[c.indexOf("duplicado_de")] || "") === "")(R.G.est.sheets.Usuarios[0]));
 }
 
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);

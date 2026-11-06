@@ -33,7 +33,8 @@ function criar(opcoes) {
       },
       appendRow: l => { const R = rows(self._nome); const n = self.getLastRow(); R.length = n; R.push(l.map((x, j) => gravar(self._nome, n + 1, j + 1, x instanceof Date ? x.toISOString() : x))); return self; },
       insertRowAfter: i => { rows(self._nome).splice(i, 0, []); return self; },
-      insertRowsAfter: (i, n) => { rows(self._nome).splice(i, 0, ...Array.from({ length: n }, () => [])); return self; },
+      insertRowsAfter: (i, n) => { const R = rows(self._nome), m = maxDe(self._nome); if (i < R.length) R.splice(i, 0, ...Array.from({ length: n }, () => [])); m.r = Math.max(m.r, R.length) + n; return self; },
+      insertColumnsAfter: (i, n) => { const m = maxDe(self._nome); m.c = self.getMaxColumns() + n; return self; },
       deleteRows: (i, n) => { rows(self._nome).splice(i - 1, n); const m = maxDe(self._nome); m.r = Math.max(1, m.r - n); return self; },
       // Como no Google: a aba nasce com 1000 linhas e 26 colunas (contam no limite de células mesmo vazias).
       getMaxRows: () => Math.max(maxDe(self._nome).r, rows(self._nome).length),
