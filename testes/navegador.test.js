@@ -573,6 +573,14 @@ for (let i = 0; i < 8; i++) {
   T("início: \"Pessoas atendidas\" e \"Atendimentos registrados\", com quantos têm classificação e odontograma", /Pessoas atendidas/.test(stats) && /com classificação de risco: \d/.test(stats)
     && /Atendimentos registrados/.test(stats) && /com odontograma: \d/.test(stats) && !/examinadas/.test(stats), stats);
   T("início: diz de quem são os números", /Seus atendimentos/.test(status), status);
+  // Atividade coletiva: registrar pela aba do Dia B.
+  await fecharJanela(pg); await irAba(pg, "acoes"); await pg.waitForTimeout(1200);
+  await pg.click("#atNova"); await pg.waitForTimeout(150);
+  await pg.selectOption("#atTipo", "Escovação dental supervisionada"); await pg.fill("#atPolo", "Surucucu"); await pg.fill("#atAldeia", "Hakoma");
+  await pg.fill("#atPart", "18"); await pg.selectOption("#atNivel", "medio"); await pg.selectOption("#atLocal", "comunidade"); await pg.fill("#atEscovas", "18");
+  await pg.click("#atSalvar"); await pg.waitForTimeout(1800);
+  T("atividade coletiva registrada pela tela aparece na lista e na planilha", /Escovação dental supervisionada/.test(await pg.textContent("#ativBox")) && (G.est.sheets.Atividades || []).some(l => l[1] === "Escovação dental supervisionada" && l[7] === 18));
+  T("a dentista não vê a exportação das Fichas 3 e 7 (é da RT e da coordenação)", !await pg.$("#fiBaixar"));
   T("sem erros na página (sem odontograma)", !pg.erros.length, pg.erros);
   await ctx.close();
   // Administração (titular): espaço, erros explicados e dados para análise.

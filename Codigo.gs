@@ -139,7 +139,7 @@ const BK_ALERTAS_CAB = ['data', 'hora', 'tipo', 'aba', 'registro', 'detalhe'];
 const BK_HIST_CAB = ['detectado_em', 'aba', 'registro', 'campo', 'valor_anterior', 'valor_novo'];
 const BK_POP_CAB = ['guardada_em', 'versao', 'impressao', 'parte', 'dados_populacao_json'];
 const BK_ACESSOS_CAB = CAB_ACESSOS.concat(['entrou_no_backup_em']);
-const BK_ABAS = ['Sobre', 'Alertas', 'Exames', 'Exames_versoes', 'Cadastros', 'Historico', 'Acoes_Dia_B', 'Retornos', 'Convites', 'Codigos_reservados', 'Acessos', 'Populacao'];
+const BK_ABAS = ['Sobre', 'Alertas', 'Exames', 'Exames_versoes', 'Cadastros', 'Historico', 'Acoes_Dia_B', 'Retornos', 'Atividades_coletivas', 'Convites', 'Codigos_reservados', 'Acessos', 'Populacao'];
 // O que não entra na "impressão" clínica do exame: situação, cancelamento, número do exame e resultado (o servidor recalcula),
 // quem enviou e datas de controle. Se a impressão muda, o conteúdo clínico do exame mudou.
 const FORA_DA_IMPRESSAO = ['situacao', 'cancelamento', 'atualizadoEm', 'numeroExame', 'resultado', 'profissional', 'versao', 'dono', 'envio', 'usuarioId', 'codigoIndividuo'];
@@ -149,6 +149,7 @@ function registrosDoBackup() {
     { origem: 'Usuarios', aba: 'Cadastros', cab: CAB_USUARIOS, chave: 'id', semHistorico: ['codigo_hash', 'ultimo_acesso'] },
     { origem: 'Acoes', aba: 'Acoes_Dia_B', cab: CAB_ACOES, chave: 'id', semHistorico: [] },
     { origem: 'Retornos', aba: 'Retornos', cab: CAB_RETORNOS, chave: 'id', semHistorico: [] },
+    { origem: 'Atividades', aba: 'Atividades_coletivas', cab: CAB_ATIVIDADES, chave: 'id', semHistorico: [] },
     { origem: 'Convites', aba: 'Convites', cab: CAB_CONVITES, chave: 'id', semHistorico: ['token_hash'] },
     { origem: ABA_RESERVAS, aba: 'Codigos_reservados', cab: CAB_RESERVAS, chave: 'codigo', semHistorico: [] }
   ];
@@ -1254,6 +1255,10 @@ const ACOES = {
   enviarExame:    { escreve: true, fn: enviarExame },
   enviarExames:   { escreve: true, fn: enviarExames },
   enviarRetorno:  { escreve: true, fn: enviarRetorno },
+  registrarAtividade: { escreve: true, fn: registrarAtividade },
+  cancelarAtividade:  { escreve: true, fn: cancelarAtividade },
+  atividades:     { fn: atividades },
+  fichasSiasi:    { perfis: ['rt', 'coord'], fn: fichasSiasi },
   dadosAnalise:   { fn: dadosAnalise },
   limparErros:    { perfis: ['coord'], escreve: true, fn: limparErros },
   atualizarAnalise: { perfis: ['coord'], fn: atualizarAnalisePelaTitular },
@@ -2640,6 +2645,148 @@ function enviarRetorno(d, u) {
   registrar(u, antigo ? 'Corrigiu consulta de retorno' : 'Registrou consulta de retorno', cod + ' · plano de ' + dataBR(plano.dataExame) + ' · ' + Object.keys(dentes).length + ' dente(s) · tratamento básico: ' + NOMES_TRATAMENTO[sit].toLowerCase());
   return { ok: true, retorno: reg, plano: estado, situacao: sit };
 }
+/* ---------- atividade coletiva (Ficha 3) ----------
+ * Escovação dental supervisionada, aplicação tópica de flúor-gel ou educação em saúde: uma linha por atividade, com o número
+ * de participantes, o nível de quem conduziu, onde foi e os insumos distribuídos. Quem faz exames registra no próprio DSEI. */
+const CAB_ATIVIDADES = ['id', 'tipo', 'dsei', 'polo', 'aldeia', 'cod_aldeia', 'data', 'participantes', 'nivel_profissional', 'local', 'escovas', 'cremes', 'fios',
+  'observacoes', 'usuario_id', 'profissional', 'criado_em', 'situacao', 'cancelado_em'];
+function lerAtividades() { return lerAbaPrincipal('Atividades', CAB_ATIVIDADES).filter(function (a) { return a.id; }); }
+/** @param {any} a */
+function salvarAtividade(a) {
+  const aba = obterAba(planilha(), 'Atividades', CAB_ATIVIDADES);
+  const linha = linhaSegura(CAB_ATIVIDADES.map(function (k) { return a[k] == null ? '' : a[k]; }));
+  const n = aba.getLastRow(), ids = n > 1 ? aba.getRange(2, 1, n - 1, 1).getValues().map(function (l) { return String(l[0]); }) : [];
+  const i = ids.indexOf(String(a.id));
+  if (i >= 0) aba.getRange(i + 2, 1, 1, CAB_ATIVIDADES.length).setValues([linha]); else aba.appendRow(linha);
+}
+/** @param {any} v @param {number} max */
+function inteiroEntre(v, max) { const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= max ? n : -1; }
+/** @param {any} d @param {any} u */
+function registrarAtividade(d, u) {
+  const a = d.atividade || {}, dsei = dseiClinico(u);
+  if (!dsei) return { ok: false, erro: 'Para registrar atividades, o cadastro precisa ter um DSEI.' };
+  /** @type {string[]} */ const f = [];
+  if (TIPOS_ATIVIDADE.indexOf(a.tipo) < 0) f.push('o tipo de atividade');
+  if (!dataValida(a.data) || a.data > hojeIso()) f.push('a data (até hoje)');
+  if (!String(a.polo || '').trim() || !String(a.aldeia || '').trim()) f.push('o polo base e a aldeia');
+  const part = inteiroEntre(a.participantes, 5000); if (part < 1) f.push('o número de participantes (de 1 a 5.000)');
+  if (!NIVEIS_PROF[a.nivel]) f.push('o nível de quem conduziu (médio ou superior)');
+  if (!LOCAIS_ATIVIDADE[a.local]) f.push('o local (comunidade ou estabelecimento)');
+  const ins = ['escovas', 'cremes', 'fios'].map(function (k) { return inteiroEntre(a[k] || 0, 5000); });
+  if (ins.some(function (x) { return x < 0; })) f.push('os insumos distribuídos (números de 0 a 5.000)');
+  if (f.length) return { ok: false, erro: 'A atividade não foi gravada. Falta ou está errado: ' + f.join('; ') + '.' };
+  const id = String(a.id || Utilities.getUuid()), antiga = lerAtividades().filter(function (x) { return x.id === id; })[0];
+  if (antiga && antiga.usuario_id !== u.id) return { ok: false, erro: 'Só quem registrou esta atividade pode alterá-la.' };
+  const reg = { id: id, tipo: a.tipo, dsei: dsei, polo: String(a.polo).trim().slice(0, 150), aldeia: String(a.aldeia).trim().slice(0, 150), cod_aldeia: String(a.codAldeia || '').slice(0, 20),
+    data: a.data, participantes: part, nivel_profissional: a.nivel, local: a.local, escovas: ins[0], cremes: ins[1], fios: ins[2], observacoes: String(a.observacoes || '').slice(0, 1000),
+    usuario_id: u.id, profissional: u.nome || '', criado_em: antiga ? antiga.criado_em : new Date().toISOString(), situacao: 'válida', cancelado_em: '' };
+  salvarAtividade(reg);
+  registrar(u, antiga ? 'Corrigiu atividade coletiva' : 'Registrou atividade coletiva', reg.tipo + ' · ' + reg.aldeia + ' · ' + dataBR(reg.data) + ' · ' + part + ' participantes');
+  return { ok: true, atividade: reg };
+}
+/** @param {any} d @param {any} u */
+function cancelarAtividade(d, u) {
+  const a = lerAtividades().filter(function (x) { return x.id === String(d.id || ''); })[0];
+  if (!a || a.situacao === 'cancelada') return { ok: false, erro: 'Atividade não encontrada.' };
+  if (a.usuario_id !== u.id) return { ok: false, erro: 'Só quem registrou esta atividade pode cancelá-la.' };
+  a.situacao = 'cancelada'; a.cancelado_em = new Date().toISOString(); salvarAtividade(a);
+  registrar(u, 'Cancelou atividade coletiva', a.tipo + ' · ' + a.aldeia + ' · ' + dataBR(a.data));
+  return { ok: true };
+}
+/** Atividades do DSEI de quem pede (a coordenação vê todas), da mais nova para a mais antiga. @param {any} d @param {any} u */
+function atividades(d, u) {
+  const dsei = u.perfil === 'coord' && !u.dsei ? String(d.dsei || '') : String(u.dsei || '');
+  const l = lerAtividades().filter(function (a) { return a.situacao !== 'cancelada' && (!dsei || a.dsei === dsei); })
+    .sort(function (x, y) { return String(y.data).localeCompare(String(x.data)) || String(y.criado_em).localeCompare(String(x.criado_em)); });
+  return { ok: true, atividades: l.slice(0, 300).map(function (a) { return Object.assign({}, a, { minha: a.usuario_id === u.id }); }) };
+}
+
+/* ---------- consolidados das Fichas 3 e 7 do SIASI, por aldeia, num mês ----------
+ * Somam o que o app registrou, para ajudar a lançar no SIASI. O que o app não registra (1ª consulta programática,
+ * agendamento e demanda espontânea) sai vazio, com o aviso. */
+const COLS_FICHA7 = ['consulta_odontologica_programada', 'consultas_atendidas_por_agendamento', 'demanda_espontanea', 'aplicacao_terapeutica_de_fluor', 'aplicacao_cariostatico',
+  'aplicacao_selante', 'evidencia_placa_bacteriana', 'rap_supragengival', 'rap_subgengival', 'protecao_complexo_dentino_pulpar', 'tratamento_restauracao_atraumatico',
+  'restauracao_ionomero_de_vidro', 'restauracao_de_resina', 'restauracao_amalgama', 'outra_restauracao', 'pulpotomia', 'exodontia_deciduo', 'exodontia_permanente',
+  'outro_procedimento_cirurgico', 'sutura', 'tratamento_alveolite', 'outro_procedimento_urgencia', 'endodontia', 'periodontia', 'protese', 'cirurgia_buco_maxilo_facial',
+  'ortodontia', 'radiologia', 'analgesico', 'anti_inflamatorio', 'antibiotico', 'outra_prescricao', 'tratamento_odontologico_basico_concluido'];
+/** @type {any} */
+const PROC_FICHA7 = { cdf: 'aplicacao_cariostatico', selante: 'aplicacao_selante', pcdp: 'protecao_complexo_dentino_pulpar', art: 'tratamento_restauracao_atraumatico',
+  civ: 'restauracao_ionomero_de_vidro', resina: 'restauracao_de_resina', amalgama: 'restauracao_amalgama', coroa: 'outra_restauracao', pulpotomia: 'pulpotomia' };
+/** @type {any} */
+const GERAL_FICHA7 = { 'Evidenciação de placa bacteriana': 'evidencia_placa_bacteriana', 'Raspagem (RAP) supragengival': 'rap_supragengival', 'Raspagem (RAP) subgengival': 'rap_subgengival',
+  'Sutura': 'sutura', 'Tratamento de alveolite': 'tratamento_alveolite', 'Outro procedimento cirúrgico': 'outro_procedimento_cirurgico', 'Outro procedimento de urgência': 'outro_procedimento_urgencia' };
+/** @type {any} */
+const ENC_FICHA7 = { endodontia: 'endodontia', periodontia: 'periodontia', protese: 'protese', cbmf: 'cirurgia_buco_maxilo_facial', ortodontia: 'ortodontia', radiologia: 'radiologia' };
+const PRESC_FICHA7 = ['analgesico', 'anti_inflamatorio', 'antibiotico', 'outra_prescricao'];
+const COLS_FICHA3 = ['educ_prof_medio_comunidade', 'educ_prof_medio_estab', 'educ_prof_superior_comunidade', 'educ_prof_superior_estab', 'educ_escovacao_dental_superv',
+  'aplicacao_topica_fluor', 'escova_dental_distribuida', 'creme_dental_distribuido', 'fio_dental_distribuido'];
+/** @param {any} d @param {any} u */
+function fichasSiasi(d, u) {
+  const mes = String(d.mes || '');
+  if (!/^\d{4}-\d{2}$/.test(mes)) return { ok: false, erro: 'Escolha o mês (AAAA-MM).' };
+  const dsei = u.perfil === 'rt' ? String(u.dsei || '') : String(d.dsei || u.dsei || '');
+  if (!dseiValido(dsei)) return { ok: false, erro: 'Escolha um DSEI da lista.' };
+  /** @type {any} */ const f7 = {}, f3 = {};
+  const chave = function (/** @type {any} */ x) { return [x.polo || '', x.aldeia || '', x.codAldeia || x.cod_aldeia || ''].join('|'); };
+  const linha7 = function (/** @type {any} */ x) { const k = chave(x); if (!f7[k]) { f7[k] = { polo: x.polo || '', aldeia: x.aldeia || '', codigo_aldeia: x.codAldeia || '' }; COLS_FICHA7.slice(3).forEach(function (c) { f7[k][c] = 0; }); } return f7[k]; };
+  const linha3 = function (/** @type {any} */ x) { const k = chave(x); if (!f3[k]) { f3[k] = { polo: x.polo || '', aldeia: x.aldeia || '', codigo_aldeia: x.codAldeia || x.cod_aldeia || '' }; COLS_FICHA3.forEach(function (c) { f3[k][c] = 0; }); } return f3[k]; };
+  const doMes = function (/** @type {any} */ dt) { return String(dt || '').slice(0, 7) === mes; };
+  const exames = todosExamesCompletos().filter(function (e) { return exameValido(e) && e.dsei === dsei; });
+  /** Procedimentos realizados num dente que o estado anterior ainda não tinha como realizados. @param {any} l @param {any} n @param {any} antes @param {any} depois */
+  const contarDente = function (l, n, antes, depois) {
+    const pa = (antes && antes.procs) || {}, pd = (depois && depois.procs) || {};
+    Object.keys(pd).forEach(function (k) {
+      if (pd[k] !== 'realizado' || pa[k] === 'realizado') return;
+      if (PROC_FICHA7[k]) l[PROC_FICHA7[k]]++;
+      if (k === 'exo_carie' || k === 'exodontia') l[decidDe(n) ? 'exodontia_deciduo' : 'exodontia_permanente']++;
+    });
+  };
+  exames.forEach(function (e) {
+    if (!doMes(e.dataExame)) return;
+    const l = linha7(e), ds = e.dentes || {};
+    Object.keys(ds).forEach(function (n) { if (ds[n].status === 'presente') contarDente(l, n, null, ds[n]); });
+    if (Object.keys(ds).some(function (n) { return ((ds[n] || {}).procs || {}).verniz === 'realizado'; })) l.aplicacao_terapeutica_de_fluor++;
+    (e.gerais || []).forEach(function (g) { if (GERAL_FICHA7[g]) l[GERAL_FICHA7[g]]++; });
+    Object.keys(e.encaminhamentos || {}).forEach(function (k) { if (e.encaminhamentos[k] === 'realizado' && ENC_FICHA7[k]) l[ENC_FICHA7[k]]++; });
+    (e.prescricoes || []).forEach(function (p) { const i = PRESCRICOES.indexOf(p); if (i >= 0) l[PRESC_FICHA7[i]]++; });
+    if ((e.tratamento || {}).aps === 'concluido') l.tratamento_odontologico_basico_concluido++;
+    // Insumos entregues no atendimento individual: uma unidade de cada item marcado.
+    const l3 = linha3(e);
+    (e.insumos || []).forEach(function (x) { const c = { 'Escova dental': 'escova_dental_distribuida', 'Creme dental': 'creme_dental_distribuido', 'Fio dental': 'fio_dental_distribuido' }[x]; if (c) l3[c]++; });
+  });
+  // Retornos do mês: só o que passou a ser realizado nele (e os encaminhamentos que passaram a realizados).
+  const porId = {}; exames.forEach(function (e) { /** @type {any} */ (porId)[e.id] = e; });
+  /** @type {any} */ const porPlano = {};
+  lerRetornos().filter(function (r) { return r.dsei === dsei && r.situacao !== 'cancelado'; }).forEach(function (r) { (porPlano[r.planoId] = porPlano[r.planoId] || []).push(r); });
+  Object.keys(porPlano).forEach(function (pid) {
+    const plano = /** @type {any} */ (porId)[pid]; if (!plano) return;
+    let est = estadoDoPlano(plano, []);
+    porPlano[pid].sort(function (a, b) { return String(a.dataExame).localeCompare(String(b.dataExame)) || String(a.criadoEm).localeCompare(String(b.criadoEm)); }).forEach(function (r) {
+      if (doMes(r.dataExame)) {
+        const l = linha7(plano);
+        Object.keys(r.dentes || {}).forEach(function (n) { contarDente(l, n, est.dentes[n], r.dentes[n]); });
+        Object.keys(r.encaminhamentos || {}).forEach(function (k) { if (r.encaminhamentos[k] === 'realizado' && (est.encaminhamentos || {})[k] !== 'realizado' && ENC_FICHA7[k]) l[ENC_FICHA7[k]]++; });
+        if ((r.tratamento || {}).aps === 'concluido') l.tratamento_odontologico_basico_concluido++;
+      }
+      est = estadoDoPlano(est, [Object.assign({}, r, { planoId: est.id })]);
+    });
+  });
+  lerAtividades().filter(function (a) { return a.situacao !== 'cancelada' && a.dsei === dsei && doMes(a.data); }).forEach(function (a) {
+    const l = linha3(a), p = Number(a.participantes) || 0;
+    if (a.tipo === 'Educação em saúde') l['educ_prof_' + (a.nivel_profissional === 'superior' ? 'superior' : 'medio') + '_' + (a.local === 'estabelecimento' ? 'estab' : 'comunidade')]++;
+    if (a.tipo === 'Escovação dental supervisionada') l.educ_escovacao_dental_superv += p;
+    if (a.tipo === 'Aplicação tópica de flúor-gel') l.aplicacao_topica_fluor += p;
+    l.escova_dental_distribuida += Number(a.escovas) || 0; l.creme_dental_distribuido += Number(a.cremes) || 0; l.fio_dental_distribuido += Number(a.fios) || 0;
+  });
+  const ord = function (/** @type {any} */ x, /** @type {any} */ y) { return String(x.polo).localeCompare(String(y.polo)) || String(x.aldeia).localeCompare(String(y.aldeia)); };
+  const r7 = Object.keys(f7).map(function (k) { return f7[k]; }).sort(ord), r3 = Object.keys(f3).map(function (k) { return f3[k]; }).sort(ord);
+  r7.forEach(function (l) { l.consulta_odontologica_programada = ''; l.consultas_atendidas_por_agendamento = ''; l.demanda_espontanea = ''; });
+  registrar(u, 'Exportou as Fichas 3 e 7', 'DSEI ' + dsei + ' · ' + mes);
+  return { ok: true, dsei: dsei, mes: mes, ficha7: r7, ficha3: r3, colunas7: ['polo', 'aldeia', 'codigo_aldeia'].concat(COLS_FICHA7), colunas3: ['polo', 'aldeia', 'codigo_aldeia'].concat(COLS_FICHA3),
+    avisos: ['1ª consulta odontológica programática, consultas por agendamento e por demanda espontânea saem vazias: o app não registra o tipo de consulta. Preencha no SIASI.',
+      'Raspagens contam atendimentos, não sextantes.', 'Pulpectomia e selamento provisório não têm campo na Ficha 7 e ficam de fora.',
+      'Encaminhamentos contam só os realizados (usuário referenciado).', 'Insumos somam os entregues nas atividades e um de cada item marcado nos atendimentos individuais.'] };
+}
 /** @param {any} a @param {any} b */
 function mesesEntre(a, b) {
   const x = new Date(String(a) + 'T12:00:00'), y = new Date(String(b) + 'T12:00:00');
@@ -3601,6 +3748,12 @@ function estadoDoPlano(plano, retornos) {
     });
   return e;
 }
+// Atividade coletiva (Ficha 3): um registro por atividade, com o número de participantes.
+var TIPOS_ATIVIDADE = ["Escovação dental supervisionada", "Aplicação tópica de flúor-gel", "Educação em saúde"];
+/** @type {any} */
+var NIVEIS_PROF = {medio: "Nível médio", superior: "Nível superior"};
+/** @type {any} */
+var LOCAIS_ATIVIDADE = {comunidade: "Na comunidade", estabelecimento: "No estabelecimento de saúde"};
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;

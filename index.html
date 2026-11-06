@@ -949,6 +949,8 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     <div id="acaoForm"></div>
     <p class="dica" id="acoesStatus" style="margin:0 4px 12px"></p>
     <div id="acoesLista"></div>
+    <div id="ativBox"></div>
+    <div id="fichasBox"></div>
   </section>
 
   <!-- EXAME -->
@@ -2735,7 +2737,7 @@ function irAba(a) {
   $$(".abas button").forEach(b => b.setAttribute("aria-selected", b.dataset.aba === a));
   ["inicio","acoes","exame","lista","painel","config","acesso","equipe","admin"].forEach(x => $("#aba-" + x).hidden = x !== a);
   if (a === "inicio") { carregarInicio(); if (navigator.onLine && fazExames() && (!estado.nuvemEm || Date.now() - estado.nuvemEm > 60000)) { estado.nuvemEm = Date.now(); carregarNuvem(); } }
-  if (a === "acoes") carregarAcoes();
+  if (a === "acoes") { carregarAcoes(); carregarAtividades(); }
   if (a === "acesso") renderAcesso();
   if (a === "equipe") carregarEquipe();
   if (a === "admin") carregarAdmin();
@@ -3108,6 +3110,12 @@ function estadoDoPlano(plano, retornos) {
     });
   return e;
 }
+// Atividade coletiva (Ficha 3): um registro por atividade, com o número de participantes.
+var TIPOS_ATIVIDADE = ["Escovação dental supervisionada", "Aplicação tópica de flúor-gel", "Educação em saúde"];
+/** @type {any} */
+var NIVEIS_PROF = {medio: "Nível médio", superior: "Nível superior"};
+/** @type {any} */
+var LOCAIS_ATIVIDADE = {comunidade: "Na comunidade", estabelecimento: "No estabelecimento de saúde"};
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
@@ -4455,6 +4463,75 @@ document.addEventListener("click", e => {
   if (a === "novaAcao") { estAcoes.form = true; return irAba("acoes"); }
   if (a === "enviar") { estL.filtro = "enviar"; return irAba("lista"); }
   if (a === "reavaliar") return abrirReavaliar();
+});
+
+/* ---------- atividades coletivas (Ficha 3) e exportação das Fichas 3 e 7 ---------- */
+const estAtiv = {lista: null, form: false, msg: ""};
+async function carregarAtividades() {
+  renderAtividades();
+  if (!navigator.onLine || !sessao() || !cfg().url) return;
+  try { estAtiv.lista = (await api("atividades")).atividades; } catch (err) { estAtiv.msg = err.message; }
+  if (estado.aba === "acoes") renderAtividades();
+}
+function renderAtividades() {
+  const box = $("#ativBox"); if (!box) return;
+  const faz = fazExames(), dsei = dseiFixo() || "", L = listaDoDsei(dsei);
+  const form = faz && estAtiv.form ? `<div class="bloco"><h2 style="margin-bottom:6px">Nova atividade coletiva</h2>
+      <p class="dica" style="margin:0 0 12px">Para a Ficha 3 do SIASI. Os atendimentos individuais continuam no exame; aqui entra a atividade com o grupo.</p>
+      <div class="grade">
+        <label class="campo">Atividade<select id="atTipo"><option value="">Escolha</option>${TIPOS_ATIVIDADE.map(t => `<option>${esc(t)}</option>`).join("")}</select></label>
+        <label class="campo">Data<input id="atData" type="date" value="${hoje()}" max="${hoje()}"></label>
+        <label class="campo">Polo base<input id="atPolo" list="atPolos" autocomplete="off"></label>
+        <label class="campo">Aldeia ou comunidade<input id="atAldeia" list="atAldeias" autocomplete="off"></label>
+        <label class="campo">Participantes<input id="atPart" type="number" min="1" max="5000" inputmode="numeric"></label>
+        <label class="campo">Quem conduziu<select id="atNivel"><option value="">Escolha</option>${Object.entries(NIVEIS_PROF).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select></label>
+        <label class="campo">Onde<select id="atLocal"><option value="">Escolha</option>${Object.entries(LOCAIS_ATIVIDADE).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select></label>
+        <label class="campo">Escovas distribuídas<input id="atEscovas" type="number" min="0" max="5000" value="0" inputmode="numeric"></label>
+        <label class="campo">Cremes dentais distribuídos<input id="atCremes" type="number" min="0" max="5000" value="0" inputmode="numeric"></label>
+        <label class="campo">Fios dentais distribuídos<input id="atFios" type="number" min="0" max="5000" value="0" inputmode="numeric"></label>
+        <label class="campo largo">Observações<textarea id="atObs" placeholder="Sem dados que identifiquem as pessoas"></textarea></label>
+      </div>
+      <datalist id="atPolos">${L ? L.polos.map(x => `<option value="${esc(x.n)}">`).join("") : ""}</datalist>
+      <datalist id="atAldeias">${L ? L.aldeias.map(x => `<option value="${esc(x.n)}">`).join("") : ""}</datalist>
+      <div class="acoes-l"><button class="prim" id="atSalvar">Salvar atividade</button><button class="sec" id="atFechar">Cancelar</button></div></div>` : "";
+  const l = estAtiv.lista;
+  const lista = !l ? `<p class="dica">${navigator.onLine ? "Carregando as atividades…" : "As atividades aparecem quando houver internet."}</p>` : !l.length ? `<p class="dica">Nenhuma atividade coletiva registrada ainda.</p>`
+    : `<div class="tabela"><table class="conta"><thead><tr><th>Data</th><th>Atividade</th><th>Aldeia</th><th>Participantes</th><th>Quem conduziu</th><th></th></tr></thead><tbody>${l.slice(0, 50).map(a => `<tr><td>${fmtData(a.data)}</td><td>${esc(a.tipo)}</td><td>${esc(a.aldeia)}</td><td>${fmtN(a.participantes)}</td><td>${esc(NIVEIS_PROF[a.nivel_profissional] || "")} · ${esc(a.profissional || "")}</td><td>${a.minha ? `<button class="link" type="button" data-at-cancelar="${esc(a.id)}">Cancelar</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
+  box.innerHTML = `<div class="bloco"><div class="bloco-topo"><h2>Atividades coletivas</h2>${faz && !estAtiv.form ? `<button class="prim mini" type="button" id="atNova">Registrar atividade coletiva</button>` : ""}</div>
+    <p class="dica" style="margin:4px 0 10px">Escovação dental supervisionada, aplicação tópica de flúor-gel e educação em saúde, com o número de participantes (Ficha 3).${estAtiv.msg ? " " + esc(estAtiv.msg) : ""}</p>${lista}</div>` + form;
+  const pf = perfil();
+  $("#fichasBox").innerHTML = pf === "rt" || pf === "coord" ? `<div class="bloco"><h2>Fichas 3 e 7 do SIASI</h2>
+    <p class="dica" style="margin:4px 0 10px">Soma, por aldeia, o que foi registrado no app num mês, para ajudar a lançar no SIASI. A 1ª consulta programática, o agendamento e a demanda espontânea saem vazios: o app não registra o tipo de consulta.</p>
+    <div class="grade">${pf === "coord" && !dseiFixo() ? `<label class="campo">DSEI<select id="fiDsei">${DSEIS.map(x => `<option>${esc(x)}</option>`).join("")}</select></label>` : ""}
+      <label class="campo">Mês<input id="fiMes" type="month" value="${hoje().slice(0, 7)}" max="${hoje().slice(0, 7)}"></label></div>
+    <div class="acoes-l"><button class="prim" type="button" id="fiBaixar">Baixar as Fichas 3 e 7 (planilhas)</button></div><p class="dica" id="fiStatus" aria-live="polite"></p></div>` : "";
+}
+$("#aba-acoes").addEventListener("click", async e => {
+  const t = e.target;
+  if (t.id === "atNova") { estAtiv.form = true; renderAtividades(); return setTimeout(() => $("#atTipo")?.focus(), 50); }
+  if (t.id === "atFechar") { estAtiv.form = false; return renderAtividades(); }
+  if (t.id === "atSalvar") {
+    const L = listaDoDsei(dseiFixo() || ""), aldeia = $("#atAldeia").value.trim(), al = L && L.aldeias.find(x => normNome(x.n) === normNome(aldeia));
+    const a = {tipo: $("#atTipo").value, data: $("#atData").value, polo: $("#atPolo").value.trim(), aldeia, codAldeia: al ? al.c : "", participantes: Number($("#atPart").value),
+      nivel: $("#atNivel").value, local: $("#atLocal").value, escovas: Number($("#atEscovas").value || 0), cremes: Number($("#atCremes").value || 0), fios: Number($("#atFios").value || 0), observacoes: $("#atObs").value};
+    t.disabled = true;
+    try { await api("registrarAtividade", {atividade: a}); estAtiv.form = false; toast("Atividade coletiva registrada."); await carregarAtividades(); }
+    catch (err) { toast(err.message); t.disabled = false; }
+    return;
+  }
+  const cx = t.closest("[data-at-cancelar]");
+  if (cx) { if (!confirm("Cancelar esta atividade coletiva? Ela deixa de contar na Ficha 3.")) return; try { await api("cancelarAtividade", {id: cx.dataset.atCancelar}); toast("Atividade cancelada."); carregarAtividades(); } catch (err) { toast(err.message); } return; }
+  if (t.id === "fiBaixar") {
+    const mes = $("#fiMes").value, dsei = $("#fiDsei") ? $("#fiDsei").value : dseiFixo() || "";
+    $("#fiStatus").textContent = "Preparando…";
+    try {
+      const j = await api("fichasSiasi", {mes, dsei});
+      const tab = (cols, l) => [cols].concat(l.map(x => cols.map(c => x[c])));
+      baixar(`ficha7-${j.dsei}-${j.mes}.csv`, csv(tab(j.colunas7, j.ficha7)));
+      setTimeout(() => baixar(`ficha3-${j.dsei}-${j.mes}.csv`, csv(tab(j.colunas3, j.ficha3))), 400);
+      $("#fiStatus").textContent = `${j.ficha7.length} ${j.ficha7.length === 1 ? "aldeia" : "aldeias"} na Ficha 7 e ${j.ficha3.length} na Ficha 3. ${j.avisos.join(" ")}`;
+    } catch (err) { $("#fiStatus").textContent = err.message; }
+  }
 });
 
 /* ---------- ações do Dia B ---------- */

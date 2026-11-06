@@ -135,6 +135,12 @@ function estadoDoPlano(plano, retornos) {
     });
   return e;
 }
+// Atividade coletiva (Ficha 3): um registro por atividade, com o número de participantes.
+var TIPOS_ATIVIDADE = ["Escovação dental supervisionada", "Aplicação tópica de flúor-gel", "Educação em saúde"];
+/** @type {any} */
+var NIVEIS_PROF = {medio: "Nível médio", superior: "Nível superior"};
+/** @type {any} */
+var LOCAIS_ATIVIDADE = {comunidade: "Na comunidade", estabelecimento: "No estabelecimento de saúde"};
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
