@@ -3210,6 +3210,8 @@ var DICAS = [
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
+  // No app, o rascunho é aberto antes de estas listas existirem: sem elas, não faz nada agora (o app chama de novo no fim da abertura).
+  if (typeof GERAIS_ANTIGOS === "undefined" || !GERAIS_ANTIGOS || !VIG_ANTIGOS) return e;
   if (Array.isArray(e.gerais)) e.gerais = e.gerais.map(function (g) { return g in GERAIS_ANTIGOS ? GERAIS_ANTIGOS[g] || g : g; });
   if (Array.isArray(e.vigilancia)) e.vigilancia = e.vigilancia.map(function (v) { return VIG_ANTIGOS[v] || v; });
   return e;
@@ -6204,7 +6206,7 @@ if (CONVITE_URL) {
   if (sessao()) setTimeout(() => toast(`Este aparelho já está conectado com a conta de ${sessao().usuario.nome}. Para aceitar o convite, saia em "Minha conta" e abra o link do convite de novo.`), 900);
   else { estAc.vista = "convite"; estAc.convite = {token: CONVITE_URL}; }
 }
-rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao(); conferirTermo();
+atualizarNomesAntigos(estado.ex); rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao(); conferirTermo();
 if (RECUPERAR_URL) abrirRecuperacao();
 conferirVersaoServidor();
 sincronizar();

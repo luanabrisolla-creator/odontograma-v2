@@ -4025,6 +4025,8 @@ var DICAS = [
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
+  // No app, o rascunho é aberto antes de estas listas existirem: sem elas, não faz nada agora (o app chama de novo no fim da abertura).
+  if (typeof GERAIS_ANTIGOS === "undefined" || !GERAIS_ANTIGOS || !VIG_ANTIGOS) return e;
   if (Array.isArray(e.gerais)) e.gerais = e.gerais.map(function (g) { return g in GERAIS_ANTIGOS ? GERAIS_ANTIGOS[g] || g : g; });
   if (Array.isArray(e.vigilancia)) e.vigilancia = e.vigilancia.map(function (v) { return VIG_ANTIGOS[v] || v; });
   return e;
