@@ -668,7 +668,7 @@ const anPr = pAn.abas.Procedimentos, cP = k => anPr[0].indexOf(k);
 const procsEsperados = todosIdx.reduce((t, x) => t + Object.values(JSON.parse(linhaEx(x.id).at(-1)).dentes).reduce((s, d) => s + Object.values(d.procs || {}).filter(v => v === "indicado" || v === "realizado").length, 0), 0);
 T("Procedimentos: uma linha por procedimento indicado ou realizado em cada dente", anPr.length - 1 === procsEsperados && procsEsperados > 0, [anPr.length - 1, procsEsperados]);
 const exOK2 = validosIdx.find(x => x.id === "OK2"), prOK2 = anPr.slice(1).filter(l => l[cP("id_exame")] === "OK2" && l[cP("dente")] === 16);
-T("Procedimentos: selante realizado e verniz indicado no mesmo dente viram duas linhas, cada uma com o momento", !exOK2 || (prOK2.length === 2 && prOK2.some(l => l[cP("codigo_procedimento")] === "selante" && l[cP("momento")] === "realizado" && l[cP("procedimento")] === "Selante") && prOK2.some(l => l[cP("codigo_procedimento")] === "verniz" && l[cP("momento")] === "indicado")), prOK2);
+T("Procedimentos: selante realizado e verniz indicado no mesmo dente viram duas linhas, cada uma com o momento", !exOK2 || (prOK2.length === 2 && prOK2.some(l => l[cP("codigo_procedimento")] === "selante" && l[cP("momento")] === "realizado" && l[cP("procedimento")] === "Aplicação de selante") && prOK2.some(l => l[cP("codigo_procedimento")] === "verniz" && l[cP("momento")] === "indicado")), prOK2);
 T("Procedimentos: cada linha traz a condição do dente (cárie, dor, abscesso) e o exame dele", anPr.slice(1).every(l => ["sim", "não"].includes(l[cP("tem_carie")]) && ["sim", "não"].includes(l[cP("dor_ou_abscesso")]) && anEx.some(e => e[0] === l[0])));
 T("Exames: perfil do profissional no exame e hoje, e contas prontas", ["perfil_profissional_no_exame", "perfil_profissional_atual", "n_dentes_com_carie", "n_procedimentos_realizados"].every(k => anEx[0].includes(k))
   && anEx.slice(1).every(l => l[cE("perfil_profissional_no_exame")] !== ""), anEx.slice(1).map(l => l[cE("perfil_profissional_no_exame")]).slice(0, 5));
@@ -973,7 +973,7 @@ parte("odontograma opcional");
   T("sem odontograma, mas com dentes, é recusado", /odontograma foi marcado como não preenchido/.test(R.P(R.ANA, { acao: "enviarExame", registro: comDentes }).erro || ""));
   const comPlaca = sem({ id: "SO6", suf: "SQSQSQ72", motivo: MOT[1] }); comPlaca.placa = true;
   T("sem odontograma, mas com placa visível, é recusado", /precisam do odontograma/.test(R.P(R.ANA, { acao: "enviarExame", registro: comPlaca }).erro || ""));
-  T("sem odontograma, profilaxia e raspagem são recusadas; encaminhamento é aceito", /profilaxia e raspagem/.test(R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO7", suf: "SQSQSQ82", motivo: MOT[1], gerais: ["Raspagem supragengival"] }) }).erro || "")
+  T("sem odontograma, a raspagem é recusada (precisa do odontograma); o encaminhamento de um app antigo é aceito", /Raspagem \(RAP\) supragengival \(precisam do odontograma\)/.test(R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO7", suf: "SQSQSQ82", motivo: MOT[1], gerais: ["Raspagem supragengival"] }) }).erro || "")
     && R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SO8", suf: "SQSQSQ92", motivo: MOT[1], gerais: ["Encaminhamento para especialidade", "Escovação supervisionada"] }) }).ok);
   q = R.P(R.ANA, { acao: "enviarExame", registro: sem({ id: "SC1", suf: "SCSCSC22", motivo: MOT[5], gerais: ["Escovação supervisionada"] }) });
   T("atendimento exclusivamente coletivo (motivo 6) é aceito", q.ok, q);
@@ -1024,6 +1024,48 @@ parte("página inicial");
   const ini2 = R.P(R.ANA, { acao: "inicio" });
   T("só atendimento sem odontograma: conta como pessoa atendida, sem classificação e sem reavaliação", ini2.pessoas === 2 && ini2.pessoasComClasse === 1 && ini2.totalReavaliar === 1 && ini2.alto === 1, ini2);
   T("sem recomeço da base, a data de início vem vazia", ini2.desde === "");
+}
+
+/* ---------------------------------------------------------------- campos da versão 47 (cenário separado) */
+parte("versão 47: Fichas 4 e 7");
+{
+  const R = cenario(), aba7 = n => R.G.est.sheets[n] || [], c7 = k => aba7("Exames")[0].indexOf(k), l7 = id => aba7("Exames").find(l => l[0] === id);
+  // Cada exame com um código de acompanhamento diferente (a mesma pessoa precisaria de vínculo).
+  let n7 = 0; const ALFA = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  const ex7 = (o, extra) => { const e = exame(Object.assign({ id: "V" + (++n7), sufixo: "V7" + ALFA[n7] + "QQQQ2" }, o)); Object.assign(e, { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] }, extra || {}); return e; };
+  const env = e => R.P(R.ANA, { acao: "enviarExame", registro: e });
+  const err = e => env(e).erro || "";
+  T("exame completo da versão 47 é aceito", env(ex7({})).ok);
+  T("localidade fora da lista é recusada", /localidade de residência/.test(err(ex7({}, { localidade: "Cidade" }))));
+  T("\"gestante\" para o sexo masculino é recusado", /gestante \(só para o sexo feminino/.test(err(ex7({ sexo: "M", idade: 30, nasc: "1996-01-01", denticao: "permanente" }, { gestante: "nao" }))));
+  T("gestante sem as semanas é recusada", /semanas de gestação/.test(err(ex7({ idade: 25, nasc: "2001-01-01", denticao: "permanente" }, { gestante: "sim", semanasGestacao: null }))));
+  const g = ex7({ idade: 25, nasc: "2001-01-01", denticao: "permanente" }, { gestante: "sim", semanasGestacao: 20 });
+  T("gestante com 20 semanas é aceita, e a planilha guarda", env(g).ok && l7(g.id)[c7("gestante")] === "sim" && l7(g.id)[c7("semanas_gestacao")] === 20);
+  T("índice de Dean aos 8 anos é recusado (só de 10 a 19)", /índice de Dean \(só de 10 a 19 anos/.test(err(ex7({ idade: 8.4 }, { fluoroseDean: "1" }))));
+  const d = ex7({ idade: 15.6, nasc: "2011-03-01", denticao: "permanente", vig: ["Não identificado"] }, { fluoroseDean: "4" });
+  T("Dean 4 aos 15 anos: a vigilância ganha a fluorose moderada ou severa, e a planilha mostra o índice", env(d).ok && l7(d.id)[c7("fluorose_dean")] === "4 · Moderada" && l7(d.id)[c7("vig_fluorose")] === "sim"
+    && JSON.parse(l7(d.id).at(-1)).vigilancia.includes("Fluorose dentária moderada ou severa"), l7(d.id) && [l7(d.id)[c7("fluorose_dean")], l7(d.id)[c7("vig_fluorose")]]);
+  const na = ex7({}, { placa: null, condNaoAvaliadas: ["placa"] });
+  T("placa \"não avaliada\" é aceita e aparece assim na planilha (nunca \"não\")", env(na).ok && l7(na.id)[c7("placa_visivel")] === "não avaliado" && l7(na.id)[c7("gengivite")] === "não");
+  T("placa vazia sem \"não avaliado\" é recusada", /placa visível \(Sim, Não ou Não avaliado\)/.test(err(ex7({}, { placa: null }))));
+  const pr = ex7({ protese: { sup: "parcial", inf: "nao", usoSup: "total", usoInf: "nao", naoAvaliado: false } });
+  T("prótese parcial e total é aceita, como na Ficha 4", env(pr).ok && l7(pr.id)[c7("protese_sup_necessita")] === "parcial" && l7(pr.id)[c7("protese_sup_usa")] === "total");
+  T("prótese com valor fora da lista é recusada", /prótese/.test(err(ex7({ protese: { sup: "talvez", inf: "nao", usoSup: "nao", usoInf: "nao", naoAvaliado: false } }))));
+  const en = ex7({}, { fezEncaminhamento: "sim", encaminhamentos: { endodontia: "pendente", cbmf: "realizado" }, fezPrescricao: "sim", prescricoes: ["Antibiótico"] });
+  T("encaminhamentos e prescrição vão para colunas próprias", env(en).ok && l7(en.id)[c7("encaminhamento_endodontia")] === "pendente" && l7(en.id)[c7("encaminhamento_cbmf")] === "realizado"
+    && l7(en.id)[c7("encaminhamento_ortodontia")] === "" && l7(en.id)[c7("prescricao_antibiotico")] === "sim" && l7(en.id)[c7("prescricao_analgesico")] === "não");
+  T("\"Sim\" no encaminhamento sem especialidade é recusado", /encaminhamentos \(Sim e quais, ou Não\)/.test(err(ex7({}, { fezEncaminhamento: "sim", encaminhamentos: {} }))));
+  T("especialidade fora da Ficha 7 é recusada", /encaminhamentos \(especialidade e situação\)/.test(err(ex7({}, { fezEncaminhamento: "sim", encaminhamentos: { cardiologia: "pendente" } }))));
+  T("pulpectomia em dente permanente é recusada (vira encaminhamento para endodontia)", /dentes 46/.test(err(ex7({ mud: { 46: { faces: { O: "ca" }, procs: { pulpectomia: "indicado" } } } }))));
+  T("pulpectomia em dente decíduo continua aceita", env(ex7({ mud: { 85: { faces: { O: "ca" }, procs: { pulpectomia: "indicado" } } } })).ok);
+  const pc = ex7({ mud: { 46: { faces: { O: "ca" }, procs: { pcdp: "realizado" } } } });
+  T("proteção do complexo dentino-pulpar (Ficha 7) entra como procedimento do dente", env(pc).ok && l7(pc.id)[c7("n_pcdp_realizado")] === 1);
+  const an = ex7({ gerais: ["Escovação supervisionada", "Raspagem supragengival"] }); an.fezColetivos = "sim";
+  T("nomes antigos de um app 46 viram os termos do SIASI", env(an).ok && JSON.parse(l7(an.id).at(-1)).gerais.join("|") === "Escovação dental supervisionada|Raspagem (RAP) supragengival");
+  const vf = ex7({ vig: ["Fendas ou fissuras lábio palatais"] });
+  T("\"Fendas ou fissuras\" de um app 46 vira \"Má formação: fenda ou fissura lábio palatal\"", env(vf).ok && l7(vf.id)[c7("vig_fendas_labio_palatais")] === "sim" && JSON.parse(l7(vf.id).at(-1)).vigilancia[0] === "Má formação: fenda ou fissura lábio palatal");
+  const v46 = exame({ id: "V46", sufixo: "V46QQQQ2" });
+  T("exame de um app 46 (sem os campos novos) continua aceito, com as colunas novas vazias", env(v46).ok && l7("V46")[c7("localidade_residencia")] === "" && l7("V46")[c7("prescricao_analgesico")] === "");
 }
 
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);

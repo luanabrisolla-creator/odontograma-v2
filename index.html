@@ -573,6 +573,7 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .ini-stat .bola .ico{width:28px;height:28px}
 .ini-stat b{display:block;font-size:1.85rem;line-height:1.05;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .ini-stat span.t{display:block;margin-top:3px;font-size:.92rem;color:var(--muted)}
+.enc{display:grid;gap:6px}.enc .linha-op{margin:0}
 .ini-stat span.s2{display:block;margin-top:2px;font-size:.8rem;color:var(--muted)}
 .ini-baixo{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
 .ini-baixo>.bloco{flex:999 1 520px;min-width:0;margin:0}
@@ -977,6 +978,11 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
         <label class="campo">Sexo<select data-campo="crianca.sexo" id="inSexo" required><option value="">Escolha</option><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
         <div class="campo">Idade no exame<output id="idade" style="font-size:1rem;color:var(--ink);padding:10px 0">Informe a data de nascimento</output></div>
       </div>
+      <div class="campo" style="margin-top:12px">Localidade de residência<div class="locais" id="localidades" role="group" aria-label="Localidade de residência"></div></div>
+      <div id="gestBox" hidden style="margin-top:12px">
+        <div class="linha-op"><span><b>Está gestante?</b></span><div class="seg" role="group" aria-label="Está gestante?" data-sn="gestante"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div></div>
+        <label class="campo" id="semanasCampo" hidden style="margin-top:8px;max-width:220px">Semanas de gestação<input type="number" inputmode="numeric" min="1" max="42" step="1" id="inSemanas" placeholder="1 a 42"></label>
+      </div>
       <div id="pessoaBox"></div>
     </div>
 
@@ -1007,7 +1013,8 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     <div class="bloco" id="blocoCond">
       <h2 style="margin-bottom:10px">Vigilância em saúde bucal</h2>
       <div class="derivado" id="vigDerivado"></div>
-      <p class="q-vig">Além disso, você identificou alteração em tecidos moles, fenda ou fissura lábio-palatal, fluorose moderada ou severa ou traumatismo dentoalveolar?</p>
+      <div id="deanBox" hidden><p class="q-vig">Fluorose: índice de Dean <span class="dica">(de 10 a 19 anos)</span></p><div class="radios" id="dean" role="radiogroup" aria-label="Índice de Dean"></div></div>
+      <p class="q-vig" id="vigPergunta">Além disso, você identificou alguma destas condições?</p>
       <div class="duas-op" role="group" aria-label="Outras condições de vigilância" id="vigOutros"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div>
       <div id="vigLista" hidden><p class="dica" style="margin:10px 0 4px">Quais? (marque pelo menos uma)</p><div class="vig" id="vig"></div></div>
     </div>
@@ -1017,11 +1024,11 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
       <button class="sec largo-bt" id="proteseNenhuma" type="button">Não necessita e não usa (as duas arcadas)</button>
       <p class="dica centro" style="margin:8px 0">ou responda por arcada</p>
       <div class="arc-p"><b>Superior</b>
-        <div class="linha-op"><span>Necessita de prótese?</span><div class="seg" role="group" aria-label="Necessita de prótese superior" data-protese="sup"><button data-v="nao">Não</button><button data-v="sim">Sim</button></div></div>
-        <div class="linha-op"><span>Usa prótese?</span><div class="seg" role="group" aria-label="Usa prótese superior" data-protese="usoSup"><button data-v="nao">Não</button><button data-v="sim">Sim</button></div></div></div>
+        <div class="linha-op"><span>Necessidade de uso de prótese</span><div class="seg" role="group" aria-label="Necessidade de uso de prótese superior" data-protese="sup"><button data-v="nao">Sem</button><button data-v="parcial">Parcial</button><button data-v="total">Total</button></div></div>
+        <div class="linha-op"><span>Uso de prótese</span><div class="seg" role="group" aria-label="Uso de prótese superior" data-protese="usoSup"><button data-v="nao">Não usa</button><button data-v="parcial">Parcial</button><button data-v="total">Total</button></div></div></div>
       <div class="arc-p"><b>Inferior</b>
-        <div class="linha-op"><span>Necessita de prótese?</span><div class="seg" role="group" aria-label="Necessita de prótese inferior" data-protese="inf"><button data-v="nao">Não</button><button data-v="sim">Sim</button></div></div>
-        <div class="linha-op"><span>Usa prótese?</span><div class="seg" role="group" aria-label="Usa prótese inferior" data-protese="usoInf"><button data-v="nao">Não</button><button data-v="sim">Sim</button></div></div></div>
+        <div class="linha-op"><span>Necessidade de uso de prótese</span><div class="seg" role="group" aria-label="Necessidade de uso de prótese inferior" data-protese="inf"><button data-v="nao">Sem</button><button data-v="parcial">Parcial</button><button data-v="total">Total</button></div></div>
+        <div class="linha-op"><span>Uso de prótese</span><div class="seg" role="group" aria-label="Uso de prótese inferior" data-protese="usoInf"><button data-v="nao">Não usa</button><button data-v="parcial">Parcial</button><button data-v="total">Total</button></div></div></div>
       <p class="centro" style="margin-top:10px"><button class="link" type="button" id="proteseNaoAval">Não foi possível avaliar</button></p>
       <p class="dica centro" id="proteseInfo" hidden>Marcado: não foi possível avaliar a prótese.</p>
     </div>
@@ -1029,13 +1036,17 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     <div class="bloco" id="blocoGerais">
       <h2 style="margin-bottom:12px">Condições gerais e procedimentos</h2>
       <div class="linha-opcoes" id="condClinicas">
-        <div class="opcao"><span>Placa visível</span><div class="seg" role="group" aria-label="Placa visível" data-bool="placa"><button data-v="0">Não</button><button data-v="1">Sim</button></div></div>
-        <div class="opcao"><span>Gengivite (sangramento gengival)</span><div class="seg" role="group" aria-label="Gengivite" data-bool="gengivite"><button data-v="0">Não</button><button data-v="1">Sim</button></div></div>
+        <div class="opcao"><span>Placa visível</span><div class="seg" role="group" aria-label="Placa visível" data-bool="placa"><button data-v="0">Não</button><button data-v="1">Sim</button><button data-v="na">Não avaliado</button></div></div>
+        <div class="opcao"><span>Gengivite (sangramento gengival)</span><div class="seg" role="group" aria-label="Gengivite" data-bool="gengivite"><button data-v="0">Não</button><button data-v="1">Sim</button><button data-v="na">Não avaliado</button></div></div>
       </div>
       <div class="linha-op" style="margin-top:18px"><span><b>Foram realizados procedimentos coletivos ou de boca toda?</b></span><div class="seg" role="group" aria-label="Foram realizados procedimentos coletivos ou de boca toda?" data-sn="fezColetivos"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div></div>
       <div id="geraisBox" hidden><p class="dica" style="margin:6px 0 4px">Quais? (marque pelo menos um)</p><div class="checks" id="gerais"></div></div>
       <div class="linha-op" style="margin-top:14px"><span><b>Foram fornecidos insumos de higiene bucal?</b></span><div class="seg" role="group" aria-label="Foram fornecidos insumos de higiene bucal?" data-sn="deuInsumos"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div></div>
       <div id="insumosBox" hidden><p class="dica" style="margin:6px 0 4px">Quais? (marque pelo menos um)</p><div class="checks" id="insumos"></div></div>
+      <div class="linha-op" style="margin-top:14px"><span><b>A pessoa foi encaminhada para a atenção especializada?</b></span><div class="seg" role="group" aria-label="A pessoa foi encaminhada para a atenção especializada?" data-sn="fezEncaminhamento"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div></div>
+      <div id="encBox" hidden><p class="dica" style="margin:6px 0 4px">Para quais especialidades, e a situação de cada uma (marque pelo menos uma)</p><div class="enc" id="encLista"></div></div>
+      <div class="linha-op" style="margin-top:14px"><span><b>Houve prescrição medicamentosa?</b></span><div class="seg" role="group" aria-label="Houve prescrição medicamentosa?" data-sn="fezPrescricao"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div></div>
+      <div id="prescBox" hidden><p class="dica" style="margin:6px 0 4px">Quais? (marque pelo menos uma)</p><div class="checks" id="prescricoes"></div></div>
       <label class="campo largo" style="margin-top:14px">Observações do exame<textarea data-campo="observacoes" placeholder="Sem dados que identifiquem a pessoa"></textarea></label>
     </div>
 
@@ -1256,17 +1267,20 @@ const ST_ROT = {presente: "Presente", nao_erupc: "Não erupcionado (NE)", esfoli
 const STATUS_NOME = ST_ROT;
 const stOpcoes = n => ehDecid(n) ? ["presente", "nao_erupc", "esfoliado", "ausente", "ausente_carie"] : ["presente", "nao_erupc", "ausente", "ausente_carie"];
 // Tratamento: as duas exodontias primeiro (só uma delas por dente); depois os compatíveis com o que foi marcado.
+// Os mesmos nomes da lista NOMES_PROC das regras comuns (Ficha 7 do SIASI), na ordem em que aparecem no dente.
 const PROCS = [
   ["exo_carie","Exodontia devido à cárie"],["exodontia","Exodontia por outros motivos"],
-  ["selante","Selante"],["art","ART (restauração atraumática)"],["civ","Restauração em ionômero de vidro"],
-  ["resina","Restauração em resina"],["amalgama","Restauração em amálgama"],["verniz","Verniz fluoretado"],
-  ["cdf","Cariostático (diamino fluoreto de prata)"],["selprov","Selamento provisório / adequação do meio"],
-  ["pulpotomia","Pulpotomia"],["pulpectomia","Pulpectomia"],["coroa","Coroa de aço"]
+  ["selante","Aplicação de selante"],["art","Tratamento restaurador atraumático (ART)"],["civ","Restauração com cimento de ionômero de vidro"],
+  ["resina","Restauração em resina composta"],["amalgama","Restauração em amálgama"],["verniz","Verniz fluoretado"],
+  ["cdf","Aplicação de cariostático"],["selprov","Selamento provisório / adequação do meio"],["pcdp","Proteção do complexo dentino-pulpar"],
+  ["pulpotomia","Pulpotomia"],["pulpectomia","Pulpectomia (dente decíduo)"],["coroa","Coroa de aço"]
 ];
 const PROC_NOME = Object.fromEntries(PROCS);
+// Pulpectomia em dente permanente não é da atenção primária: vira encaminhamento para endodontia.
+const SO_DECIDUO = ["pulpectomia", "coroa"];
 function procsCompativeis(n, d) {
   const fs = Object.values(d.faces || {});
-  if (fs.some(v => ["ca", "cc", "restc"].includes(v))) return ["art", "civ", "resina", "cdf", "selprov", "pulpotomia", "pulpectomia", ehDecid(n) ? "coroa" : "amalgama"];
+  if (fs.some(v => ["ca", "cc", "restc"].includes(v))) return ["art", "civ", "resina", "cdf", "selprov", "pcdp", "pulpotomia"].concat(ehDecid(n) ? ["pulpectomia", "coroa"] : ["amalgama"]);
   if (fs.includes("mba")) return ["verniz", "cdf"];
   return ["selante", "verniz"];
 }
@@ -1407,7 +1421,7 @@ function cadastroFaltando() {
   if (!fazExames()) return [["coord", "perfil de profissional"]];
   return [];
 }
-const listaE = a => a.length > 1 ? a.slice(0, -1).join(", ") + " e " + a.at(-1) : a.join("");
+const listaE = (a, c = "e") => a.length > 1 ? a.slice(0, -1).join(", ") + ` ${c} ` + a.at(-1) : a.join("");
 // Cirurgião-dentista e RT atuam só no DSEI do cadastro: o DSEI do exame vem do cadastro e não é editável.
 // (O servidor confere de novo e recusa exame de outro DSEI.) Só a coordenação escolhe o DSEI. null = pode escolher.
 // A coordenação que também é RT registra exames só no DSEI de RT (permissão clínica); a gestão de vários DSEIs é outra permissão.
@@ -1470,7 +1484,7 @@ function novoExame() {
     crianca: {nascimento:"", sexo:""},
     localAtendimento: "", vigilancia: [], protese: proteseVazia(), _vigOutros: null, _etapa: 0, _max: 0, _conf: {}, _duvAnt: {},
     denticao: "mista", placa:null, gengivite:null, fluorose:false, gerais:[], insumos:[], observacoes:"", dentes:{}, _tocado:false,
-    odontograma: null, odontogramaMotivo: "", odontogramaMotivoOutro: "", fezColetivos: null, deuInsumos: null,
+    odontograma: null, odontogramaMotivo: "", odontogramaMotivoOutro: "", fezColetivos: null, deuInsumos: null, ...campos47Vazios(),
     vinculo: null, codigoFixo: null, _cand: null, _recusados: [], _anterior: null, _id: {modo: ""}, _travado: false};
 }
 function garantirDentes(ex) { const idade = idadeDecimal(ex); for (const n of dentesDe(ex.denticao)) if (!ex.dentes[n]) ex.dentes[n] = denteNovo(n, ex.denticao, idade); }
@@ -1495,6 +1509,12 @@ function rascunhoDaPessoa() {
   }
 }
 function proteseVazia() { return {sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false}; }
+// Campos da versão 47 (Fichas 4 e 7 do SIASI) e o valor de cada um num exame novo.
+function campos47Vazios() {
+  return {localidade: "", gestante: "", semanasGestacao: null, fluoroseDean: "", condNaoAvaliadas: [], fezEncaminhamento: null, encaminhamentos: {}, fezPrescricao: null, prescricoes: []};
+}
+// As regras de idade (gestante, índice de Dean) olham a idade no dia do exame, que o rascunho ainda não guarda.
+function comIdade(ex) { const id = idadeEm(ex.crianca.nascimento, ex.dataExame); return Object.assign({}, ex, {idadeAnos: id ? id.decimal : ""}); }
 // Exame reaberto (do aparelho ou da nuvem) ganha os campos de trabalho do formulário que não são guardados.
 function completarCampos(ex) {
   if (!Array.isArray(ex.vigilancia)) ex.vigilancia = [];
@@ -1510,6 +1530,8 @@ function completarCampos(ex) {
   if (ex.odontogramaMotivoOutro == null) ex.odontogramaMotivoOutro = "";
   if (ex.fezColetivos === undefined) ex.fezColetivos = (ex.gerais || []).length ? "sim" : null;
   if (ex.deuInsumos === undefined) ex.deuInsumos = (ex.insumos || []).length ? "sim" : null;
+  Object.entries(campos47Vazios()).forEach(([k, v]) => { if (ex[k] === undefined) ex[k] = v; });
+  atualizarNomesAntigos(ex);
   Object.values(ex.dentes || {}).forEach(d => { if (d.abscesso == null) d.abscesso = false; });
   return ex;
 }
@@ -1613,7 +1635,14 @@ function renderFormulario() {
   $$("[data-campo]").forEach(i => { const v = i.dataset.campo.split(".").reduce((o, k) => o && o[k], ex); i.value = v == null ? "" : v; });
   renderLocalLista();
   renderCodigo();
-  $$("[data-bool]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", ex[g.dataset.bool] != null && (b.dataset.v === "1") === !!ex[g.dataset.bool])));
+  $$("[data-bool]").forEach(g => g.querySelectorAll("button").forEach(b => { const k = g.dataset.bool, na = naoAvaliada(ex, k);
+    b.setAttribute("aria-pressed", b.dataset.v === "na" ? na : !na && ex[k] != null && (b.dataset.v === "1") === !!ex[k]); }));
+  $("#localidades").innerHTML = LOCALIDADES.map(l => `<button class="chip" type="button" data-localidade="${esc(l)}" aria-pressed="${ex.localidade === l}">${esc(l)}</button>`).join("");
+  renderGestante();
+  $("#encBox").hidden = ex.fezEncaminhamento !== "sim"; $("#prescBox").hidden = ex.fezPrescricao !== "sim";
+  $("#encLista").innerHTML = Object.keys(ESPECIALIDADES).map(k => `<div class="linha-op"><span>${esc(ESPECIALIDADES[k])}</span><div class="seg pequeno" role="group" aria-label="Encaminhamento para ${esc(ESPECIALIDADES[k])}">${
+    Object.keys(SITUACAO_ENCAMINHAMENTO).map(st => `<button type="button" data-enc="${k}" data-st="${st}" aria-pressed="${(ex.encaminhamentos || {})[k] === st}">${SITUACAO_ENCAMINHAMENTO[st]}</button>`).join("")}</div></div>`).join("");
+  $("#prescricoes").innerHTML = PRESCRICOES.map((g, i) => `<label class="check"><input type="checkbox" data-presc="${i}" ${(ex.prescricoes || []).includes(g) ? "checked" : ""}>${esc(g)}</label>`).join("");
   $("#locais").innerHTML = LOCAIS_ATENDIMENTO.map(l => `<button class="chip" type="button" data-local="${esc(l)}" aria-pressed="${ex.localAtendimento === l}">${esc(l)}</button>`).join("");
   renderProtese();
   renderVig();
@@ -1627,28 +1656,44 @@ function renderFormulario() {
   const c = cfg(); $("#avisoConfig").hidden = !cadastroFaltando().length;
   $("#profLinha").innerHTML = c.nome ? `<span class="dica">${esc(c.nome)} · CRO ${esc(c.cro || "não informado")}</span>` : "";
 }
+// "Está gestante?" só para o sexo feminino, de 10 a 49 anos no dia do exame.
+function renderGestante() {
+  const ex = estado.ex, gest = perguntaGestante(comIdade(ex));
+  $("#gestBox").hidden = !gest; $("#semanasCampo").hidden = !gest || ex.gestante !== "sim";
+  $$('[data-sn="gestante"] button').forEach(b => b.setAttribute("aria-pressed", String(ex.gestante === b.dataset.v)));
+  if (document.activeElement !== $("#inSemanas")) $("#inSemanas").value = ex.semanasGestacao == null ? "" : ex.semanasGestacao;
+}
 function renderIdade() {
   const id = idadeEm(estado.ex.crianca.nascimento, estado.ex.dataExame);
   $("#idade").textContent = id ? `${id.anos} ${id.anos === 1 ? "ano" : "anos"} e ${id.meses} ${id.meses === 1 ? "mês" : "meses"}` : "Informe a data de nascimento";
 }
 // Vigilância: dor de dente e abscesso vêm do odontograma (travados); as outras condições, por uma pergunta Não/Sim.
 // (função: a lista VIGILANCIA vem do trecho compartilhado, mais abaixo no arquivo)
-function vigOutrosLista() { return VIGILANCIA.filter(v => !["Dor de dente", "Abscesso dentoalveolar", VIG_NENHUM].includes(v)); }
+// De 10 a 19 anos, a fluorose vem do índice de Dean e sai da lista (não é perguntada duas vezes).
+function vigOutrosLista(ex) {
+  const dean = ex ? perguntaDean(comIdade(ex)) : false;
+  return VIGILANCIA.filter(v => !["Dor de dente", "Abscesso dentoalveolar", VIG_NENHUM].includes(v) && !(dean && v === VIG_FLUOROSE));
+}
 function atualizarVigilancia(ex) {
-  const outros = ex._vigOutros === "sim" ? (ex.vigilancia || []).filter(v => vigOutrosLista().includes(v)) : [];
-  ex.vigilancia = completarVigilancia({dentes: ex.dentes, denticao: ex.denticao, vigilancia: outros});
+  const outros = ex._vigOutros === "sim" ? (ex.vigilancia || []).filter(v => vigOutrosLista(ex).includes(v)) : [];
+  ex.vigilancia = completarVigilancia(Object.assign(comIdade(ex), {vigilancia: outros}));
   ex.fluorose = ex.vigilancia.includes(VIG_FLUOROSE);
 }
 function renderVig() {
   const ex = estado.ex; atualizarVigilancia(ex);
   const nums = k => dentesDe(ex.denticao).filter(n => ex.dentes[n] && ex.dentes[n].status === "presente" && ex.dentes[n][k]);
   const it = [["dor", "Dor de dente"], ["abscesso", "Abscesso dentoalveolar"]].map(([k, t]) => [t, nums(k)]).filter(([, l]) => l.length);
-  $("#vigDerivado").innerHTML = `<b>Do odontograma</b>` + (it.length ? it.map(([t, l]) => `<label class="check trava"><input type="checkbox" checked disabled>${esc(t)} · ${l.length === 1 ? "dente" : "dentes"} ${esc(listaE(l.map(String)))}</label>`).join("") + `<p class="dica">Para mudar, corrija o dente no odontograma.</p>`
+  const dean = perguntaDean(comIdade(ex));
+  if (dean && ["4", "5"].includes(ex.fluoroseDean)) it.push([`${VIG_FLUOROSE} (índice de Dean ${ex.fluoroseDean})`, []]);
+  $("#deanBox").hidden = !dean;
+  $("#dean").innerHTML = DEAN_CODIGOS.map(c => `<label class="radio"><input type="radio" name="dean" value="${c}" ${ex.fluoroseDean === c ? "checked" : ""}><span><b>${c}</b> · ${esc(DEAN[c])}</span></label>`).join("");
+  $("#vigPergunta").textContent = `Além disso, você identificou ${listaE(vigOutrosLista(ex).map(v => v.replace("Má formação: ", "má formação (") + (v.startsWith("Má formação") ? ")" : "")).map(v => v.charAt(0).toLowerCase() + v.slice(1)), "ou")}?`;
+  $("#vigDerivado").innerHTML = `<b>Do odontograma</b>` + (it.length ? it.map(([t, l]) => `<label class="check trava"><input type="checkbox" checked disabled>${esc(t)}${l.length ? ` · ${l.length === 1 ? "dente" : "dentes"} ${esc(listaE(l.map(String)))}` : ""}</label>`).join("") + `<p class="dica">Para mudar, corrija o dente no odontograma.</p>`
     : `<p class="dica" style="margin:4px 0 0">Nenhum dente com dor ou abscesso.</p>`);
   $$("#vigOutros button").forEach(b => b.setAttribute("aria-pressed", ex._vigOutros === b.dataset.v));
   $("#vigLista").hidden = ex._vigOutros !== "sim";
   const v = ex.vigilancia || [];
-  $("#vig").innerHTML = vigOutrosLista().map((t, i) => `<label class="${v.includes(t) ? "on" : ""}"><input type="checkbox" data-vig="${i}" ${v.includes(t) ? "checked" : ""}>${esc(t)}</label>`).join("");
+  $("#vig").innerHTML = vigOutrosLista(ex).map((t, i) => `<label class="${v.includes(t) ? "on" : ""}"><input type="checkbox" data-vig="${i}" ${v.includes(t) ? "checked" : ""}>${esc(t)}</label>`).join("");
 }
 function renderProtese() {
   const pr = estado.ex.protese = Object.assign(proteseVazia(), estado.ex.protese || {});
@@ -1686,6 +1731,11 @@ function faltasEtapa(i, ex) {
     if (!estado.editando && !ex.vinculo && !ex.codigoFixo) f.push(["a identificação do indivíduo (código de acompanhamento ou busca)", "#blocoInd"]);
     if (!ex.crianca.nascimento) f.push(["a data de nascimento", '[data-campo="crianca.nascimento"]']);
     if (ex.crianca.sexo !== "F" && ex.crianca.sexo !== "M") f.push(["o sexo (Feminino ou Masculino)", "#inSexo"]);
+    if (!LOCALIDADES.includes(ex.localidade)) f.push(["a localidade de residência (aldeia, acampamento ou logradouro)", "#localidades"]);
+    if (perguntaGestante(comIdade(ex))) {
+      if (ex.gestante !== "sim" && ex.gestante !== "nao") f.push(["se a pessoa está gestante (Sim ou Não)", '[data-sn="gestante"]']);
+      else if (ex.gestante === "sim" && !(Number.isInteger(ex.semanasGestacao) && ex.semanasGestacao >= 1 && ex.semanasGestacao <= 42)) f.push(["as semanas de gestação (de 1 a 42)", "#inSemanas"]);
+    }
   }
   if (i === 2) {
     if (ex.odontograma !== "sim" && ex.odontograma !== "nao") { f.push(["se o odontograma foi preenchido (Sim ou Não)", "#odPergunta"]); return f; }
@@ -1701,20 +1751,25 @@ function faltasEtapa(i, ex) {
   }
   if (i === 3) {
     if (ex.odontograma === "nao") return f;   // sem exame clínico, não há vigilância nem prótese
+    if (perguntaDean(comIdade(ex)) && !DEAN_CODIGOS.includes(ex.fluoroseDean)) f.push(["o índice de Dean da fluorose", "#deanBox"]);
     if (!ex._vigOutros) f.push(["a pergunta da vigilância em saúde bucal (Não ou Sim)", "#vigOutros"]);
-    else if (ex._vigOutros === "sim" && !(ex.vigilancia || []).some(v => vigOutrosLista().includes(v))) f.push(["qual condição de vigilância foi identificada", "#vigLista"]);
+    else if (ex._vigOutros === "sim" && !(ex.vigilancia || []).some(v => vigOutrosLista(ex).includes(v))) f.push(["qual condição de vigilância foi identificada", "#vigLista"]);
     const pr = ex.protese || {};
     if (!pr.naoAvaliado && ["sup", "inf", "usoSup", "usoInf"].some(k => !pr[k])) f.push(["a prótese (necessidade e uso nas duas arcadas, ou “Não foi possível avaliar”)", "#blocoProtese"]);
   }
   if (i === 4) {
     if (ex.odontograma !== "nao") {
-      if (ex.placa == null) f.push(["placa visível (Sim ou Não)", '[data-bool="placa"]']);
-      if (ex.gengivite == null) f.push(["gengivite (Sim ou Não)", '[data-bool="gengivite"]']);
+      if (ex.placa == null && !naoAvaliada(ex, "placa")) f.push(["placa visível (Sim, Não ou Não avaliado)", '[data-bool="placa"]']);
+      if (ex.gengivite == null && !naoAvaliada(ex, "gengivite")) f.push(["gengivite (Sim, Não ou Não avaliado)", '[data-bool="gengivite"]']);
     }
     if (ex.fezColetivos !== "sim" && ex.fezColetivos !== "nao") f.push(["se foram realizados procedimentos coletivos (Sim ou Não)", '[data-sn="fezColetivos"]']);
     else if (ex.fezColetivos === "sim" && !geraisDoExame(ex).length) f.push(["quais procedimentos coletivos foram realizados", "#gerais"]);
     if (ex.deuInsumos !== "sim" && ex.deuInsumos !== "nao") f.push(["se foram fornecidos insumos (Sim ou Não)", '[data-sn="deuInsumos"]']);
     else if (ex.deuInsumos === "sim" && !(ex.insumos || []).length) f.push(["quais insumos foram fornecidos", "#insumos"]);
+    if (ex.fezEncaminhamento !== "sim" && ex.fezEncaminhamento !== "nao") f.push(["se a pessoa foi encaminhada para a atenção especializada (Sim ou Não)", '[data-sn="fezEncaminhamento"]']);
+    else if (ex.fezEncaminhamento === "sim" && !Object.keys(ex.encaminhamentos || {}).length) f.push(["para qual especialidade foi o encaminhamento", "#encLista"]);
+    if (ex.fezPrescricao !== "sim" && ex.fezPrescricao !== "nao") f.push(["se houve prescrição medicamentosa (Sim ou Não)", '[data-sn="fezPrescricao"]']);
+    else if (ex.fezPrescricao === "sim" && !(ex.prescricoes || []).length) f.push(["qual prescrição foi feita", "#prescricoes"]);
   }
   return f;
 }
@@ -1837,19 +1892,24 @@ function renderRevisao() {
   const pres = nums.filter(n => ds[n] && ds[n].status === "presente"), dec = pres.filter(ehDecid).length, alt = nums.filter(n => ds[n] && (ds[n].status !== "presente" ? !denteLivre(ds[n]) || ds[n].status === "ausente" || ds[n].status === "ausente_carie" : temRegistro(ds[n]))).length;
   const id = idadeEm(ex.crianca.nascimento, ex.dataExame), pr = ex.protese || {};
   const prTxt = pr.naoAvaliado ? "prótese: não foi possível avaliar" : ["sup", "inf"].every(k => pr[k] === "nao") && ["usoSup", "usoInf"].every(k => pr[k] === "nao") ? "não necessita e não usa prótese"
-    : `prótese superior: necessita ${NOMES_PROTESE[pr.sup || ""].toLowerCase()}, usa ${NOMES_PROTESE[pr.usoSup || ""].toLowerCase()} · inferior: necessita ${NOMES_PROTESE[pr.inf || ""].toLowerCase()}, usa ${NOMES_PROTESE[pr.usoInf || ""].toLowerCase()}`;
+    : `prótese superior: necessidade ${NOMES_PROTESE[pr.sup || ""].toLowerCase()}, uso ${NOMES_PROTESE[pr.usoSup || ""].toLowerCase()} · inferior: necessidade ${NOMES_PROTESE[pr.inf || ""].toLowerCase()}, uso ${NOMES_PROTESE[pr.usoInf || ""].toLowerCase()}`;
   const temDec = ex.denticao !== "permanente", temPerm = ex.denticao !== "decidua";
   const sem = ex.odontograma === "nao";
   const simNaoTxt = (v, l) => v === "sim" ? l.join(", ") : v === "nao" ? "não" : "não respondido";
-  const condTxt = [!sem && `Placa: ${ex.placa ? "sim" : "não"}`, !sem && `Gengivite: ${ex.gengivite ? "sim" : "não"}`,
-    `Coletivos: ${simNaoTxt(ex.fezColetivos, geraisDoExame(ex))}`, `Insumos: ${simNaoTxt(ex.deuInsumos, ex.insumos || [])}`].filter(Boolean).join(" · ");
+  const condV = k => naoAvaliada(ex, k) ? "não avaliado" : ex[k] ? "sim" : "não";
+  const encTxt = Object.entries(ex.encaminhamentos || {}).map(([k, st]) => `${ESPECIALIDADES[k]} (${SITUACAO_ENCAMINHAMENTO[st].toLowerCase()})`);
+  const condTxt = [!sem && `Placa: ${condV("placa")}`, !sem && `Gengivite: ${condV("gengivite")}`,
+    `Coletivos: ${simNaoTxt(ex.fezColetivos, geraisDoExame(ex))}`, `Insumos: ${simNaoTxt(ex.deuInsumos, ex.insumos || [])}`,
+    `Encaminhamentos: ${simNaoTxt(ex.fezEncaminhamento, encTxt)}`, `Prescrições: ${simNaoTxt(ex.fezPrescricao, ex.prescricoes || [])}`].filter(Boolean).join(" · ");
+  const gestTxt = perguntaGestante(comIdade(ex)) ? (ex.gestante === "sim" ? `gestante, ${ex.semanasGestacao || "?"} semanas` : ex.gestante === "nao" ? "não gestante" : "") : "";
+  const deanTxt = perguntaDean(comIdade(ex)) && ex.fluoroseDean ? `índice de Dean ${ex.fluoroseDean} (${DEAN[ex.fluoroseDean].toLowerCase()})` : "";
   if (sem) $("#revResultado").innerHTML = `<div class="rev-res"><span class="classe">–</span><div><b>Sem odontograma</b><small>${esc(ex.odontogramaMotivo === MOTIVO_OUTRO ? "Outro motivo: " + (ex.odontogramaMotivoOutro || "") : ex.odontogramaMotivo || "motivo não informado")}</small></div></div>`;
   else $("#revResultado").innerHTML = `<div class="rev-res" data-c="${r.classe}"><span class="classe" data-c="${r.classe}">${r.classe}</span><div><b>${esc(r.risco)}</b><small>${[temDec && `ceo-d ${r.ceod.total} (c ${r.ceod.c} · e ${r.ceod.e} · o ${r.ceod.o})`, temPerm && `CPO-D ${r.cpod.total} (C ${r.cpod.c} · P ${r.cpod.p} · O ${r.cpod.o})`].filter(Boolean).join(" · ")}</small></div></div>`;
   const linhasR = [
     [0, "Local", [ex.polo, ex.aldeia, ex.localAtendimento, fmtData(ex.dataExame)].filter(Boolean).join(" · ")],
-    [1, "Indivíduo", [ex.vinculo ? ex.vinculo.codigoIndividuo : ex.codigoFixo || "", id ? `${id.anos} ${id.anos === 1 ? "ano" : "anos"}` : "", {F: "Feminino", M: "Masculino"}[ex.crianca.sexo] || ""].filter(Boolean).join(" · ")],
+    [1, "Indivíduo", [ex.vinculo ? ex.vinculo.codigoIndividuo : ex.codigoFixo || "", id ? `${id.anos} ${id.anos === 1 ? "ano" : "anos"}` : "", {F: "Feminino", M: "Masculino"}[ex.crianca.sexo] || "", ex.localidade ? `mora em ${ex.localidade.toLowerCase()}` : "", gestTxt].filter(Boolean).join(" · ")],
     [2, "Odontograma", sem ? "Não preenchido" : `${pres.length} ${pres.length === 1 ? "dente presente" : "dentes presentes"}${ex.denticao === "mista" ? ` (${dec} ${dec === 1 ? "decíduo" : "decíduos"}, ${pres.length - dec} ${pres.length - dec === 1 ? "permanente" : "permanentes"})` : ""} · ${alt} com alteração`],
-    ...(sem ? [] : [[3, "Vigilância e prótese", `${(ex.vigilancia || []).join(", ")} · ${prTxt}`]]),
+    ...(sem ? [] : [[3, "Vigilância e prótese", [(ex.vigilancia || []).join(", "), deanTxt, prTxt].filter(Boolean).join(" · ")]]),
     [4, "Condições e procedimentos", condTxt]
   ];
   $("#revLista").innerHTML = linhasR.map(([i, t, txt]) => { const ok = !faltasEtapa(i, ex).length;
@@ -1912,8 +1972,9 @@ function renderPainel(focoSel) {
     const ab = f => ({O: ehAnterior(n) ? "I" : "O", V: "V", L: ehSup(n) ? "P" : "L", M: "M", D: "D"}[f]);
     const resumo = marc.map(f => `${ab(f)}: ${esc(FACE_NOME[fs[f]].toLowerCase())}`).concat(hig.length ? [`${hig.map(ab).join(", ")}: ${hig.length === 1 ? "hígida" : "hígidas"}`] : []);
     const fsel = estado.faceSel, compat = procsCompativeis(n, d), marcados = Object.keys(d.procs || {}).filter(k => d.procs[k]);
-    const visiveis = ["exo_carie", "exodontia", ...PROCS.map(p => p[0]).filter(k => k !== "exo_carie" && k !== "exodontia" && (estado.todosProc || compat.includes(k) || marcados.includes(k)))];
-    const ocultos = PROCS.length - visiveis.length;
+    const doDente = PROCS.map(p => p[0]).filter(k => ehDecid(n) || !SO_DECIDUO.includes(k) || marcados.includes(k));
+    const visiveis = ["exo_carie", "exodontia", ...doDente.filter(k => k !== "exo_carie" && k !== "exodontia" && (estado.todosProc || compat.includes(k) || marcados.includes(k)))];
+    const ocultos = doDente.length - visiveis.length;
     const linhaProc = k => `<div class="proc"><span>${esc(PROC_NOME[k])}</span><div class="seg pequeno" role="group" aria-label="${esc(PROC_NOME[k])}">${
       [["indicado", "Indicado"], ["realizado", "Realizado"]].map(([v, r]) => `<button type="button" data-proc="${k}" data-val="${v}" aria-pressed="${(d.procs || {})[k] === v}">${r}</button>`).join("")}</div></div>`;
     corpo = `<div class="faces-box"><div class="faces-desenho">${svgDenteGrande(n, d, fsel)}</div><div class="faces-resumo"><b>Faces</b>${resumo.map(t => `<span>${t}</span>`).join("")}</div></div>
@@ -1979,18 +2040,29 @@ function montarRegistro(ex) {
     codPolo: ex.poloManual ? "" : ex.codPolo || "", codAldeia: ex.aldeiaManual ? "" : ex.codAldeia || "", codTI: ex.codAldeia ? ex.codTI || "" : "", ti: ex.codAldeia ? ex.ti || "" : "",
     codMunicipio: ex.codAldeia ? ex.codMunicipio || "" : "", dsei: ex.dsei, polo: ex.polo.trim(), aldeia: ex.aldeia.trim(), sufixo: ex.sufixo || "", codigo: ex.codigoFixo || codigoDe(ex),
     crianca: {nascimento: ex.crianca.nascimento || "", sexo: ex.crianca.sexo || ""}, idadeAnos: idade ? idade.decimal : "", denticao: ex.denticao,
-    localAtendimento: ex.localAtendimento || "", vigilancia: completarVigilancia(ex), protese: Object.assign(proteseVazia(), ex.protese || {}),
+    localAtendimento: ex.localAtendimento || "", vigilancia: completarVigilancia(comIdade(ex)), protese: Object.assign(proteseVazia(), ex.protese || {}),
     placa: ex.placa, gengivite: ex.gengivite, fluorose: (ex.vigilancia || []).includes(VIG_FLUOROSE), gerais: ex.gerais.slice(), insumos: (ex.insumos || []).slice(), observacoes: ex.observacoes, dentes,
     resultado: {classe: r.classe, risco: r.risco, descricao: r.descricao, motivos: r.motivos, ceod: r.ceod, cpod: r.cpod, agrupamento: "tres"},
     codigoIndividuo: ex.vinculo ? ex.vinculo.codigoIndividuo : (ex.codigoIndividuo || ex.codigoFixo || codigoDe(ex)), numeroExame: ex.vinculo ? (ex.vinculo.numero || ex.numeroExame || 2) : (ex.numeroExame || 1),
     vinculo: ex.vinculo ? {codigoIndividuo: ex.vinculo.codigoIndividuo, chaves: (ex.vinculo.chaves || []).slice(), numero: ex.vinculo.numero || ex.numeroExame} : null,
     situacao: "valido", envio: {estado: "pendente", tentativas: 0},
     odontograma: ex.odontograma === "nao" ? "nao" : "sim", fezColetivos: ex.fezColetivos, deuInsumos: ex.deuInsumos,
+    ...registro47(ex, idade),
     ...(ex.odontograma === "nao" ? {
       // Sem odontograma: nada do exame clínico vai junto (dentes, vigilância, prótese, placa, gengivite, profilaxia e raspagem).
       odontogramaMotivo: ex.odontogramaMotivo, odontogramaMotivoOutro: ex.odontogramaMotivo === MOTIVO_OUTRO ? String(ex.odontogramaMotivoOutro || "").trim() : "",
-      dentes: {}, vigilancia: [], protese: proteseVazia(), placa: null, gengivite: null, fluorose: false, gerais: geraisDoExame(ex),
+      dentes: {}, vigilancia: [], protese: proteseVazia(), placa: null, gengivite: null, fluorose: false, fluoroseDean: "", condNaoAvaliadas: [], gerais: geraisDoExame(ex),
       resultado: {classe: "", risco: "Sem odontograma", descricao: "", motivos: [], ceod: null, cpod: null, agrupamento: "tres"}} : {})};
+}
+// O que vai para o servidor dos campos da versão 47: só o que se aplica à pessoa (idade, sexo e odontograma).
+function registro47(ex, idade) {
+  const x = Object.assign({}, ex, {idadeAnos: idade ? idade.decimal : ""}), gest = perguntaGestante(x) ? ex.gestante : "";
+  const na = ["placa", "gengivite"].filter(k => naoAvaliada(ex, k));
+  return {localidade: ex.localidade || "", gestante: gest, semanasGestacao: gest === "sim" ? ex.semanasGestacao : null,
+    fluoroseDean: perguntaDean(x) ? ex.fluoroseDean || "" : "", condNaoAvaliadas: na,
+    ...Object.fromEntries(na.map(k => [k, null])),
+    fezEncaminhamento: ex.fezEncaminhamento, encaminhamentos: ex.fezEncaminhamento === "sim" ? clone(ex.encaminhamentos || {}) : {},
+    fezPrescricao: ex.fezPrescricao, prescricoes: ex.fezPrescricao === "sim" ? (ex.prescricoes || []).slice() : []};
 }
 function salvarExame() {
   const c = cfg(), ex = estado.ex;
@@ -2054,8 +2126,9 @@ function abrirExame(id) {
     placa: reg.placa, gengivite: reg.gengivite, fluorose: !!reg.fluorose, gerais: reg.gerais.slice(), insumos: (reg.insumos || []).slice(), observacoes: reg.observacoes || "", dentes: clone(reg.dentes), _tocado: true,
     odontograma: reg.odontograma || "sim", odontogramaMotivo: reg.odontogramaMotivo || "", odontogramaMotivoOutro: reg.odontogramaMotivoOutro || "",
     fezColetivos: reg.fezColetivos || ((reg.gerais || []).length ? "sim" : "nao"), deuInsumos: reg.deuInsumos || ((reg.insumos || []).length ? "sim" : "nao"),
+    ...Object.fromEntries(Object.keys(campos47Vazios()).map(k => [k, reg[k] === undefined ? campos47Vazios()[k] : clone(reg[k])])),
     localAtendimento: reg.localAtendimento || "", vigilancia: Array.isArray(reg.vigilancia) ? reg.vigilancia.slice() : [], protese: Object.assign(proteseVazia(), reg.protese || {}),
-    _vigOutros: (reg.vigilancia || []).some(v => vigOutrosLista().includes(v)) ? "sim" : "nao", _etapa: 0, _max: ETAPAS.length - 1, _conf: Object.fromEntries(Object.keys(reg.dentes || {}).map(k => [k, true])), _duvAnt: {},
+    _vigOutros: (reg.vigilancia || []).some(v => vigOutrosLista(reg).includes(v)) ? "sim" : "nao", _etapa: 0, _max: ETAPAS.length - 1, _conf: Object.fromEntries(Object.keys(reg.dentes || {}).map(k => [k, true])), _duvAnt: {},
     codigoIndividuo: reg.codigoIndividuo || reg.codigo, numeroExame: reg.numeroExame || 1,
     vinculo: reg.vinculo && reg.vinculo.codigoIndividuo ? {codigoIndividuo: reg.vinculo.codigoIndividuo, chaves: (reg.vinculo.chaves || []).slice(), numero: reg.numeroExame || reg.vinculo.numero} : null,
     _cand: null, _recusados: [], _anterior: null, _id: {modo: ""}, _travado: !!(reg.vinculo && reg.vinculo.codigoIndividuo), codigoFixo: reg.codigo || null,
@@ -2624,6 +2697,7 @@ $("#aba-exame").addEventListener("input", e => {
     if (i.dataset.campo === "aldeia" && estado.ex.aldeiaManual) limparAldeia(estado.ex);
     if (["uf","polo","aldeia"].includes(i.dataset.campo)) renderCodigo();
     if (["dsei","aldeia","crianca.nascimento","crianca.sexo"].includes(i.dataset.campo) && estado.ex._id && estado.ex._id.buscou && !estado.ex.vinculo && !estado.ex.codigoFixo) { estado.ex._id.buscou = false; estado.ex._cand = null; renderPessoa(); }
+    if (["crianca.sexo", "crianca.nascimento", "dataExame"].includes(i.dataset.campo)) { renderGestante(); renderVig(); renderEtapas(); }
     if (reiniciar) { renderIdade(); reiniciarOdonto(estado.ex); }
     else if (i.dataset.campo === "crianca.nascimento" || i.dataset.campo === "dataExame") {
       renderIdade();
@@ -2642,11 +2716,13 @@ $("#aba-exame").addEventListener("change", e => {
   const g = e.target.dataset.geral;
   const ins = e.target.dataset.insumo;
   if (ins != null) { const nome = INSUMOS[+ins], atual = estado.ex.insumos || []; estado.ex.insumos = e.target.checked ? [...new Set([...atual, nome])] : atual.filter(x => x !== nome); alterado(); renderEtapas(); }
+  const pr = e.target.dataset.presc;
+  if (pr != null) { const nome = PRESCRICOES[+pr], atual = estado.ex.prescricoes || []; estado.ex.prescricoes = e.target.checked ? [...new Set([...atual, nome])] : atual.filter(x => x !== nome); alterado(); renderEtapas(); }
   if (g != null) { const nome = GERAIS[+g]; estado.ex.gerais = e.target.checked ? [...new Set([...estado.ex.gerais, nome])] : estado.ex.gerais.filter(x => x !== nome); alterado(); renderEtapas(); }
 });
 $("#aba-exame").addEventListener("change", e => {
   const v = e.target.dataset.vig; if (v == null) return;
-  const nome = vigOutrosLista()[+v], ex = estado.ex; let l = (ex.vigilancia || []).filter(x => vigOutrosLista().includes(x));
+  const ex = estado.ex, nome = vigOutrosLista(ex)[+v]; let l = (ex.vigilancia || []).filter(x => vigOutrosLista(ex).includes(x));
   l = e.target.checked ? [...new Set([...l, nome])] : l.filter(x => x !== nome);
   ex.vigilancia = l; atualizarVigilancia(ex);
   alterado(); renderVig(); renderResultado();
@@ -2681,13 +2757,26 @@ $("#odMotivos").addEventListener("change", e => {
 $$("[data-sn]").forEach(grp => grp.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   const ex = estado.ex, k = grp.dataset.sn; ex[k] = b.dataset.v;
-  if (b.dataset.v === "nao") { if (k === "fezColetivos") ex.gerais = []; else ex.insumos = []; }
+  if (b.dataset.v === "nao") { if (k === "fezColetivos") ex.gerais = []; else if (k === "deuInsumos") ex.insumos = []; else if (k === "fezEncaminhamento") ex.encaminhamentos = {}; else if (k === "fezPrescricao") ex.prescricoes = []; else if (k === "gestante") ex.semanasGestacao = null; }
   alterado(); renderFormulario(); renderEtapas();
 }));
 $$("[data-bool]").forEach(grp => grp.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  estado.ex[grp.dataset.bool] = b.dataset.v === "1"; alterado(); renderFormulario(); renderResultado();
+  const ex = estado.ex, k = grp.dataset.bool, na = (ex.condNaoAvaliadas || []).filter(x => x !== k);
+  // "Não avaliado" deixa o valor vazio (nunca vira "Não" nas contas).
+  ex.condNaoAvaliadas = b.dataset.v === "na" ? na.concat([k]) : na;
+  ex[k] = b.dataset.v === "na" ? null : b.dataset.v === "1"; alterado(); renderFormulario(); renderResultado(); renderEtapas();
 }));
+$("#localidades").addEventListener("click", e => { const b = e.target.closest("[data-localidade]"); if (!b) return; estado.ex.localidade = b.dataset.localidade; alterado(); renderFormulario(); renderEtapas(); });
+$("#inSemanas").addEventListener("input", e => { const v = e.target.value.trim(); estado.ex.semanasGestacao = v === "" ? null : Number(v); alterado(); renderEtapas(); });
+$("#dean").addEventListener("change", e => { if (e.target.name !== "dean") return; estado.ex.fluoroseDean = e.target.value; atualizarVigilancia(estado.ex); alterado(); renderVig(); renderResultado(); renderEtapas(); });
+$("#encLista").addEventListener("click", e => {
+  const b = e.target.closest("[data-enc]"); if (!b) return;
+  // Tocar de novo na situação já marcada tira a especialidade.
+  const enc = Object.assign({}, estado.ex.encaminhamentos || {}), k = b.dataset.enc;
+  if (enc[k] === b.dataset.st) delete enc[k]; else enc[k] = b.dataset.st;
+  estado.ex.encaminhamentos = enc; alterado(); renderFormulario(); renderEtapas();
+});
 $("#segDenticao").addEventListener("click", e => {
   const b = e.target.closest("[data-den]"); if (!b) return;
   estado.ex.denticao = b.dataset.den; garantirDentes(estado.ex); alterado(); renderOdonto(); renderResultado();
@@ -2802,21 +2891,63 @@ var DSEIS = ["Alagoas e Sergipe", "Altamira", "Alto Rio Juruá", "Alto Rio Negro
 // Listas usadas no exame (termos genéricos dos prontuários eletrônicos da atenção primária).
 var LOCAIS_ATENDIMENTO = ["UBSI", "CASAI", "Domicílio", "Escola ou creche", "Unidade móvel", "Outro"];
 var INSUMOS = ["Escova dental","Creme dental","Fio dental"];
-var GERAIS = ["Escovação supervisionada","Aplicação tópica de flúor","Orientação de higiene e dieta","Profilaxia / remoção de placa","Raspagem supragengival","Encaminhamento para especialidade"];
-var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", "Fendas ou fissuras lábio palatais", "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
+// Procedimentos coletivos ou de boca toda, com os termos da Ficha 7 do SIASI.
+var GERAIS = ["Escovação dental supervisionada", "Aplicação tópica de flúor-gel", "Orientação de higiene e dieta", "Evidenciação de placa bacteriana",
+  "Profilaxia / remoção de placa", "Raspagem (RAP) supragengival", "Raspagem (RAP) subgengival", "Sutura", "Tratamento de alveolite",
+  "Outro procedimento cirúrgico", "Outro procedimento de urgência"];
+// Nomes de antes da versão 47: o que chega de um app 45 ou 46 é trocado pelo nome novo (o encaminhamento passou a ter a especialidade).
+/** @type {any} */
+var GERAIS_ANTIGOS = {"Escovação supervisionada": "Escovação dental supervisionada", "Aplicação tópica de flúor": "Aplicação tópica de flúor-gel",
+  "Raspagem supragengival": "Raspagem (RAP) supragengival", "Encaminhamento para especialidade": ""};
+// Aceitos só quando vêm de um app antigo (não aparecem mais para marcar).
+var GERAIS_ACEITOS = GERAIS.concat(["Encaminhamento para especialidade"]);
+var VIG_FENDA = "Má formação: fenda ou fissura lábio palatal", VIG_FREIO = "Má formação: interferência de freios";
+var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", VIG_FENDA, VIG_FREIO, "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
 var VIG_FLUOROSE = "Fluorose dentária moderada ou severa", VIG_NENHUM = "Não identificado";
+/** @type {any} */
+var VIG_ANTIGOS = {"Fendas ou fissuras lábio palatais": VIG_FENDA};
+// Localidade de residência (Ficha 4).
+var LOCALIDADES = ["Aldeia", "Acampamento", "Logradouro"];
+// Índice de Dean (Ficha 4), perguntado de 10 a 19 anos. 4 e 5 entram na vigilância como fluorose moderada ou severa.
+/** @type {any} */
+var DEAN = {"0": "Normal", "1": "Questionável", "2": "Muito leve", "3": "Leve", "4": "Moderada", "5": "Severa", "9": "Excluído (não foi possível avaliar)"};
+var DEAN_CODIGOS = ["0", "1", "2", "3", "4", "5", "9"];
+/** Idade em que o índice de Dean é perguntado. @param {any} ex */
+function perguntaDean(ex) { var i = Math.floor(Number(ex && ex.idadeAnos)); return !semOdontograma(ex) && ex.idadeAnos !== "" && ex.idadeAnos != null && i >= 10 && i <= 19; }
+/** Quem responde se está gestante: sexo feminino, de 10 a 49 anos. @param {any} ex */
+function perguntaGestante(ex) { var i = Math.floor(Number(ex && ex.idadeAnos)); return !!ex && (ex.crianca || {}).sexo === "F" && ex.idadeAnos !== "" && ex.idadeAnos != null && i >= 10 && i <= 49; }
+// Encaminhamentos da Ficha 7 ("usuário referenciado"), cada um pendente ou realizado.
+/** @type {any} */
+var ESPECIALIDADES = {endodontia: "Endodontia", periodontia: "Periodontia", protese: "Prótese", cbmf: "Cirurgia bucomaxilofacial", ortodontia: "Ortodontia", radiologia: "Radiologia"};
+/** @type {any} */
+var SITUACAO_ENCAMINHAMENTO = {pendente: "Pendente", realizado: "Realizado"};
+var PRESCRICOES = ["Analgésico", "Anti-inflamatório", "Antibiótico", "Outra prescrição"];
+// Placa e gengivite podem ficar "não avaliadas" (nunca viram "Não" nas contas).
+/** @param {any} ex @param {string} k */
+function naoAvaliada(ex, k) { return Array.isArray(ex && ex.condNaoAvaliadas) && ex.condNaoAvaliadas.indexOf(k) >= 0; }
+/** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
+function atualizarNomesAntigos(e) {
+  if (!e) return e;
+  if (Array.isArray(e.gerais)) e.gerais = e.gerais.map(function (g) { return g in GERAIS_ANTIGOS ? GERAIS_ANTIGOS[g] || g : g; });
+  if (Array.isArray(e.vigilancia)) e.vigilancia = e.vigilancia.map(function (v) { return VIG_ANTIGOS[v] || v; });
+  return e;
+}
 // Odontograma opcional: quando não é preenchido, o profissional escolhe o principal motivo (um só).
 var MOTIVOS_SEM_ODONTOGRAMA = ["Tempo insuficiente para realizar o odontograma", "A pessoa recusou o exame odontológico", "Não foi possível realizar o exame por dificuldade de colaboração",
   "Falta de condições adequadas (iluminação, espaço ou materiais)", "Condição clínica impediu a realização do exame", "Atendimento direcionado exclusivamente a ações coletivas", "Outro motivo"];
 var MOTIVO_SO_COLETIVO = "Atendimento direcionado exclusivamente a ações coletivas", MOTIVO_OUTRO = "Outro motivo";
 // Sem exame clínico, estes procedimentos não aparecem (precisam do odontograma).
-var GERAIS_CLINICOS = ["Profilaxia / remoção de placa", "Raspagem supragengival"];
+var GERAIS_CLINICOS = ["Profilaxia / remoção de placa", "Raspagem (RAP) supragengival", "Raspagem (RAP) subgengival", "Evidenciação de placa bacteriana", "Sutura", "Outro procedimento cirúrgico"];
 /** Exame registrado sem odontograma (os exames de antes do odontograma opcional sempre têm). @param {any} e */
 function semOdontograma(e) { return !!e && e.odontograma === "nao"; }
 /** "individual" ou "exclusivamente coletivo" (este só sem odontograma, com o motivo das ações coletivas). @param {any} e */
 function tipoAtendimento(e) { return semOdontograma(e) && e.odontogramaMotivo === MOTIVO_SO_COLETIVO ? "exclusivamente coletivo" : "individual"; }
+// Prótese, como na Ficha 4: sem prótese, parcial ou total. "sim" vem dos apps 45 e 46 (tipo não informado).
 /** @type {any} */
-var NOMES_PROTESE = {"": "Não avaliado", nao: "Não", sim: "Sim"};
+var NOMES_PROTESE = {"": "Não avaliado", nao: "Sem prótese", parcial: "Parcial", total: "Total", sim: "Sim (tipo não informado)"};
+var VALORES_PROTESE = ["nao", "parcial", "total", "sim"];
+/** A arcada precisa ou usa prótese (de qualquer tipo). @param {any} v */
+function temProtese(v) { return v === "parcial" || v === "total" || v === "sim"; }
 // Situação do dente. Só o dente presente tem faces, sinais e tratamento.
 // Esfoliado só existe para decíduo; no permanente, ausente é sempre "por outro motivo".
 var STATUS_DENTE = ["presente", "nao_erupc", "esfoliado", "ausente", "ausente_carie"];
@@ -2828,13 +2959,15 @@ function vigilanciaDosDentes(ex) {
   var ds = ex.dentes || {}, l = [], nums = dentesDaDenticao(ex.denticao);
   if (nums.some(function (n) { return ds[n] && ds[n].status === "presente" && ds[n].dor; })) l.push("Dor de dente");
   if (nums.some(function (n) { return ds[n] && ds[n].status === "presente" && ds[n].abscesso; })) l.push("Abscesso dentoalveolar");
+  // De 10 a 19 anos a fluorose vem do índice de Dean: moderada (4) ou severa (5).
+  if (perguntaDean(ex) && (ex.fluoroseDean === "4" || ex.fluoroseDean === "5")) l.push(VIG_FLUOROSE);
   return l;
 }
 // Vigilância final do exame: os itens do odontograma + os marcados pelo profissional. Sem nenhum: "Não identificado".
 /** @param {any} ex */
 function completarVigilancia(ex) {
-  var der = vigilanciaDosDentes(ex), outros = (Array.isArray(ex.vigilancia) ? ex.vigilancia : []).filter(function (v) {
-    return v !== VIG_NENHUM && v !== "Dor de dente" && v !== "Abscesso dentoalveolar"; });
+  var dean = perguntaDean(ex), der = vigilanciaDosDentes(ex), outros = (Array.isArray(ex.vigilancia) ? ex.vigilancia : []).filter(function (v) {
+    return v !== VIG_NENHUM && v !== "Dor de dente" && v !== "Abscesso dentoalveolar" && !(dean && v === VIG_FLUOROSE); });
   var l = der.concat(outros);
   return l.length ? l : [VIG_NENHUM];
 }
@@ -3024,9 +3157,9 @@ function agregarExames(regs, agrup, ult) {
     var pr = e.protese || {};
     if (pr.sup || pr.inf) {
       r.protese.avaliados++;
-      if (pr.sup === "sim") r.protese.sup++;
-      if (pr.inf === "sim") r.protese.inf++;
-      if (pr.sup === "sim" || pr.inf === "sim") r.protese.alguma++;
+      if (temProtese(pr.sup)) r.protese.sup++;
+      if (temProtese(pr.inf)) r.protese.inf++;
+      if (temProtese(pr.sup) || temProtese(pr.inf)) r.protese.alguma++;
     }
   });
   /** @param {any} o */
@@ -3042,9 +3175,12 @@ function agregarExames(regs, agrup, ult) {
 var NOMES_STATUS = {presente: "Presente", nao_erupc: "Não erupcionado", esfoliado: "Esfoliado", ausente: "Ausente por outro motivo", ausente_carie: "Extraído por cárie"};
 var NOMES_FACE = {"": "Hígida", ca: "Cárie ativa", cc: "Cárie crônica", mba: "Mancha branca ativa", mbi: "Mancha branca inativa",
   rest: "Restaurada sem cárie", restc: "Restaurada com cárie", sel: "Selante"};
-var NOMES_PROC = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia por outros motivos", selante: "Selante", art: "ART (restauração atraumática)", civ: "Restauração em ionômero de vidro", resina: "Restauração em resina",
-  amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado", cdf: "Cariostático (diamino fluoreto de prata)", selprov: "Selamento provisório / adequação do meio",
-  pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço"};
+// Procedimentos por dente, com os termos da Ficha 7 do SIASI (o verniz fica com o nome que as equipes conhecem).
+// As chaves (exo_carie, art…) nunca mudam: são os nomes das colunas na planilha e no Looker.
+var NOMES_PROC = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia por outros motivos", selante: "Aplicação de selante", art: "Tratamento restaurador atraumático (ART)",
+  civ: "Restauração com cimento de ionômero de vidro", resina: "Restauração em resina composta", amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado",
+  cdf: "Aplicação de cariostático", selprov: "Selamento provisório / adequação do meio", pcdp: "Proteção do complexo dentino-pulpar",
+  pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia (dente decíduo)", coroa: "Coroa de aço"};
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
 /** @param {any} iso */
@@ -3121,14 +3257,19 @@ function resumoDoExame(e) {
  * planilha, o detalhe fica no exame completo). Controle: vínculo, cancelamento e datas. */
 var ORDEM_DENTES = dentesDaDenticao("mista");
 var COL_VIG = {"Abscesso dentoalveolar": "vig_abscesso_dentoalveolar", "Alteração em tecidos moles": "vig_tecidos_moles", "Dor de dente": "vig_dor_de_dente",
-  "Fendas ou fissuras lábio palatais": "vig_fendas_labio_palatais", "Fluorose dentária moderada ou severa": "vig_fluorose", "Traumatismo dentoalveolar": "vig_traumatismo", "Não identificado": "vig_nao_identificado"};
+  "Má formação: fenda ou fissura lábio palatal": "vig_fendas_labio_palatais", "Má formação: interferência de freios": "vig_interferencia_freios", "Fluorose dentária moderada ou severa": "vig_fluorose", "Traumatismo dentoalveolar": "vig_traumatismo", "Não identificado": "vig_nao_identificado"};
+var COL_PRESCRICAO = ["prescricao_analgesico", "prescricao_anti_inflamatorio", "prescricao_antibiotico", "prescricao_outra"];
 var COL_FACE = {ca: "carie_ativa", cc: "carie_cronica", mba: "mancha_branca_ativa", mbi: "mancha_branca_inativa", rest: "restaurada_sem_carie", restc: "restaurada_com_carie", sel: "selante"};
 var COL_STATUS = {presente: "presentes", nao_erupc: "nao_erupcionados", esfoliado: "esfoliados", ausente: "ausentes_outro_motivo", ausente_carie: "extraidos_carie"};
 var CAB_P1 = ["codigo_individuo", "numero_exame", "data_exame", "situacao_registro", "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "terra_indigena",
   "codigo_polo_base", "codigo_aldeia", "codigo_municipio_ibge", "codigo_terra_indigena", "local_atendimento", "nascimento", "idade_anos", "faixa_etaria", "sexo", "denticao",
   "classe_risco", "nivel_risco", "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod"]
   .concat(Object.keys(COL_VIG).map(function (k) { return COL_VIG[k]; }))
-  .concat(["protese_sup_necessita", "protese_inf_necessita", "protese_sup_usa", "protese_inf_usa", "placa_visivel", "gengivite", "procedimentos_coletivos", "insumos", "observacoes"]);
+  .concat(["protese_sup_necessita", "protese_inf_necessita", "protese_sup_usa", "protese_inf_usa", "placa_visivel", "gengivite", "procedimentos_coletivos", "insumos", "observacoes"])
+  // Desde a versão 47 (Fichas 4 e 7 do SIASI)
+  .concat(["localidade_residencia", "gestante", "semanas_gestacao", "fluorose_dean"])
+  .concat(Object.keys(ESPECIALIDADES).map(function (k) { return "encaminhamento_" + k; }))
+  .concat(PRESCRICOES.map(function (_, i) { return COL_PRESCRICAO[i]; }));
 var CAB_P2 = Object.keys(COL_STATUS).map(function (k) { return "n_dentes_" + COL_STATUS[k]; })
   .concat([].concat.apply([], Object.keys(COL_FACE).map(function (k) { return ["n_dentes_" + COL_FACE[k], "n_faces_" + COL_FACE[k]]; })))
   .concat(["n_dentes_dor", "n_dentes_abscesso_fistula"])
@@ -3151,7 +3292,10 @@ var CAB_ANALISE = CAB_P1.concat(CAB_P2, CAB_P3, CAB_CONTROLE.filter(function (k)
 function valoresDoExame(e, completo) {
   var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, pr = e.protese || {}, cr = e.crianca || {};
   var sn = function (/** @type {any} */ b) { return b == null ? "" : b ? "sim" : "não"; };
-  var prot = function (/** @type {any} */ x) { return pr.naoAvaliado ? "não avaliado" : ({sim: "sim", nao: "não"})[x || ""] || "não avaliado"; };
+  var prot = function (/** @type {any} */ x) { return pr.naoAvaliado ? "não avaliado" : ({sim: "sim", nao: "não", parcial: "parcial", total: "total"})[x || ""] || "não avaliado"; };
+  // Placa e gengivite: vazio sem odontograma; "não avaliado" quando o profissional marcou assim.
+  var cond = function (/** @type {string} */ k) { return naoAvaliada(e, k) ? "não avaliado" : sn(e[k]); };
+  var enc = e.encaminhamentos || {}, presc = e.prescricoes || [];
   /** @type {any} */ var o = {
     id_exame: e.id, codigo_individuo: codigoIndividuoDe(e), numero_exame: e.numeroExame || 1, data_exame: e.dataExame || "", situacao_registro: exameValido(e) ? "válido" : "cancelado",
     uf: e.uf || "", dsei: e.dsei || "", polo_base: e.polo || "", aldeia_comunidade: e.aldeia || "", municipio: e.municipio || "", terra_indigena: e.ti || "",
@@ -3162,7 +3306,9 @@ function valoresDoExame(e, completo) {
     ceod_c: e.denticao === "permanente" ? "" : ce.c, ceod_e: e.denticao === "permanente" ? "" : ce.e, ceod_o: e.denticao === "permanente" ? "" : ce.o, ceod: e.denticao === "permanente" ? "" : ce.total,
     cpod_c: e.denticao === "decidua" ? "" : cp.c, cpod_p: e.denticao === "decidua" ? "" : cp.p, cpod_o: e.denticao === "decidua" ? "" : cp.o, cpod: e.denticao === "decidua" ? "" : cp.total,
     protese_sup_necessita: prot(pr.sup), protese_inf_necessita: prot(pr.inf), protese_sup_usa: prot(pr.usoSup), protese_inf_usa: prot(pr.usoInf),
-    placa_visivel: sn(e.placa), gengivite: sn(e.gengivite), procedimentos_coletivos: (e.gerais || []).join("; "), insumos: (e.insumos || []).join("; "), observacoes: e.observacoes || "",
+    placa_visivel: cond("placa"), gengivite: cond("gengivite"),
+    localidade_residencia: e.localidade || "", gestante: e.gestante === "sim" ? "sim" : e.gestante === "nao" ? "não" : "", semanas_gestacao: e.gestante === "sim" && e.semanasGestacao != null ? e.semanasGestacao : "",
+    fluorose_dean: e.fluoroseDean ? e.fluoroseDean + " · " + (DEAN[e.fluoroseDean] || "") : "", procedimentos_coletivos: (e.gerais || []).join("; "), insumos: (e.insumos || []).join("; "), observacoes: e.observacoes || "",
     codigo_exame: e.codigo || "", aldeia_fora_da_lista: e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), codigo_confere_local: codigoConfereLocal(e),
     conferencia_vinculo: v.anteriorId ? (v.conferidos && v.conferidos.length ? "compatível, com mudança conferida" : "compatível") : "1º exame",
     alertas_vinculo: (v.conferidos || []).join(" · "), exame_anterior_id: v.anteriorId || "",
@@ -3170,6 +3316,8 @@ function valoresDoExame(e, completo) {
     profissional: (e.profissional || {}).nome || "", cro: (e.profissional || {}).cro || "", criado_em: e.criadoEm || "", atualizado_em: e.atualizadoEm || "", usuario_id: e.usuarioId || ""
   };
   Object.keys(COL_VIG).forEach(function (k) { o[COL_VIG[k]] = sn((e.vigilancia || []).indexOf(k) >= 0); });
+  Object.keys(ESPECIALIDADES).forEach(function (k) { o["encaminhamento_" + k] = (SITUACAO_ENCAMINHAMENTO[enc[k]] || "").toLowerCase(); });
+  PRESCRICOES.forEach(function (p, i) { o[COL_PRESCRICAO[i]] = e.fezPrescricao == null ? "" : presc.indexOf(p) >= 0 ? "sim" : "não"; });
   // Parte 2: contas prontas (vêm do exame completo; no resumo, só as que ele guarda)
   if (e.dentes) {
     var ds = Object.keys(e.dentes).map(function (n) { return e.dentes[n] || {}; });
@@ -4682,15 +4830,18 @@ function htmlLeitura(r) {
       <tr><th>Pessoa</th><td>${esc(codigoIndividuoDe(r))}${(r.numeroExame || 1) > 1 ? ` · ${r.numeroExame}º exame` : " · 1º exame"}${r.vinculo && r.vinculo.conferidos && r.vinculo.conferidos.length ? `<br><span class="dica">Conferido na boca: ${esc(r.vinculo.conferidos.join("; "))}</span>` : ""}</td></tr>
       ${!exameValido(r) ? `<tr><th>Situação</th><td style="white-space:normal"><b>Cancelado</b> em ${fmtData((r.cancelamento || {}).em)} por ${esc((r.cancelamento || {}).por || "")}: ${esc((r.cancelamento || {}).motivo || "")}${(r.cancelamento || {}).observacao ? " · " + esc(r.cancelamento.observacao) : ""}</td></tr>` : ""}
       <tr><th>Local</th><td>${esc([r.dsei && "DSEI " + r.dsei, r.polo && "Polo " + r.polo, r.aldeia, r.uf, r.localAtendimento].filter(Boolean).join(" › "))}</td></tr>
-      <tr><th>Idade e sexo</th><td>${r.idadeAnos !== "" && r.idadeAnos != null ? Math.floor(r.idadeAnos) + " anos" : "idade não informada"} · ${{F: "feminino", M: "masculino"}[(r.crianca || {}).sexo] || "sexo não informado"}</td></tr>
+      <tr><th>Idade e sexo</th><td>${r.idadeAnos !== "" && r.idadeAnos != null ? Math.floor(r.idadeAnos) + " anos" : "idade não informada"} · ${{F: "feminino", M: "masculino"}[(r.crianca || {}).sexo] || "sexo não informado"}${r.gestante === "sim" ? ` · gestante (${esc(String(r.semanasGestacao || "?"))} semanas)` : r.gestante === "nao" ? " · não gestante" : ""}</td></tr>
+      ${r.localidade ? `<tr><th>Localidade de residência</th><td>${esc(r.localidade)}</td></tr>` : ""}
       ${sem ? `<tr><th>Odontograma</th><td style="white-space:normal"><b>Não preenchido</b> · ${esc(r.odontogramaMotivo === MOTIVO_OUTRO ? "Outro motivo: " + (r.odontogramaMotivoOutro || "") : r.odontogramaMotivo || "")}</td></tr>` : ""}
       <tr><th>Risco</th><td>${esc(res.risco || "")}</td></tr>
       <tr><th>Índices</th><td>ceo-d ${res.ceod ? res.ceod.total : "–"} · CPO-D ${res.cpod ? res.cpod.total : "–"}</td></tr>
-      <tr><th>Vigilância em saúde bucal</th><td style="white-space:normal">${esc((r.vigilancia || []).join(", ") || "não registrada")}</td></tr>
-      ${r.protese ? `<tr><th>Necessidade de prótese</th><td>superior: ${esc(NOMES_PROTESE[r.protese.sup || ""].toLowerCase())} · inferior: ${esc(NOMES_PROTESE[r.protese.inf || ""].toLowerCase())}</td></tr>` : ""}
-      <tr><th>Condições gerais</th><td>${[r.placa && "placa visível", r.gengivite && "gengivite"].filter(Boolean).join(", ") || "nenhuma"}</td></tr>
+      <tr><th>Vigilância em saúde bucal</th><td style="white-space:normal">${esc((r.vigilancia || []).join(", ") || "não registrada")}${r.fluoroseDean ? ` · índice de Dean ${esc(r.fluoroseDean)} (${esc((DEAN[r.fluoroseDean] || "").toLowerCase())})` : ""}</td></tr>
+      ${r.protese && !sem ? `<tr><th>Prótese</th><td style="white-space:normal">${r.protese.naoAvaliado ? "não foi possível avaliar" : `necessidade de uso: superior ${esc((NOMES_PROTESE[r.protese.sup || ""] || "").toLowerCase())}, inferior ${esc((NOMES_PROTESE[r.protese.inf || ""] || "").toLowerCase())} · uso: superior ${esc((NOMES_PROTESE[r.protese.usoSup || ""] || "").toLowerCase())}, inferior ${esc((NOMES_PROTESE[r.protese.usoInf || ""] || "").toLowerCase())}`}</td></tr>` : ""}
+      <tr><th>Condições gerais</th><td>${sem ? "não avaliadas (sem odontograma)" : [r.placa && "placa visível", r.gengivite && "gengivite", ...["placa", "gengivite"].filter(k => naoAvaliada(r, k)).map(k => (k === "placa" ? "placa" : "gengivite") + " não avaliada")].filter(Boolean).join(", ") || "sem placa visível e sem gengivite"}</td></tr>
       <tr><th>Procedimentos coletivos</th><td>${esc((r.gerais || []).join(", ") || "nenhum")}</td></tr>
       <tr><th>Procedimentos por dente</th><td style="white-space:normal">${esc(procs.join("; ") || "nenhum")}</td></tr>
+      ${r.fezEncaminhamento ? `<tr><th>Encaminhamentos</th><td style="white-space:normal">${esc(Object.entries(r.encaminhamentos || {}).map(([k, st]) => `${ESPECIALIDADES[k] || k} (${(SITUACAO_ENCAMINHAMENTO[st] || st).toLowerCase()})`).join(", ") || "nenhum")}</td></tr>` : ""}
+      ${r.fezPrescricao ? `<tr><th>Prescrições</th><td style="white-space:normal">${esc((r.prescricoes || []).join(", ") || "nenhuma")}</td></tr>` : ""}
       ${r.observacoes ? `<tr><th>Observações</th><td style="white-space:normal">${esc(r.observacoes)}</td></tr>` : ""}
     </tbody></table></div>
     ${sem ? "" : `<div class="odonto"><div class="odonto-in">${odo}</div></div>`}

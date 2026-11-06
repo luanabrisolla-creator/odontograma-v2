@@ -71,14 +71,18 @@ for (let i = 0; i < 8; i++) {
     await pg.check('input[name="idModo"][value="novo"]'); await pg.waitForTimeout(150);
     await pg.fill('[data-campo="crianca.nascimento"]', o.nasc || "2018-04-04");
     await pg.selectOption('[data-campo="crianca.sexo"]', o.sexo || "F"); await pg.waitForTimeout(150);
+    await pg.click('#localidades [data-localidade="Aldeia"]');
+    if (await pg.isVisible("#gestBox")) await pg.click('[data-sn="gestante"] [data-v="nao"]');
     await pg.click('[data-id-acao="buscar-dados"]'); await pg.waitForTimeout(800);
     await pg.click('[data-id-acao="nova-pessoa"]'); await pg.waitForTimeout(800);
     await pg.click('#leitura [data-id-acao="fecha-novo"].prim'); await pg.waitForTimeout(1300); // a página desce sozinha até o odontograma
     if (o.odontograma !== false) { await pg.click('#segOdonto [data-od="sim"]'); await pg.waitForTimeout(200); }   // "O odontograma foi preenchido?" Sim
   }
-  const semColetivosNemInsumos = async pg => { await pg.click('[data-sn="fezColetivos"] [data-v="nao"]'); await pg.click('[data-sn="deuInsumos"] [data-v="nao"]'); await pg.waitForTimeout(1300); };
+  const semColetivosNemInsumos = async pg => { await pg.click('[data-sn="fezColetivos"] [data-v="nao"]'); await pg.click('[data-sn="deuInsumos"] [data-v="nao"]');
+    await pg.click('[data-sn="fezEncaminhamento"] [data-v="nao"]'); await pg.click('[data-sn="fezPrescricao"] [data-v="nao"]'); await pg.waitForTimeout(1300); };
   // Depois do Indivíduo, responde o mínimo (sem alterações) até o Resumo.
   async function completar(pg) {
+    if (await pg.isVisible("#deanBox")) await pg.check('#dean input[value="0"]');
     await pg.click('#vigOutros [data-v="nao"]'); await pg.click("#proteseNenhuma"); await pg.waitForTimeout(1300); // desce até Condições
     await pg.click('[data-bool="placa"] [data-v="0"]'); await pg.click('[data-bool="gengivite"] [data-v="0"]'); await semColetivosNemInsumos(pg);
   }
@@ -89,6 +93,17 @@ for (let i = 0; i < 8; i++) {
   let { ctx, pg } = await pagina(true);
   await entrar(pg, S.ANA);
   T("dentista entra", await pg.evaluate(() => !!sessao()));
+  await irAba(pg, "exame"); await pg.waitForTimeout(300);
+  // (o Indivíduo ainda está travado sem o Local: as regras são conferidas direto no app)
+  const gest = await pg.evaluate(() => {
+    estado.ex.crianca = {nascimento: "1995-01-10", sexo: "F"}; renderGestante(); const f = !$("#gestBox").hidden;
+    estado.ex.gestante = "sim"; renderGestante(); const sem = !$("#semanasCampo").hidden && faltasEtapa(1, estado.ex).some(x => /semanas/.test(x[0]));
+    estado.ex.crianca.sexo = "M"; renderGestante(); const m = $("#gestBox").hidden;
+    estado.ex.crianca = {nascimento: "1960-01-10", sexo: "F"}; renderGestante(); const idosa = $("#gestBox").hidden;
+    estado.ex = novoExame(); garantirDentes(estado.ex); store.set(K_RASC, null); renderExame();
+    return [f, sem, m, idosa];
+  });
+  T("\"Está gestante?\" aparece para mulher de 10 a 49 anos, pede as semanas no Sim, e some para o sexo masculino e depois dos 49", gest.every(Boolean), gest);
   const opcoes = await pg.$$eval("#inSexo option", os => os.map(o => o.textContent));
   T("sexo sem a opção \"Não informado\"", !opcoes.some(t => /não informado/i.test(t)) && opcoes.includes("Feminino") && opcoes.includes("Masculino"), opcoes);
   await novaPessoa(pg, {});
@@ -217,9 +232,9 @@ for (let i = 0; i < 8; i++) {
   pg.removeAllListeners("dialog"); pg.on("dialog", d => d.accept());
   T("vigilância mostra a dor que veio do odontograma, travada", /Dor de dente · dente 46/.test(await pg.textContent("#vigDerivado")) && await pg.isDisabled("#vigDerivado input"), await pg.textContent("#vigDerivado"));
   const yAntes = await pg.evaluate(() => scrollY);
-  await pg.click('#vigOutros [data-v="sim"]'); await pg.check('#vig [data-vig="2"]');
-  T("a prótese pergunta primeiro a necessidade e depois o uso", (await pg.$$eval("#blocoProtese .arc-p .linha-op span", l => l.map(x => x.textContent))).slice(0, 2).join("|") === "Necessita de prótese?|Usa prótese?");
-  await pg.click('[data-protese="sup"] [data-v="sim"]'); await pg.click('[data-protese="usoSup"] [data-v="nao"]'); await pg.click('[data-protese="inf"] [data-v="nao"]');
+  await pg.click('#vigOutros [data-v="sim"]'); await pg.check('#vig [data-vig="3"]');
+  T("a prótese pergunta primeiro a necessidade e depois o uso", (await pg.$$eval("#blocoProtese .arc-p .linha-op span", l => l.map(x => x.textContent))).slice(0, 2).join("|") === "Necessidade de uso de prótese|Uso de prótese");
+  await pg.click('[data-protese="sup"] [data-v="parcial"]'); await pg.click('[data-protese="usoSup"] [data-v="nao"]'); await pg.click('[data-protese="inf"] [data-v="nao"]');
   await pg.waitForTimeout(150);
   T("prótese incompleta: Condições continua bloqueado", await bloq(pg, "#blocoGerais"));
   await pg.click('[data-protese="usoInf"] [data-v="nao"]'); await pg.waitForTimeout(1300);
@@ -230,13 +245,24 @@ for (let i = 0; i < 8; i++) {
   T("\"Não foi possível avaliar\" marca a prótese e pode ser desfeito", await pg.evaluate(() => estado.ex.protese.naoAvaliado === true) && /Desfazer/.test(await pg.textContent("#proteseNaoAval")));
   await pg.click("#proteseNaoAval"); await pg.waitForTimeout(80);
   T("desfazendo, Condições continua liberado (o que já foi liberado não volta para o cinza)", !await bloq(pg, "#blocoGerais"));
-  await pg.click('[data-protese="sup"] [data-v="sim"]'); await pg.click('[data-protese="usoSup"] [data-v="nao"]'); await pg.click('[data-protese="inf"] [data-v="nao"]'); await pg.click('[data-protese="usoInf"] [data-v="nao"]');
+  await pg.click('[data-protese="sup"] [data-v="parcial"]'); await pg.click('[data-protese="usoSup"] [data-v="nao"]'); await pg.click('[data-protese="inf"] [data-v="nao"]'); await pg.click('[data-protese="usoInf"] [data-v="nao"]');
   T("prótese respondida de novo", await pg.evaluate(() => JSON.stringify(estado.ex.protese)) === pr0);
+  await pg.click('[data-bool="placa"] [data-v="na"]'); await pg.waitForTimeout(100);
+  T("placa \"Não avaliado\": fica vazia e marcada como não avaliada", await pg.evaluate(() => estado.ex.placa === null && estado.ex.condNaoAvaliadas.includes("placa") && !faltasEtapa(4, estado.ex).some(x => /placa/.test(x[0]))));
   await pg.click('[data-bool="placa"] [data-v="1"]'); await pg.click('[data-bool="gengivite"] [data-v="0"]'); await pg.waitForTimeout(300);
+  T("voltando para Sim, a placa deixa de ser \"não avaliada\"", await pg.evaluate(() => estado.ex.placa === true && !estado.ex.condNaoAvaliadas.includes("placa")));
   T("placa e gengivite respondidas, mas coletivos e insumos não: o Resumo continua bloqueado (não pula mais para o resumo)", await bloq(pg, "#blocoRevisao") && await pg.evaluate(() => faltasEtapa(4, estado.ex).map(x => x[0]).join(" ")).then(t => /coletivos/.test(t) && /insumos/.test(t)));
   await pg.click('[data-sn="fezColetivos"] [data-v="sim"]'); await pg.waitForTimeout(150);
   T("\"Sim\" nos coletivos abre a lista, e o Resumo espera marcar pelo menos um", await pg.isVisible("#gerais") && await bloq(pg, "#blocoRevisao"));
-  await pg.check('#gerais [data-geral="0"]'); await pg.click('[data-sn="deuInsumos"] [data-v="nao"]'); await pg.waitForTimeout(1300);
+  await pg.check('#gerais [data-geral="0"]'); await pg.click('[data-sn="deuInsumos"] [data-v="nao"]'); await pg.waitForTimeout(300);
+  T("coletivos e insumos respondidos, mas encaminhamento e prescrição não: o Resumo continua bloqueado", await bloq(pg, "#blocoRevisao"));
+  await pg.click('[data-sn="fezEncaminhamento"] [data-v="sim"]'); await pg.waitForTimeout(150);
+  T("\"Sim\" no encaminhamento mostra as 6 especialidades da Ficha 7, cada uma com Pendente e Realizado", await pg.$$eval("#encLista .linha-op", l => l.length) === 6 && await pg.isVisible('#encLista [data-enc="endodontia"][data-st="pendente"]'));
+  await pg.click('#encLista [data-enc="endodontia"][data-st="pendente"]'); await pg.click('#encLista [data-enc="protese"][data-st="realizado"]');
+  await pg.click('#encLista [data-enc="protese"][data-st="realizado"]'); // tocar de novo tira a especialidade
+  await pg.click('[data-sn="fezPrescricao"] [data-v="sim"]'); await pg.check('#prescricoes [data-presc="0"]'); await pg.waitForTimeout(1300);
+  await foto(pg, "6a_condicoes_cel", "#blocoGerais");
+  T("encaminhamento e prescrição guardados (tocar de novo tira a especialidade)", await pg.evaluate(() => JSON.stringify(estado.ex.encaminhamentos) === '{"endodontia":"pendente"}' && estado.ex.prescricoes.join() === "Analgésico"));
   T("Condições completas: o Resumo é liberado, com o resultado e as 5 partes, cada uma com Editar", !await bloq(pg, "#blocoRevisao") && await pg.$$eval("#revLista .rev", l => l.length) === 5 && await pg.textContent("#revResultado .classe") === "F");
   T("Condições completas: a página não desce sozinha até o Resumo (dá para marcar mais itens com calma)", await pg.evaluate(() => document.getElementById("blocoRevisao").getBoundingClientRect().top > 260),
     await pg.evaluate(() => document.getElementById("blocoRevisao").getBoundingClientRect().top));
@@ -253,7 +279,9 @@ for (let i = 0; i < 8; i++) {
   const l35 = aba("Exames").find(l => l[1] === cod35), j35 = l35 ? JSON.parse(l35.at(-1)) : null;
   T("o exame chega à planilha", !!j35, cod35);
   T("planilha: vigilância com a dor do odontograma e a fluorose marcada", j35 && j35.vigilancia.includes("Dor de dente") && j35.vigilancia.includes("Fluorose dentária moderada ou severa") && !j35.vigilancia.includes("Não identificado"), j35 && j35.vigilancia);
-  T("planilha: prótese com necessidade e uso", l35 && l35[col("Exames", "protese_sup_necessita")] === "sim" && l35[col("Exames", "protese_sup_usa")] === "não", l35 && [l35[col("Exames", "protese_sup_necessita")], l35[col("Exames", "protese_sup_usa")]]);
+  T("planilha: prótese com necessidade e uso", l35 && l35[col("Exames", "protese_sup_necessita")] === "parcial" && l35[col("Exames", "protese_sup_usa")] === "não", l35 && [l35[col("Exames", "protese_sup_necessita")], l35[col("Exames", "protese_sup_usa")]]);
+  T("planilha: localidade, encaminhamento e prescrição (Fichas 4 e 7)", l35 && l35[col("Exames", "localidade_residencia")] === "Aldeia" && l35[col("Exames", "encaminhamento_endodontia")] === "pendente"
+    && l35[col("Exames", "encaminhamento_protese")] === "" && l35[col("Exames", "prescricao_analgesico")] === "sim" && l35[col("Exames", "prescricao_antibiotico")] === "não", l35 && ["localidade_residencia", "encaminhamento_endodontia", "prescricao_analgesico"].map(k => l35[col("Exames", k)]));
   T("planilha: CPO-D com o 46 em C e o 36 em P", j35 && j35.resultado.cpod.c === 1 && j35.resultado.cpod.p === 1, j35 && j35.resultado.cpod);
   await foto(pg, "7_salvo_cel");
   await pg.click('#leitura [data-fecha-leitura].prim'); await pg.waitForTimeout(200);
@@ -263,13 +291,16 @@ for (let i = 0; i < 8; i++) {
   // Abrir um exame salvo para corrigir: todas as partes liberadas, respostas mantidas.
   await pg.evaluate(id => abrirExame(id), j35 && j35.id); await pg.waitForTimeout(300);
   T("ao abrir um exame salvo, todas as partes ficam liberadas", await pg.evaluate(() => estado.ex._max === 5 && !!estado.editando) && !await pg.isDisabled('#etapas [data-etapa="5"]') && !await bloq(pg, "#blocoRevisao"));
-  T("as respostas voltam: vigilância com Sim, prótese e exodontia do 46", await pg.evaluate(() => estado.ex._vigOutros === "sim" && estado.ex.protese.sup === "sim" && estado.ex.dentes[46].procs.exo_carie === "indicado"));
+  T("as respostas voltam: vigilância com Sim, prótese e exodontia do 46", await pg.evaluate(() => estado.ex._vigOutros === "sim" && estado.ex.protese.sup === "parcial" && estado.ex.dentes[46].procs.exo_carie === "indicado"));
   T("dente já registrado não aparece como \"conferir pela idade\"", !(await pg.$(".dente.duvida")));
   T("editando, o botão continua \"Salvar e enviar\"", (await pg.textContent("#salvar")).trim() === "Salvar e enviar");
   await pg.click("#salvar"); await pg.waitForTimeout(2500);
   T("a correção é gravada", aba("Exames").filter(l => l[0] === j35.id).length >= 1 && !await pg.evaluate(() => estado.editando));
   // Mudar a data de nascimento depois de marcar dentes: o odontograma volta do início (só ele).
   await novaPessoa(pg, { nasc: "2015-05-05", sexo: "M" });
+  T("de 10 a 19 anos, a vigilância pergunta o índice de Dean, e a fluorose sai da lista de condições", await pg.isVisible("#deanBox") && !/Fluorose/.test(await pg.textContent("#vig")) && /Normal/.test(await pg.textContent("#dean")));
+  await foto(pg, "5a_vigilancia_dean_cel", "#blocoCond");
+  await pg.check('#dean input[value="0"]');
   await pg.click('#vigOutros [data-v="nao"]'); await pg.click("#proteseNenhuma"); await pg.waitForTimeout(1300);
   await pg.click('.dente[data-n="46"]'); await pg.waitForTimeout(150);
   await pg.click('.faces-desenho [data-face="O"]'); await pg.click('.painel [data-facecond="ca"]'); await pg.check('.painel [data-sinal="dor"]');
@@ -359,7 +390,7 @@ for (let i = 0; i < 8; i++) {
     T(nome + ": abre todas as abas sem erro (" + abas.join(", ") + ")", !pg.erros.length, pg.erros);
     if (abas.includes("exame")) {
       await irAba(pg, "exame"); await pg.waitForTimeout(300);
-      T(nome + ": exame mostra procedimentos coletivos e insumos", /Escovação supervisionada/.test(await pg.textContent("body")) && /Escova dental/.test(await pg.textContent("body")));
+      T(nome + ": exame mostra procedimentos coletivos e insumos", /Escovação (dental )?supervisionada/.test(await pg.textContent("body")) && /Escova dental/.test(await pg.textContent("body")));
     }
     if (abas.includes("painel")) {
       await irAba(pg, "painel"); await pg.waitForTimeout(400);
@@ -491,10 +522,12 @@ for (let i = 0; i < 8; i++) {
   T("com o motivo: vigilância, prótese, placa e gengivite somem; condições libera", !await pg.isVisible("#blocoCond") && !await pg.isVisible("#blocoProtese") && !await pg.isVisible("#condClinicas") && !await bloq(pg, "#blocoGerais"));
   await pg.click('[data-sn="fezColetivos"] [data-v="sim"]'); await pg.waitForTimeout(150);
   const opcoesCol = await pg.$$eval("#gerais label", l => l.map(x => x.textContent.trim()));
-  T("sem odontograma, profilaxia e raspagem não aparecem; o encaminhamento aparece", !opcoesCol.some(t => /Profilaxia|Raspagem/.test(t)) && opcoesCol.some(t => /Encaminhamento/.test(t)) && opcoesCol.length === 4, opcoesCol);
-  await pg.check('#gerais [data-geral="0"]'); await pg.click('[data-sn="deuInsumos"] [data-v="sim"]'); await pg.check('#insumos [data-insumo="0"]'); await pg.waitForTimeout(1300);
+  T("sem odontograma, profilaxia, raspagem, evidenciação de placa e sutura não aparecem", !opcoesCol.some(t => /Profilaxia|Raspagem|Evidenciação|Sutura|cirúrgico/.test(t)) && opcoesCol.some(t => /urgência/.test(t)) && opcoesCol.length === 5, opcoesCol);
+  await pg.check('#gerais [data-geral="0"]'); await pg.click('[data-sn="deuInsumos"] [data-v="sim"]'); await pg.check('#insumos [data-insumo="0"]');
+  await pg.click('[data-sn="fezEncaminhamento"] [data-v="sim"]'); await pg.click('#encLista [data-enc="endodontia"][data-st="pendente"]'); await pg.click('[data-sn="fezPrescricao"] [data-v="nao"]'); await pg.waitForTimeout(1300);
+  T("sem odontograma, o encaminhamento continua (com a especialidade)", /Encaminhamentos: Endodontia \(pendente\)/.test(await pg.textContent("#revLista")));
   T("Resumo: sem odontograma, com o motivo, os coletivos e os insumos", !await bloq(pg, "#blocoRevisao") && /Sem odontograma/.test(await pg.textContent("#revResultado")) && /recusou/.test(await pg.textContent("#revResultado"))
-    && /Coletivos: Escovação supervisionada/.test(await pg.textContent("#revLista")) && /Insumos: Escova dental/.test(await pg.textContent("#revLista")), await pg.textContent("#blocoRevisao"));
+    && /Coletivos: Escovação dental supervisionada/.test(await pg.textContent("#revLista")) && /Insumos: Escova dental/.test(await pg.textContent("#revLista")), await pg.textContent("#blocoRevisao"));
   T("a barra de resultado mostra \"Sem odontograma\", sem classe", (await pg.textContent("#resRisco")).trim() === "Sem odontograma");
   const idSem = await pg.evaluate(() => estado.ex.id);
   await pg.click("#salvarFim"); await pg.waitForTimeout(2500);

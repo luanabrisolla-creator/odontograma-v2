@@ -18,21 +18,63 @@ var DSEIS = ["Alagoas e Sergipe", "Altamira", "Alto Rio Juruá", "Alto Rio Negro
 // Listas usadas no exame (termos genéricos dos prontuários eletrônicos da atenção primária).
 var LOCAIS_ATENDIMENTO = ["UBSI", "CASAI", "Domicílio", "Escola ou creche", "Unidade móvel", "Outro"];
 var INSUMOS = ["Escova dental","Creme dental","Fio dental"];
-var GERAIS = ["Escovação supervisionada","Aplicação tópica de flúor","Orientação de higiene e dieta","Profilaxia / remoção de placa","Raspagem supragengival","Encaminhamento para especialidade"];
-var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", "Fendas ou fissuras lábio palatais", "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
+// Procedimentos coletivos ou de boca toda, com os termos da Ficha 7 do SIASI.
+var GERAIS = ["Escovação dental supervisionada", "Aplicação tópica de flúor-gel", "Orientação de higiene e dieta", "Evidenciação de placa bacteriana",
+  "Profilaxia / remoção de placa", "Raspagem (RAP) supragengival", "Raspagem (RAP) subgengival", "Sutura", "Tratamento de alveolite",
+  "Outro procedimento cirúrgico", "Outro procedimento de urgência"];
+// Nomes de antes da versão 47: o que chega de um app 45 ou 46 é trocado pelo nome novo (o encaminhamento passou a ter a especialidade).
+/** @type {any} */
+var GERAIS_ANTIGOS = {"Escovação supervisionada": "Escovação dental supervisionada", "Aplicação tópica de flúor": "Aplicação tópica de flúor-gel",
+  "Raspagem supragengival": "Raspagem (RAP) supragengival", "Encaminhamento para especialidade": ""};
+// Aceitos só quando vêm de um app antigo (não aparecem mais para marcar).
+var GERAIS_ACEITOS = GERAIS.concat(["Encaminhamento para especialidade"]);
+var VIG_FENDA = "Má formação: fenda ou fissura lábio palatal", VIG_FREIO = "Má formação: interferência de freios";
+var VIGILANCIA = ["Abscesso dentoalveolar", "Alteração em tecidos moles", "Dor de dente", VIG_FENDA, VIG_FREIO, "Fluorose dentária moderada ou severa", "Traumatismo dentoalveolar", "Não identificado"];
 var VIG_FLUOROSE = "Fluorose dentária moderada ou severa", VIG_NENHUM = "Não identificado";
+/** @type {any} */
+var VIG_ANTIGOS = {"Fendas ou fissuras lábio palatais": VIG_FENDA};
+// Localidade de residência (Ficha 4).
+var LOCALIDADES = ["Aldeia", "Acampamento", "Logradouro"];
+// Índice de Dean (Ficha 4), perguntado de 10 a 19 anos. 4 e 5 entram na vigilância como fluorose moderada ou severa.
+/** @type {any} */
+var DEAN = {"0": "Normal", "1": "Questionável", "2": "Muito leve", "3": "Leve", "4": "Moderada", "5": "Severa", "9": "Excluído (não foi possível avaliar)"};
+var DEAN_CODIGOS = ["0", "1", "2", "3", "4", "5", "9"];
+/** Idade em que o índice de Dean é perguntado. @param {any} ex */
+function perguntaDean(ex) { var i = Math.floor(Number(ex && ex.idadeAnos)); return !semOdontograma(ex) && ex.idadeAnos !== "" && ex.idadeAnos != null && i >= 10 && i <= 19; }
+/** Quem responde se está gestante: sexo feminino, de 10 a 49 anos. @param {any} ex */
+function perguntaGestante(ex) { var i = Math.floor(Number(ex && ex.idadeAnos)); return !!ex && (ex.crianca || {}).sexo === "F" && ex.idadeAnos !== "" && ex.idadeAnos != null && i >= 10 && i <= 49; }
+// Encaminhamentos da Ficha 7 ("usuário referenciado"), cada um pendente ou realizado.
+/** @type {any} */
+var ESPECIALIDADES = {endodontia: "Endodontia", periodontia: "Periodontia", protese: "Prótese", cbmf: "Cirurgia bucomaxilofacial", ortodontia: "Ortodontia", radiologia: "Radiologia"};
+/** @type {any} */
+var SITUACAO_ENCAMINHAMENTO = {pendente: "Pendente", realizado: "Realizado"};
+var PRESCRICOES = ["Analgésico", "Anti-inflamatório", "Antibiótico", "Outra prescrição"];
+// Placa e gengivite podem ficar "não avaliadas" (nunca viram "Não" nas contas).
+/** @param {any} ex @param {string} k */
+function naoAvaliada(ex, k) { return Array.isArray(ex && ex.condNaoAvaliadas) && ex.condNaoAvaliadas.indexOf(k) >= 0; }
+/** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
+function atualizarNomesAntigos(e) {
+  if (!e) return e;
+  if (Array.isArray(e.gerais)) e.gerais = e.gerais.map(function (g) { return g in GERAIS_ANTIGOS ? GERAIS_ANTIGOS[g] || g : g; });
+  if (Array.isArray(e.vigilancia)) e.vigilancia = e.vigilancia.map(function (v) { return VIG_ANTIGOS[v] || v; });
+  return e;
+}
 // Odontograma opcional: quando não é preenchido, o profissional escolhe o principal motivo (um só).
 var MOTIVOS_SEM_ODONTOGRAMA = ["Tempo insuficiente para realizar o odontograma", "A pessoa recusou o exame odontológico", "Não foi possível realizar o exame por dificuldade de colaboração",
   "Falta de condições adequadas (iluminação, espaço ou materiais)", "Condição clínica impediu a realização do exame", "Atendimento direcionado exclusivamente a ações coletivas", "Outro motivo"];
 var MOTIVO_SO_COLETIVO = "Atendimento direcionado exclusivamente a ações coletivas", MOTIVO_OUTRO = "Outro motivo";
 // Sem exame clínico, estes procedimentos não aparecem (precisam do odontograma).
-var GERAIS_CLINICOS = ["Profilaxia / remoção de placa", "Raspagem supragengival"];
+var GERAIS_CLINICOS = ["Profilaxia / remoção de placa", "Raspagem (RAP) supragengival", "Raspagem (RAP) subgengival", "Evidenciação de placa bacteriana", "Sutura", "Outro procedimento cirúrgico"];
 /** Exame registrado sem odontograma (os exames de antes do odontograma opcional sempre têm). @param {any} e */
 function semOdontograma(e) { return !!e && e.odontograma === "nao"; }
 /** "individual" ou "exclusivamente coletivo" (este só sem odontograma, com o motivo das ações coletivas). @param {any} e */
 function tipoAtendimento(e) { return semOdontograma(e) && e.odontogramaMotivo === MOTIVO_SO_COLETIVO ? "exclusivamente coletivo" : "individual"; }
+// Prótese, como na Ficha 4: sem prótese, parcial ou total. "sim" vem dos apps 45 e 46 (tipo não informado).
 /** @type {any} */
-var NOMES_PROTESE = {"": "Não avaliado", nao: "Não", sim: "Sim"};
+var NOMES_PROTESE = {"": "Não avaliado", nao: "Sem prótese", parcial: "Parcial", total: "Total", sim: "Sim (tipo não informado)"};
+var VALORES_PROTESE = ["nao", "parcial", "total", "sim"];
+/** A arcada precisa ou usa prótese (de qualquer tipo). @param {any} v */
+function temProtese(v) { return v === "parcial" || v === "total" || v === "sim"; }
 // Situação do dente. Só o dente presente tem faces, sinais e tratamento.
 // Esfoliado só existe para decíduo; no permanente, ausente é sempre "por outro motivo".
 var STATUS_DENTE = ["presente", "nao_erupc", "esfoliado", "ausente", "ausente_carie"];
@@ -44,13 +86,15 @@ function vigilanciaDosDentes(ex) {
   var ds = ex.dentes || {}, l = [], nums = dentesDaDenticao(ex.denticao);
   if (nums.some(function (n) { return ds[n] && ds[n].status === "presente" && ds[n].dor; })) l.push("Dor de dente");
   if (nums.some(function (n) { return ds[n] && ds[n].status === "presente" && ds[n].abscesso; })) l.push("Abscesso dentoalveolar");
+  // De 10 a 19 anos a fluorose vem do índice de Dean: moderada (4) ou severa (5).
+  if (perguntaDean(ex) && (ex.fluoroseDean === "4" || ex.fluoroseDean === "5")) l.push(VIG_FLUOROSE);
   return l;
 }
 // Vigilância final do exame: os itens do odontograma + os marcados pelo profissional. Sem nenhum: "Não identificado".
 /** @param {any} ex */
 function completarVigilancia(ex) {
-  var der = vigilanciaDosDentes(ex), outros = (Array.isArray(ex.vigilancia) ? ex.vigilancia : []).filter(function (v) {
-    return v !== VIG_NENHUM && v !== "Dor de dente" && v !== "Abscesso dentoalveolar"; });
+  var dean = perguntaDean(ex), der = vigilanciaDosDentes(ex), outros = (Array.isArray(ex.vigilancia) ? ex.vigilancia : []).filter(function (v) {
+    return v !== VIG_NENHUM && v !== "Dor de dente" && v !== "Abscesso dentoalveolar" && !(dean && v === VIG_FLUOROSE); });
   var l = der.concat(outros);
   return l.length ? l : [VIG_NENHUM];
 }
@@ -240,9 +284,9 @@ function agregarExames(regs, agrup, ult) {
     var pr = e.protese || {};
     if (pr.sup || pr.inf) {
       r.protese.avaliados++;
-      if (pr.sup === "sim") r.protese.sup++;
-      if (pr.inf === "sim") r.protese.inf++;
-      if (pr.sup === "sim" || pr.inf === "sim") r.protese.alguma++;
+      if (temProtese(pr.sup)) r.protese.sup++;
+      if (temProtese(pr.inf)) r.protese.inf++;
+      if (temProtese(pr.sup) || temProtese(pr.inf)) r.protese.alguma++;
     }
   });
   /** @param {any} o */
@@ -258,9 +302,12 @@ function agregarExames(regs, agrup, ult) {
 var NOMES_STATUS = {presente: "Presente", nao_erupc: "Não erupcionado", esfoliado: "Esfoliado", ausente: "Ausente por outro motivo", ausente_carie: "Extraído por cárie"};
 var NOMES_FACE = {"": "Hígida", ca: "Cárie ativa", cc: "Cárie crônica", mba: "Mancha branca ativa", mbi: "Mancha branca inativa",
   rest: "Restaurada sem cárie", restc: "Restaurada com cárie", sel: "Selante"};
-var NOMES_PROC = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia por outros motivos", selante: "Selante", art: "ART (restauração atraumática)", civ: "Restauração em ionômero de vidro", resina: "Restauração em resina",
-  amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado", cdf: "Cariostático (diamino fluoreto de prata)", selprov: "Selamento provisório / adequação do meio",
-  pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia", coroa: "Coroa de aço"};
+// Procedimentos por dente, com os termos da Ficha 7 do SIASI (o verniz fica com o nome que as equipes conhecem).
+// As chaves (exo_carie, art…) nunca mudam: são os nomes das colunas na planilha e no Looker.
+var NOMES_PROC = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia por outros motivos", selante: "Aplicação de selante", art: "Tratamento restaurador atraumático (ART)",
+  civ: "Restauração com cimento de ionômero de vidro", resina: "Restauração em resina composta", amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado",
+  cdf: "Aplicação de cariostático", selprov: "Selamento provisório / adequação do meio", pcdp: "Proteção do complexo dentino-pulpar",
+  pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia (dente decíduo)", coroa: "Coroa de aço"};
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
 /** @param {any} iso */
@@ -337,14 +384,19 @@ function resumoDoExame(e) {
  * planilha, o detalhe fica no exame completo). Controle: vínculo, cancelamento e datas. */
 var ORDEM_DENTES = dentesDaDenticao("mista");
 var COL_VIG = {"Abscesso dentoalveolar": "vig_abscesso_dentoalveolar", "Alteração em tecidos moles": "vig_tecidos_moles", "Dor de dente": "vig_dor_de_dente",
-  "Fendas ou fissuras lábio palatais": "vig_fendas_labio_palatais", "Fluorose dentária moderada ou severa": "vig_fluorose", "Traumatismo dentoalveolar": "vig_traumatismo", "Não identificado": "vig_nao_identificado"};
+  "Má formação: fenda ou fissura lábio palatal": "vig_fendas_labio_palatais", "Má formação: interferência de freios": "vig_interferencia_freios", "Fluorose dentária moderada ou severa": "vig_fluorose", "Traumatismo dentoalveolar": "vig_traumatismo", "Não identificado": "vig_nao_identificado"};
+var COL_PRESCRICAO = ["prescricao_analgesico", "prescricao_anti_inflamatorio", "prescricao_antibiotico", "prescricao_outra"];
 var COL_FACE = {ca: "carie_ativa", cc: "carie_cronica", mba: "mancha_branca_ativa", mbi: "mancha_branca_inativa", rest: "restaurada_sem_carie", restc: "restaurada_com_carie", sel: "selante"};
 var COL_STATUS = {presente: "presentes", nao_erupc: "nao_erupcionados", esfoliado: "esfoliados", ausente: "ausentes_outro_motivo", ausente_carie: "extraidos_carie"};
 var CAB_P1 = ["codigo_individuo", "numero_exame", "data_exame", "situacao_registro", "uf", "dsei", "polo_base", "aldeia_comunidade", "municipio", "terra_indigena",
   "codigo_polo_base", "codigo_aldeia", "codigo_municipio_ibge", "codigo_terra_indigena", "local_atendimento", "nascimento", "idade_anos", "faixa_etaria", "sexo", "denticao",
   "classe_risco", "nivel_risco", "ceod_c", "ceod_e", "ceod_o", "ceod", "cpod_c", "cpod_p", "cpod_o", "cpod"]
   .concat(Object.keys(COL_VIG).map(function (k) { return COL_VIG[k]; }))
-  .concat(["protese_sup_necessita", "protese_inf_necessita", "protese_sup_usa", "protese_inf_usa", "placa_visivel", "gengivite", "procedimentos_coletivos", "insumos", "observacoes"]);
+  .concat(["protese_sup_necessita", "protese_inf_necessita", "protese_sup_usa", "protese_inf_usa", "placa_visivel", "gengivite", "procedimentos_coletivos", "insumos", "observacoes"])
+  // Desde a versão 47 (Fichas 4 e 7 do SIASI)
+  .concat(["localidade_residencia", "gestante", "semanas_gestacao", "fluorose_dean"])
+  .concat(Object.keys(ESPECIALIDADES).map(function (k) { return "encaminhamento_" + k; }))
+  .concat(PRESCRICOES.map(function (_, i) { return COL_PRESCRICAO[i]; }));
 var CAB_P2 = Object.keys(COL_STATUS).map(function (k) { return "n_dentes_" + COL_STATUS[k]; })
   .concat([].concat.apply([], Object.keys(COL_FACE).map(function (k) { return ["n_dentes_" + COL_FACE[k], "n_faces_" + COL_FACE[k]]; })))
   .concat(["n_dentes_dor", "n_dentes_abscesso_fistula"])
@@ -367,7 +419,10 @@ var CAB_ANALISE = CAB_P1.concat(CAB_P2, CAB_P3, CAB_CONTROLE.filter(function (k)
 function valoresDoExame(e, completo) {
   var r = e.resultado || {}, ce = r.ceod || {}, cp = r.cpod || {}, v = e.vinculo || {}, c = e.cancelamento || {}, pr = e.protese || {}, cr = e.crianca || {};
   var sn = function (/** @type {any} */ b) { return b == null ? "" : b ? "sim" : "não"; };
-  var prot = function (/** @type {any} */ x) { return pr.naoAvaliado ? "não avaliado" : ({sim: "sim", nao: "não"})[x || ""] || "não avaliado"; };
+  var prot = function (/** @type {any} */ x) { return pr.naoAvaliado ? "não avaliado" : ({sim: "sim", nao: "não", parcial: "parcial", total: "total"})[x || ""] || "não avaliado"; };
+  // Placa e gengivite: vazio sem odontograma; "não avaliado" quando o profissional marcou assim.
+  var cond = function (/** @type {string} */ k) { return naoAvaliada(e, k) ? "não avaliado" : sn(e[k]); };
+  var enc = e.encaminhamentos || {}, presc = e.prescricoes || [];
   /** @type {any} */ var o = {
     id_exame: e.id, codigo_individuo: codigoIndividuoDe(e), numero_exame: e.numeroExame || 1, data_exame: e.dataExame || "", situacao_registro: exameValido(e) ? "válido" : "cancelado",
     uf: e.uf || "", dsei: e.dsei || "", polo_base: e.polo || "", aldeia_comunidade: e.aldeia || "", municipio: e.municipio || "", terra_indigena: e.ti || "",
@@ -378,7 +433,9 @@ function valoresDoExame(e, completo) {
     ceod_c: e.denticao === "permanente" ? "" : ce.c, ceod_e: e.denticao === "permanente" ? "" : ce.e, ceod_o: e.denticao === "permanente" ? "" : ce.o, ceod: e.denticao === "permanente" ? "" : ce.total,
     cpod_c: e.denticao === "decidua" ? "" : cp.c, cpod_p: e.denticao === "decidua" ? "" : cp.p, cpod_o: e.denticao === "decidua" ? "" : cp.o, cpod: e.denticao === "decidua" ? "" : cp.total,
     protese_sup_necessita: prot(pr.sup), protese_inf_necessita: prot(pr.inf), protese_sup_usa: prot(pr.usoSup), protese_inf_usa: prot(pr.usoInf),
-    placa_visivel: sn(e.placa), gengivite: sn(e.gengivite), procedimentos_coletivos: (e.gerais || []).join("; "), insumos: (e.insumos || []).join("; "), observacoes: e.observacoes || "",
+    placa_visivel: cond("placa"), gengivite: cond("gengivite"),
+    localidade_residencia: e.localidade || "", gestante: e.gestante === "sim" ? "sim" : e.gestante === "nao" ? "não" : "", semanas_gestacao: e.gestante === "sim" && e.semanasGestacao != null ? e.semanasGestacao : "",
+    fluorose_dean: e.fluoroseDean ? e.fluoroseDean + " · " + (DEAN[e.fluoroseDean] || "") : "", procedimentos_coletivos: (e.gerais || []).join("; "), insumos: (e.insumos || []).join("; "), observacoes: e.observacoes || "",
     codigo_exame: e.codigo || "", aldeia_fora_da_lista: e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), codigo_confere_local: codigoConfereLocal(e),
     conferencia_vinculo: v.anteriorId ? (v.conferidos && v.conferidos.length ? "compatível, com mudança conferida" : "compatível") : "1º exame",
     alertas_vinculo: (v.conferidos || []).join(" · "), exame_anterior_id: v.anteriorId || "",
@@ -386,6 +443,8 @@ function valoresDoExame(e, completo) {
     profissional: (e.profissional || {}).nome || "", cro: (e.profissional || {}).cro || "", criado_em: e.criadoEm || "", atualizado_em: e.atualizadoEm || "", usuario_id: e.usuarioId || ""
   };
   Object.keys(COL_VIG).forEach(function (k) { o[COL_VIG[k]] = sn((e.vigilancia || []).indexOf(k) >= 0); });
+  Object.keys(ESPECIALIDADES).forEach(function (k) { o["encaminhamento_" + k] = (SITUACAO_ENCAMINHAMENTO[enc[k]] || "").toLowerCase(); });
+  PRESCRICOES.forEach(function (p, i) { o[COL_PRESCRICAO[i]] = e.fezPrescricao == null ? "" : presc.indexOf(p) >= 0 ? "sim" : "não"; });
   // Parte 2: contas prontas (vêm do exame completo; no resumo, só as que ele guarda)
   if (e.dentes) {
     var ds = Object.keys(e.dentes).map(function (n) { return e.dentes[n] || {}; });
