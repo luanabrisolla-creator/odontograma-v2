@@ -117,6 +117,24 @@ function situacaoEncaminhamento(ex) {
 }
 /** @type {any} */
 var NOMES_SIT_ENCAMINHAMENTO = {sem: "Sem encaminhamento", pendente: "Encaminhamento pendente", realizado: "Encaminhamento realizado"};
+// Plano de tratamento (decisão 7): o exame com odontograma abre o plano; cada consulta de retorno muda só os dentes que mexeu
+// (procedimento realizado, conduta, necessidade nova), os encaminhamentos que mudaram e a confirmação do tratamento básico.
+// O estado do plano é o exame com os retornos aplicados, do mais antigo para o mais novo. Nada é apagado.
+/** @param {any} plano @param {any[]} retornos */
+function estadoDoPlano(plano, retornos) {
+  var e = JSON.parse(JSON.stringify(plano || {}));
+  e.dentes = e.dentes || {}; e.encaminhamentos = e.encaminhamentos || {};
+  (retornos || []).filter(function (r) { return r && r.planoId === plano.id && r.situacao !== "cancelado"; })
+    .sort(function (a, b) { return String(a.dataExame).localeCompare(String(b.dataExame)) || String(a.criadoEm || "").localeCompare(String(b.criadoEm || "")); })
+    .forEach(function (r) {
+      Object.keys(r.dentes || {}).forEach(function (n) { e.dentes[n] = JSON.parse(JSON.stringify(r.dentes[n])); });
+      Object.keys(r.encaminhamentos || {}).forEach(function (k) { e.encaminhamentos[k] = r.encaminhamentos[k]; });
+      if (Object.keys(e.encaminhamentos).length) e.fezEncaminhamento = "sim";
+      if (r.tratamento && r.tratamento.aps) e.tratamento = {aps: r.tratamento.aps, motivo: r.tratamento.motivo || ""};
+      e.ultimoRetorno = r.dataExame;
+    });
+  return e;
+}
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;

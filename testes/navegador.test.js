@@ -301,6 +301,25 @@ for (let i = 0; i < 8; i++) {
   T("editando, o botão continua \"Salvar e enviar\"", (await pg.textContent("#salvar")).trim() === "Salvar e enviar");
   await pg.click("#salvar"); await pg.waitForTimeout(2500);
   T("a correção é gravada", aba("Exames").filter(l => l[0] === j35.id).length >= 1 && !await pg.evaluate(() => estado.editando));
+  // Consulta de retorno: o histórico mostra o plano; o retorno marca a exodontia do 46 como realizada e conclui o tratamento básico.
+  await pg.evaluate(c => verHistorico({codigoIndividuo: c}), cod35); await pg.waitForTimeout(1200);
+  T("o histórico da pessoa mostra o plano de tratamento, com a pendência da APS", /Plano de tratamento/.test(await pg.textContent("#leitura")) && /46: Exodontia devido à cárie \(indicado\)/.test(await pg.textContent("#leitura")), (await pg.textContent("#leitura")).slice(0, 300));
+  await pg.click("#leitura [data-retorno-plano]"); await pg.waitForTimeout(300);
+  T("a consulta de retorno lista o procedimento indicado", await pg.isVisible('#leitura [data-rt-item="46|exo_carie"][data-v="realizado"]'));
+  await pg.click('#leitura [data-rt-item="46|exo_carie"][data-v="realizado"]'); await pg.waitForTimeout(150);
+  T("com a exodontia realizada, sem pendência: o retorno pergunta se o tratamento foi concluído", await pg.isVisible('#leitura [data-rt-tc="concluido"]'));
+  await pg.click('#leitura [data-rt-tc="concluido"]'); await foto(pg, "8_retorno_cel", "#leitura .painel"); await pg.click("#leitura [data-rt-salvar]"); await pg.waitForTimeout(2000);
+  const rts = aba("Retornos");
+  T("o retorno é salvo na aba Retornos, com o tratamento básico concluído", rts.length === 2 && rts[1][1] === j35.id && rts[1][13] === "concluído", rts[1]);
+  T("odontograma novo herda os procedimentos indicados que ficaram pendentes (uma vez só, só em dente presente)", await pg.evaluate(() => {
+    const ex = novoExame(); ex.denticao = "permanente"; garantirDentes(ex);
+    ex._anterior = {odontograma: "sim", dentes: {46: {status: "presente", procs: {art: "indicado", selante: "realizado"}}, 36: {status: "presente", procs: {resina: "indicado"}}}};
+    ex.dentes[36].status = "ausente_carie";
+    const n1 = herdarPendencias(ex), n2 = herdarPendencias(ex);
+    return n1 === 1 && n2 === 0 && ex.dentes[46].procs.art === "indicado" && !ex.dentes[46].procs.selante && !ex.dentes[36].procs.resina;
+  }));
+  T("depois de salvar, o histórico mostra o plano concluído", /Tratamento básico \(APS\):\s*Concluído/.test(await pg.textContent("#leitura")));
+  await fecharJanela(pg);
   // Mudar a data de nascimento depois de marcar dentes: o odontograma volta do início (só ele).
   await novaPessoa(pg, { nasc: "2015-05-05", sexo: "M" });
   T("de 10 a 19 anos, a vigilância pergunta o índice de Dean, e a fluorose sai da lista de condições", await pg.isVisible("#deanBox") && !/Fluorose/.test(await pg.textContent("#vig")) && /Normal/.test(await pg.textContent("#dean")));

@@ -575,6 +575,10 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .ini-stat span.t{display:block;margin-top:3px;font-size:.92rem;color:var(--muted)}
 .dente.sem-conduta svg{outline:2px dashed #E5702A;outline-offset:1px;border-radius:4px}
 .enc{display:grid;gap:6px}
+.plano{margin-bottom:12px}.lista-pend{margin:4px 0 0;padding-left:1.1rem}
+.rt-nec{display:grid;gap:6px;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);align-items:center}.rt-nec input{grid-column:1/-1}
+.rt-novo{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+@media (max-width:560px){.rt-nec{grid-template-columns:1fr}}
 .tc-box{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
 .tc-box h4{margin:0 0 6px}.tc-box ul{margin:4px 0 0;padding-left:1.1rem}.enc .linha-op{margin:0}
 .ini-stat span.s2{display:block;margin-top:2px;font-size:.8rem;color:var(--muted)}
@@ -2332,6 +2336,20 @@ function aplicarAnterior(ex) {
   }
   return n;
 }
+// Um odontograma completo novo fecha o plano anterior e herda as pendências (decisão 7): os procedimentos que ficaram
+// indicados e não foram realizados voltam como indicados, nos dentes que continuam presentes. Uma vez só, por exame.
+function herdarPendencias(ex) {
+  const a = ex._anterior; if (ex._herdou || !a || !a.dentes || semOdontograma(a)) return 0;
+  let n = 0;
+  for (const k of dentesDe(ex.denticao)) {
+    const d = ex.dentes[k], x = a.dentes[k];
+    if (!d || !x || d.status !== "presente" || x.status !== "presente") continue;
+    Object.entries(x.procs || {}).forEach(([p, v]) => { if (v === "indicado" && !(d.procs || {})[p]) { d.procs = Object.assign({}, d.procs, {[p]: "indicado"}); n++; } });
+  }
+  ex._herdou = true;
+  if (n) { alterado(); toast(`${n === 1 ? "1 procedimento indicado" : n + " procedimentos indicados"} no plano anterior ${n === 1 ? "voltou" : "voltaram"} para este exame. Confira na boca.`); }
+  return n;
+}
 function alertasAtuais() {
   const ex = estado.ex;
   if (!ex.vinculo || !ex._anterior) return [];
@@ -2450,7 +2468,13 @@ async function carregarAnterior() {
     const j = await api("pessoa", {codigoIndividuo: ex.vinculo.codigoIndividuo});
     const outros = j.exames.filter(r => r.id !== ex.id);
     const antes = outros.filter(r => ordemExame(r, ex) <= 0);
-    if (estado.ex === ex) { ex._anterior = antes.length ? antes.at(-1) : outros[0] || null; renderExame(); }
+    if (estado.ex === ex) {
+      const ant = antes.length ? antes.at(-1) : outros[0] || null;
+      // O exame anterior com os retornos aplicados (o estado do plano que este exame fecha).
+      ex._anterior = ant && !semOdontograma(ant) ? estadoDoPlano(ant, j.retornos || []) : ant;
+      if (!estado.editando) herdarPendencias(ex);
+      renderExame();
+    }
   } catch (err) { renderPessoa(); }
 }
 function cartaoPessoa(c, botoes) {
@@ -3066,6 +3090,24 @@ function situacaoEncaminhamento(ex) {
 }
 /** @type {any} */
 var NOMES_SIT_ENCAMINHAMENTO = {sem: "Sem encaminhamento", pendente: "Encaminhamento pendente", realizado: "Encaminhamento realizado"};
+// Plano de tratamento (decisão 7): o exame com odontograma abre o plano; cada consulta de retorno muda só os dentes que mexeu
+// (procedimento realizado, conduta, necessidade nova), os encaminhamentos que mudaram e a confirmação do tratamento básico.
+// O estado do plano é o exame com os retornos aplicados, do mais antigo para o mais novo. Nada é apagado.
+/** @param {any} plano @param {any[]} retornos */
+function estadoDoPlano(plano, retornos) {
+  var e = JSON.parse(JSON.stringify(plano || {}));
+  e.dentes = e.dentes || {}; e.encaminhamentos = e.encaminhamentos || {};
+  (retornos || []).filter(function (r) { return r && r.planoId === plano.id && r.situacao !== "cancelado"; })
+    .sort(function (a, b) { return String(a.dataExame).localeCompare(String(b.dataExame)) || String(a.criadoEm || "").localeCompare(String(b.criadoEm || "")); })
+    .forEach(function (r) {
+      Object.keys(r.dentes || {}).forEach(function (n) { e.dentes[n] = JSON.parse(JSON.stringify(r.dentes[n])); });
+      Object.keys(r.encaminhamentos || {}).forEach(function (k) { e.encaminhamentos[k] = r.encaminhamentos[k]; });
+      if (Object.keys(e.encaminhamentos).length) e.fezEncaminhamento = "sim";
+      if (r.tratamento && r.tratamento.aps) e.tratamento = {aps: r.tratamento.aps, motivo: r.tratamento.motivo || ""};
+      e.ultimoRetorno = r.dataExame;
+    });
+  return e;
+}
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
@@ -4087,13 +4129,147 @@ function renderAcomp() {
     ${estA.vis === "geral" || !temLista ? geral : lista}</div>`;
 }
 const NOME_MUD = {carie_nova: ["cárie nova", "pendente"], tratado: ["tratado", "enviado"], extraido: ["extraído", "inativo"], esfoliou: ["troca natural", "azul"], erupcionou: ["erupcionou", "azul"], outro: ["mudou", "inativo"]};
+/* ---------- plano de tratamento e consulta de retorno (decisão 7) ---------- */
+// O plano é o último exame com odontograma da pessoa; os retornos mudam só o que foi feito depois.
+function planoDaPessoa(p) {
+  const comOd = (p.exames || []).filter(e => exameValido(e) && !semOdontograma(e));
+  const plano = comOd.at(-1); if (!plano) return null;
+  const rets = (p.retornos || []).filter(r => r.planoId === plano.id).sort((a, b) => String(a.dataExame).localeCompare(String(b.dataExame)));
+  return {plano, retornos: rets, estado: estadoDoPlano(plano, rets)};
+}
+function planoHtml(p) {
+  const pl = planoDaPessoa(p); if (!pl) return "";
+  const aj = ajustesNivel(pl.plano.dsei), sit = situacaoTratamento(pl.estado, aj), pend = pendenciasAPS(pl.estado, aj), enc = situacaoEncaminhamento(pl.estado);
+  const pode = fazExames() && dseiFixo() === pl.plano.dsei;
+  return `<div class="bloco plano"><div class="bloco-topo"><h3>Plano de tratamento · exame de ${fmtData(pl.plano.dataExame)}</h3>${pode ? `<button class="prim mini" type="button" data-retorno-plano="${esc(pl.plano.id)}">Registrar consulta de retorno</button>` : ""}</div>
+    <p style="margin:4px 0"><b>Tratamento básico (APS):</b> ${esc(NOMES_TRATAMENTO[sit])}${(pl.estado.tratamento || {}).motivo && sit === "nao_concluido" ? " · " + esc(pl.estado.tratamento.motivo) : ""} · <b>Atenção especializada:</b> ${esc(NOMES_SIT_ENCAMINHAMENTO[enc].toLowerCase())}</p>
+    ${pend.length ? `<p class="dica" style="margin:4px 0 0">Pendências da APS:</p><ul class="lista-pend">${pend.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+    ${pl.retornos.length ? `<p class="dica" style="margin:8px 0 0">Consultas de retorno: ${pl.retornos.map(r => `${fmtData(r.dataExame)} (${esc(r.profissionalNome || "")}${Object.keys(r.dentes || {}).length ? ", dentes " + esc(Object.keys(r.dentes).join(", ")) : ""})`).join(" · ")}</p>` : ""}
+    ${!pode && fazExames() ? `<p class="dica" style="margin:6px 0 0">O retorno é registrado por um CD do DSEI ${esc(pl.plano.dsei)}.</p>` : ""}</div>`;
+}
+const estRt = {p: null, pl: null, itens: {}, novos: [], encs: {}, tc: {aps: "", motivo: ""}, data: "", local: "", obs: ""};
+// Abre o formulário do retorno a partir do histórico da pessoa (precisa de internet: o plano vem do servidor).
+function abrirRetorno(p) {
+  const pl = planoDaPessoa(p); if (!pl) return toast("Esta pessoa ainda não tem exame com odontograma.");
+  Object.assign(estRt, {p, pl, itens: {}, novos: [], encs: {}, tc: {aps: "", motivo: ""}, data: hoje(), local: pl.plano.localAtendimento || "", obs: ""});
+  renderRetorno();
+}
+// O que o retorno muda, a partir das escolhas do formulário: só os dentes e os encaminhamentos que mexeu.
+function retornoAtual() {
+  const st = estRt.pl.estado, dentes = {}, encs = Object.assign({}, estRt.encs);
+  const dente = n => dentes[n] || (dentes[n] = clone(st.dentes[n]));
+  Object.entries(estRt.itens).forEach(([chave, v]) => {
+    const [n, k] = chave.split("|");
+    if (!v) return;
+    if (k === "_nec") {
+      const d = dente(n), [tipo, x, y] = v.split(":");
+      if (tipo === "acomp") d.conduta = {tipo: "acompanhamento", motivo: estRt.itens[n + "|_motivo"] || ""};
+      else if (tipo === "enc") { d.conduta = {tipo: "encaminhamento", especialidade: x}; if (!encs[x] && !(st.encaminhamentos || {})[x]) encs[x] = "pendente"; }
+      else if (tipo === "proc") { d.procs = Object.assign({}, d.procs, {[x]: y}); }
+    } else if (k !== "_motivo" && v === "realizado") { const d = dente(n); d.procs = Object.assign({}, d.procs, {[k]: "realizado"}); }
+  });
+  estRt.novos.forEach(x => { const d = dente(x.n); d.faces = Object.assign({}, d.faces, {[x.face]: x.cond}); if (x.proc) d.procs = Object.assign({}, d.procs, {[x.proc]: x.momento}); });
+  return {id: estRt.id || (estRt.id = uid()), planoId: estRt.pl.plano.id, dataExame: estRt.data, localAtendimento: estRt.local, dentes, encaminhamentos: encs,
+    tratamento: {aps: estRt.tc.aps, motivo: estRt.tc.motivo}, observacoes: estRt.obs, criadoEm: new Date().toISOString()};
+}
+function renderRetorno() {
+  const {pl} = estRt, st = pl.estado, aj = ajustesNivel(pl.plano.dsei), ds = dentesDe(st.denticao).filter(n => st.dentes[n] && st.dentes[n].status === "presente");
+  const ret = retornoAtual(), prev = estadoDoPlano(pl.plano, pl.retornos.concat([Object.assign({}, ret, {tratamento: {aps: estRt.tc.aps, motivo: estRt.tc.motivo}})]));
+  const sit = situacaoTratamento(prev, aj), pend = pendenciasAPS(prev, aj);
+  const indicados = ds.flatMap(n => Object.entries(st.dentes[n].procs || {}).filter(([, v]) => v === "indicado").map(([k]) => [n, k]));
+  const necs = necessidadesSemConduta(st);
+  const encPend = Object.entries(st.encaminhamentos || {}).filter(([, v]) => v === "pendente").map(([k]) => k);
+  const linhaInd = ([n, k]) => { const v = estRt.itens[n + "|" + k] || "pendente";
+    return `<div class="linha-op"><span><b>${n}</b> · ${esc(PROC_NOME[k] || k)}${nivelDoProc(k, aj) === "especializada" ? " <small class=\"dica\">(especializada)</small>" : ""}</span><div class="seg pequeno" role="group" aria-label="${esc(PROC_NOME[k] || k)} no ${n}">${
+      [["realizado", "Realizado"], ["pendente", "Ainda pendente"]].map(([x, t]) => `<button type="button" data-rt-item="${n}|${k}" data-v="${x}" aria-pressed="${v === x}">${t}</button>`).join("")}</div></div>`; };
+  const opcoesNec = n => { const d = st.dentes[n], comp = procsCompativeis(n, d).filter(k => ehDecid(n) || !SO_DECIDUO.includes(k));
+    return `<option value="">O que foi feito neste dente?</option>
+      <optgroup label="Procedimento realizado">${comp.map(k => `<option value="proc:${k}:realizado">${esc(PROC_NOME[k])}</option>`).join("")}</optgroup>
+      <optgroup label="Procedimento indicado (para outra visita)">${comp.map(k => `<option value="proc:${k}:indicado">${esc(PROC_NOME[k])}</option>`).join("")}</optgroup>
+      <optgroup label="Conduta"><option value="acomp">Acompanhamento, sem tratamento agora</option>${Object.keys(ESPECIALIDADES).map(k => `<option value="enc:${k}">Encaminhar: ${esc(ESPECIALIDADES[k])}</option>`).join("")}</optgroup>`; };
+  const linhaNec = x => { const v = estRt.itens[x.n + "|_nec"] || "";
+    return `<div class="rt-nec"><span><b>${x.n}</b> · ${esc(listaE(x.motivos))}</span><select data-rt-nec="${x.n}" aria-label="O que foi feito no ${x.n}">${opcoesNec(x.n).replace(`value="${v}"`, `value="${v}" selected`)}</select>
+      ${v === "acomp" ? `<input data-rt-motivo="${x.n}" maxlength="300" placeholder="Por que acompanhar? (obrigatório)" value="${esc(estRt.itens[x.n + "|_motivo"] || "")}">` : ""}</div>`; };
+  const novos = estRt.novos.map((x, i) => `<li>${x.n}, face ${esc(rotuloFace(x.n, x.face))}: ${esc(FACE_NOME[x.cond])}${x.proc ? ` · ${esc(PROC_NOME[x.proc])} (${x.momento})` : ""} <button class="link" type="button" data-rt-tira="${i}">Tirar</button></li>`).join("");
+  const tcHtml = sit === "pendente" ? `<p class="dica" style="margin:0">Continua não concluído. Ainda falta:</p><ul class="lista-pend">${pend.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`
+    : `<p class="dica" style="margin:0 0 8px">Com este retorno, não sobra pendência da APS. O tratamento básico foi concluído?</p>
+      <div class="seg" role="group" aria-label="O tratamento básico foi concluído?"><button type="button" data-rt-tc="concluido" aria-pressed="${estRt.tc.aps === "concluido"}">Sim, concluído</button><button type="button" data-rt-tc="nao_concluido" aria-pressed="${estRt.tc.aps === "nao_concluido"}">Ainda não</button></div>
+      ${estRt.tc.aps === "nao_concluido" ? `<input id="rtTcMotivo" maxlength="300" style="margin-top:8px;width:100%" placeholder="Por que ainda não? (obrigatório)" value="${esc(estRt.tc.motivo)}">` : ""}`;
+  abrirModal(`<div class="painel" role="dialog" aria-modal="true" aria-labelledby="rtTit" style="max-width:760px">
+    <div class="p-topo"><div><h3 id="rtTit">Consulta de retorno</h3><p>${esc(codigoIndividuoDe(pl.plano))} · plano do exame de ${fmtData(pl.plano.dataExame)}</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>
+    <div class="grade"><label class="campo">Data do retorno<input type="date" id="rtData" value="${esc(estRt.data)}" min="${esc(pl.plano.dataExame)}" max="${hoje()}"></label></div>
+    <div class="campo" style="margin-top:10px">Local de atendimento<div class="locais">${LOCAIS_ATENDIMENTO.map(l => `<button class="chip" type="button" data-rt-local="${esc(l)}" aria-pressed="${estRt.local === l}">${esc(l)}</button>`).join("")}</div></div>
+    <h4>Procedimentos indicados no plano</h4>${indicados.length ? `<div class="enc">${indicados.map(linhaInd).join("")}</div>` : `<p class="dica">Nenhum procedimento indicado pendente.</p>`}
+    ${necs.length ? `<h4>Necessidades sem tratamento nem conduta</h4><div class="enc">${necs.map(linhaNec).join("")}</div>` : ""}
+    ${encPend.length ? `<h4>Encaminhamentos pendentes</h4><div class="enc">${encPend.map(k => `<div class="linha-op"><span>${esc(ESPECIALIDADES[k])}</span><div class="seg pequeno" role="group" aria-label="Encaminhamento: ${esc(ESPECIALIDADES[k])}">${
+      [["realizado", "Realizado"], ["pendente", "Ainda pendente"]].map(([x, t]) => `<button type="button" data-rt-enc="${k}" data-v="${x}" aria-pressed="${(estRt.encs[k] || "pendente") === x}">${t}</button>`).join("")}</div></div>`).join("")}</div>` : ""}
+    <h4>Necessidade nova num dente</h4>
+    <div class="rt-novo"><select id="rtNovoN" aria-label="Dente">${ds.map(n => `<option>${n}</option>`).join("")}</select>
+      <select id="rtNovoFace" aria-label="Face">${[["O", "oclusal ou incisal"], ["V", "vestibular"], ["L", "lingual ou palatina"], ["M", "mesial"], ["D", "distal"]].map(([f, t]) => `<option value="${f}">Face ${t}</option>`).join("")}</select>
+      <select id="rtNovoCond" aria-label="Condição">${FACES.filter(f => f.k).map(f => `<option value="${f.k}">${esc(f.nome)}</option>`).join("")}</select>
+      <select id="rtNovoProc" aria-label="Procedimento"><option value="">Sem procedimento</option>${PROCS.filter(([k]) => !["exo_carie", "exodontia"].includes(k)).map(([k, t]) => `<option value="${k}|indicado">Indicado: ${esc(t)}</option><option value="${k}|realizado">Realizado: ${esc(t)}</option>`).join("")}</select>
+      <button class="sec mini" type="button" data-rt-novo>Acrescentar</button></div>
+    ${novos ? `<ul class="lista-pend">${novos}</ul>` : ""}
+    <label class="campo" style="margin-top:12px">Observações do retorno<textarea id="rtObs" placeholder="Sem dados que identifiquem a pessoa">${esc(estRt.obs)}</textarea></label>
+    <div class="tc-box" style="margin-top:12px"><h4>Tratamento básico (APS)</h4>${tcHtml}</div>
+    <div class="p-acoes"><button class="sec" data-fecha-leitura>Cancelar</button><button class="prim" type="button" data-rt-salvar>Salvar retorno</button></div></div>`);
+}
+async function salvarRetorno() {
+  const ret = retornoAtual(), pl = estRt.pl, aj = ajustesNivel(pl.plano.dsei);
+  const prev = estadoDoPlano(pl.plano, pl.retornos.concat([ret])), sit = situacaoTratamento(prev, aj);
+  const falta = [];
+  if (!dataValida(estRt.data) || estRt.data > hoje() || estRt.data < pl.plano.dataExame) falta.push("a data do retorno");
+  if (!estRt.local) falta.push("o local de atendimento");
+  if (Object.values(ret.dentes).some(d => d.conduta && d.conduta.tipo === "acompanhamento" && !String(d.conduta.motivo || "").trim())) falta.push("o motivo do acompanhamento");
+  if (sit === "a_confirmar") falta.push("se o tratamento básico foi concluído");
+  if (sit === "nao_concluido" && !String(estRt.tc.motivo || "").trim()) falta.push("por que o tratamento básico ainda não foi concluído");
+  if (falta.length) return toast(`Falta responder: ${listaE(falta)}.`);
+  if (!navigator.onLine) return toast("O retorno precisa de internet para ser salvo.");
+  try {
+    const j = await api("enviarRetorno", {retorno: ret});
+    toast(`Retorno salvo. Tratamento básico: ${NOMES_TRATAMENTO[j.situacao].toLowerCase()}.`);
+    const p = await api("pessoa", {codigoIndividuo: codigoIndividuoDe(pl.plano)});
+    estRt.id = null; abrirModal(`<div class="painel" role="dialog" aria-modal="true" style="max-width:900px"><div class="p-topo"><div><h3>Histórico da pessoa</h3><p>Somente leitura</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>${htmlPessoa(p)}</div>`);
+    estRt.p = p;
+  } catch (err) { toast(err.message); }
+}
+// Data AAAA-MM-DD que existe de verdade.
+function dataValida(v) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || "")); if (!m) return false; const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3]; }
+$("#leitura").addEventListener("click", async e => {
+  const t = e.target;
+  const ab = t.closest("[data-retorno-plano]");
+  if (ab) { if (!navigator.onLine) return toast("O retorno precisa de internet."); if (estRt.p) abrirRetorno(estRt.p); return; }
+  if (!estRt.pl || !$("#rtTit")) return;
+  const it = t.closest("[data-rt-item]"); if (it) { estRt.itens[it.dataset.rtItem] = it.dataset.v; return renderRetorno(); }
+  const en = t.closest("[data-rt-enc]"); if (en) { estRt.encs[en.dataset.rtEnc] = en.dataset.v; if (en.dataset.v === "pendente") delete estRt.encs[en.dataset.rtEnc]; return renderRetorno(); }
+  const lo = t.closest("[data-rt-local]"); if (lo) { estRt.local = lo.dataset.rtLocal; return renderRetorno(); }
+  const tc = t.closest("[data-rt-tc]"); if (tc) { estRt.tc.aps = estRt.tc.aps === tc.dataset.rtTc ? "" : tc.dataset.rtTc; return renderRetorno(); }
+  if (t.closest("[data-rt-novo]")) {
+    const [proc, momento] = ($("#rtNovoProc").value || "|").split("|");
+    estRt.novos.push({n: +$("#rtNovoN").value, face: $("#rtNovoFace").value, cond: $("#rtNovoCond").value, proc: proc || "", momento: momento || ""}); return renderRetorno();
+  }
+  const ti = t.closest("[data-rt-tira]"); if (ti) { estRt.novos.splice(+ti.dataset.rtTira, 1); return renderRetorno(); }
+  if (t.closest("[data-rt-salvar]")) return salvarRetorno();
+});
+$("#leitura").addEventListener("change", e => {
+  const t = e.target; if (!estRt.pl || !$("#rtTit")) return;
+  if (t.dataset.rtNec) { estRt.itens[t.dataset.rtNec + "|_nec"] = t.value; return renderRetorno(); }
+  if (t.id === "rtData") { estRt.data = t.value; return renderRetorno(); }
+});
+$("#leitura").addEventListener("input", e => {
+  const t = e.target; if (!estRt.pl || !$("#rtTit")) return;
+  if (t.dataset.rtMotivo) estRt.itens[t.dataset.rtMotivo + "|_motivo"] = t.value;
+  if (t.id === "rtObs") estRt.obs = t.value;
+  if (t.id === "rtTcMotivo") estRt.tc.motivo = t.value;
+});
 function htmlPessoa(p) {
+  estRt.p = p;
   const l = p.exames, a = l[0], b = l.at(-1), CL = "ABCDEF";
   const linha = (rot, f) => `<tr><th>${rot}</th>${l.map(e => `<td>${f(e)}</td>`).join("")}</tr>`;
   const ind = (x, k) => x ? `${x.total} <small class="dica">(${k.map(c => x[c]).join(" · ")})</small>` : "–";
   const muds = mudancasDentes(a, b);
   const ca = CL.indexOf((a.resultado || {}).classe), cb = CL.indexOf((b.resultado || {}).classe);
-  return `<div class="pessoa"><div class="bloco-topo"><h3>Linha do tempo · <span class="cod">${esc(p.codigoIndividuo)}</span></h3><span class="dica">${{F: "Feminino", M: "Masculino"}[(a.crianca || {}).sexo] || "Sexo não informado"} · DSEI ${esc(a.dsei)}${a.polo ? " › " + esc(a.polo) : ""}${a.aldeia ? " › " + esc(a.aldeia) : ""}</span></div>
+  return planoHtml(p) + `<div class="pessoa"><div class="bloco-topo"><h3>Linha do tempo · <span class="cod">${esc(p.codigoIndividuo)}</span></h3><span class="dica">${{F: "Feminino", M: "Masculino"}[(a.crianca || {}).sexo] || "Sexo não informado"} · DSEI ${esc(a.dsei)}${a.polo ? " › " + esc(a.polo) : ""}${a.aldeia ? " › " + esc(a.aldeia) : ""}</span></div>
     <div class="tabela"><table class="linha-tempo"><thead><tr><th></th>${l.map((e, i) => `<th>${i + 1}º exame</th>`).join("")}</tr></thead><tbody>
       ${linha("Data", e => fmtData(e.dataExame))}
       ${linha("Idade · faixa", e => `${idadeTxt((e.crianca || {}).nascimento, e.dataExame, e.idadeAnos)} · ${esc(faixaEtaria(e.idadeAnos).replace(" anos", "").replace("Adulto (19 a 59)", "19–59").replace("Pessoa idosa (60 ou mais)", "60+"))}`)}
@@ -4102,8 +4278,8 @@ function htmlPessoa(p) {
       ${linha("Dentes cariados (c + C)", e => cariadosDe(e))}
       ${linha("ceo-d (c · e · o)", e => e.denticao === "permanente" ? "–" : ind((e.resultado || {}).ceod, ["c", "e", "o"]))}
       ${linha("CPO-D (C · P · O)", e => e.denticao === "decidua" ? "–" : ind((e.resultado || {}).cpod, ["c", "p", "o"]))}
-      ${linha("Placa visível", e => e.placa ? "sim" : "não")}
-      ${linha("Gengivite", e => e.gengivite ? "sim" : "não")}
+      ${linha("Placa visível", e => semOdontograma(e) ? "–" : naoAvaliada(e, "placa") ? "não avaliado" : e.placa ? "sim" : "não")}
+      ${linha("Gengivite", e => semOdontograma(e) ? "–" : naoAvaliada(e, "gengivite") ? "não avaliado" : e.gengivite ? "sim" : "não")}
       ${linha("Dor ou abscesso", e => dentesComDor(e).join(", ") || "nenhum")}
       ${linha("Feito por", e => esc(nomeProf(e)))}
       ${linha("", e => `<button class="sec mini" data-ver-pessoa-ex="${esc(e.id)}">Ver exame</button>`)}

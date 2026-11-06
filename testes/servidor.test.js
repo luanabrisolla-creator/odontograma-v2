@@ -1110,5 +1110,37 @@ parte("tratamento básico (APS)");
   T("mudar o nível fica anotado em Acessos", ab("Acessos").some(l => l[7] === "Mudou o nível dos procedimentos" && /Coroa de aço/.test(l[8])));
 }
 
+/* ---------------------------------------------------------------- consulta de retorno (cenário separado) */
+parte("consulta de retorno");
+{
+  const R = cenario(), ab = n => R.G.est.sheets[n] || [];
+  const base = o => Object.assign(exame(o), { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] });
+  const plano = base({ id: "PL1", sufixo: "PRPRPRP2", data: "2026-10-01", mud: { 46: { faces: { O: "ca" }, procs: { art: "indicado" } }, 36: { faces: { O: "ca" } } } });
+  T("(o plano: ART indicado no 46 e cárie ativa sem conduta no 36)", R.P(R.ANA, { acao: "enviarExame", registro: plano }).ok);
+  const cod = "RR-SUR-SAU-PRPRPRP2", d46 = JSON.parse(ab("Exames").find(l => l[0] === "PL1").at(-1)).dentes[46], d36 = JSON.parse(ab("Exames").find(l => l[0] === "PL1").at(-1)).dentes[36];
+  const ret = (o) => Object.assign({ id: "RT1", planoId: "PL1", dataExame: "2026-10-20", localAtendimento: "UBSI", dentes: {}, encaminhamentos: {}, tratamento: { aps: "" } }, o);
+  T("CD de outro DSEI não registra o retorno", !R.P(R.CARLA, { acao: "enviarRetorno", retorno: ret({}) }).ok);
+  T("data antes do exame é recusada", /data do retorno/.test(R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ dataExame: "2026-09-01" }) }).erro || ""));
+  // Bruno (outro CD do mesmo DSEI) faz o ART no 46: sobra a cárie do 36 sem conduta.
+  let q = R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ dentes: { 46: Object.assign({}, d46, { procs: { art: "realizado" } }) } }) });
+  T("qualquer CD do mesmo DSEI registra o retorno; com pendência, o tratamento continua não concluído", q.ok && q.situacao === "pendente" && q.plano.dentes[46].procs.art === "realizado", q.erro || q.situacao);
+  T("o retorno fica na aba Retornos, com o plano e o que mudou", ab("Retornos").length === 2 && ab("Retornos")[1][1] === "PL1" && ab("Retornos")[1][11] === "46" && ab("Retornos")[1][12] === 1, ab("Retornos")[1]);
+  // Segundo retorno: acompanhamento no 36 e o profissional conclui.
+  q = R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ id: "RT2", dataExame: "2026-10-25", dentes: { 36: Object.assign({}, d36, { conduta: { tipo: "acompanhamento", motivo: "Lesão em controle" } }) }, tratamento: { aps: "concluido" } }) });
+  T("sem pendência e com a confirmação: tratamento básico concluído", q.ok && q.situacao === "concluido", q.erro || q.situacao);
+  const ps = R.P(R.ANA, { acao: "pessoa", codigoIndividuo: cod });
+  T("o histórico da pessoa traz os retornos, e o estado do plano soma os dois", ps.ok && ps.retornos.length === 2 && require("vm").runInContext("estadoDoPlano", R.G.ctx)(ps.exames[0], ps.retornos).tratamento.aps === "concluido");
+  T("só quem registrou o retorno pode alterá-lo", /Só quem registrou/.test(R.P(R.ANA, { acao: "enviarRetorno", retorno: ret({ id: "RT2", dataExame: "2026-10-25" }) }).erro || ""));
+  T("retorno com conduta sem o motivo é recusado", /dentes 46/.test(R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ id: "RT3", dentes: { 46: Object.assign({}, d46, { conduta: { tipo: "acompanhamento", motivo: "" } }) } }) }).erro || ""));
+  T("registrar o retorno fica anotado em Acessos", ab("Acessos").some(l => l[7] === "Registrou consulta de retorno" && l[8].indexOf(cod) >= 0));
+  // Odontograma novo da mesma pessoa fecha o plano anterior.
+  const novo = base({ id: "PL2", data: "2026-11-01", vinculo: { codigoIndividuo: cod, chaves: [] }, mud: { 46: { faces: { O: "rest" } }, 36: { faces: { O: "ca" } } } });
+  T("(um odontograma novo da mesma pessoa)", R.P(R.ANA, { acao: "enviarExame", registro: novo }).ok);
+  T("o odontograma novo fecha o plano anterior: retorno no plano antigo é recusado", R.P(R.BRUNO, { acao: "enviarRetorno", retorno: ret({ id: "RT4", dataExame: "2026-11-02" }) }).planoFechado === true);
+  R.G.ctx.fazerBackup("teste");
+  const bkr = Object.values(R.G.est.extras).find(x => x.nome === "Odontograma - backup").abas.Retornos;
+  T("os retornos entram no backup", bkr && bkr.length === 3, bkr && bkr.length);
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);

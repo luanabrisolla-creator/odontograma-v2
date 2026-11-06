@@ -139,7 +139,7 @@ const BK_ALERTAS_CAB = ['data', 'hora', 'tipo', 'aba', 'registro', 'detalhe'];
 const BK_HIST_CAB = ['detectado_em', 'aba', 'registro', 'campo', 'valor_anterior', 'valor_novo'];
 const BK_POP_CAB = ['guardada_em', 'versao', 'impressao', 'parte', 'dados_populacao_json'];
 const BK_ACESSOS_CAB = CAB_ACESSOS.concat(['entrou_no_backup_em']);
-const BK_ABAS = ['Sobre', 'Alertas', 'Exames', 'Exames_versoes', 'Cadastros', 'Historico', 'Acoes_Dia_B', 'Convites', 'Codigos_reservados', 'Acessos', 'Populacao'];
+const BK_ABAS = ['Sobre', 'Alertas', 'Exames', 'Exames_versoes', 'Cadastros', 'Historico', 'Acoes_Dia_B', 'Retornos', 'Convites', 'Codigos_reservados', 'Acessos', 'Populacao'];
 // O que não entra na "impressão" clínica do exame: situação, cancelamento, número do exame e resultado (o servidor recalcula),
 // quem enviou e datas de controle. Se a impressão muda, o conteúdo clínico do exame mudou.
 const FORA_DA_IMPRESSAO = ['situacao', 'cancelamento', 'atualizadoEm', 'numeroExame', 'resultado', 'profissional', 'versao', 'dono', 'envio', 'usuarioId', 'codigoIndividuo'];
@@ -148,6 +148,7 @@ function registrosDoBackup() {
   return [
     { origem: 'Usuarios', aba: 'Cadastros', cab: CAB_USUARIOS, chave: 'id', semHistorico: ['codigo_hash', 'ultimo_acesso'] },
     { origem: 'Acoes', aba: 'Acoes_Dia_B', cab: CAB_ACOES, chave: 'id', semHistorico: [] },
+    { origem: 'Retornos', aba: 'Retornos', cab: CAB_RETORNOS, chave: 'id', semHistorico: [] },
     { origem: 'Convites', aba: 'Convites', cab: CAB_CONVITES, chave: 'id', semHistorico: ['token_hash'] },
     { origem: ABA_RESERVAS, aba: 'Codigos_reservados', cab: CAB_RESERVAS, chave: 'codigo', semHistorico: [] }
   ];
@@ -1252,6 +1253,7 @@ const ACOES = {
   sair:           { fn: sairDoAparelho },
   enviarExame:    { escreve: true, fn: enviarExame },
   enviarExames:   { escreve: true, fn: enviarExames },
+  enviarRetorno:  { escreve: true, fn: enviarRetorno },
   dadosAnalise:   { fn: dadosAnalise },
   limparErros:    { perfis: ['coord'], escreve: true, fn: limparErros },
   atualizarAnalise: { perfis: ['coord'], fn: atualizarAnalisePelaTitular },
@@ -2565,7 +2567,78 @@ function pessoa(d, u) {
   const nomePor = nomesUsuarios();
   l.forEach(function (r) { r.profissionalNome = nomePor[r.usuarioId] || (r.profissional || {}).nome || ''; });
   if (!l.every(function (r) { return ehDoUsuario(r, u); })) registrar(u, 'Viu o acompanhamento de uma pessoa', cod + ' · DSEI ' + l[0].dsei);
-  return { ok: true, codigoIndividuo: cod, exames: l };
+  const retornos = lerRetornos().filter(function (r) { return r.codigoIndividuo === cod && r.situacao !== 'cancelado'; });
+  retornos.forEach(function (r) { r.profissionalNome = nomePor[r.usuarioId] || ''; });
+  return { ok: true, codigoIndividuo: cod, exames: l, retornos: retornos };
+}
+/* ---------- consulta de retorno (decisão 7) ----------
+ * Qualquer CD do mesmo DSEI registra o retorno de um plano: o último exame com odontograma da pessoa (um odontograma
+ * novo fecha o plano anterior). O retorno guarda só o que mudou; o servidor aplica ao plano, confere tudo como confere
+ * um exame e refaz a situação do tratamento básico. Fica na aba Retornos e entra no backup. */
+const CAB_RETORNOS = ['id', 'plano_id', 'codigo_individuo', 'dsei', 'polo', 'aldeia', 'data', 'usuario_id', 'criado_em', 'atualizado_em', 'situacao',
+  'dentes_alterados', 'procedimentos_realizados', 'tratamento_aps', 'dados_json'];
+function lerRetornos() {
+  return lerAbaPrincipal('Retornos', CAB_RETORNOS).map(function (o) { try { return JSON.parse(String(o.dados_json || '').replace(/^'/, '')); } catch (x) { return null; } })
+    .filter(function (r) { return r && r.id; });
+}
+/** @param {any} r */
+function salvarRetorno(r) {
+  const aba = obterAba(planilha(), 'Retornos', CAB_RETORNOS);
+  const real = Object.keys(r.dentes || {}).reduce(function (t, n) { const p = (r.dentes[n] || {}).procs || {}; return t + Object.keys(p).filter(function (k) { return p[k] === 'realizado'; }).length; }, 0);
+  const o = { id: r.id, plano_id: r.planoId, codigo_individuo: r.codigoIndividuo, dsei: r.dsei, polo: r.polo || '', aldeia: r.aldeia || '', data: r.dataExame, usuario_id: r.usuarioId,
+    criado_em: r.criadoEm || '', atualizado_em: r.atualizadoEm || '', situacao: r.situacao || 'válido', dentes_alterados: Object.keys(r.dentes || {}).join('; '), procedimentos_realizados: real,
+    tratamento_aps: (NOMES_TRATAMENTO[(r.tratamento || {}).aps] || '').toLowerCase(), dados_json: JSON.stringify(r) };
+  const linha = linhaSegura(CAB_RETORNOS.map(function (k) { return /** @type {any} */ (o)[k]; }));
+  const n = aba.getLastRow(), ids = n > 1 ? aba.getRange(2, 1, n - 1, 1).getValues().map(function (l) { return String(l[0]); }) : [];
+  const i = ids.indexOf(String(r.id));
+  if (i >= 0) aba.getRange(i + 2, 1, 1, CAB_RETORNOS.length).setValues([linha]); else aba.appendRow(linha);
+}
+/** @param {any} d @param {any} u */
+function enviarRetorno(d, u) {
+  const r = d.retorno || {};
+  if (!r.id || !r.planoId) return { ok: false, erro: 'Retorno incompleto.' };
+  const plano = lerExameCompleto(String(r.planoId));
+  if (!plano || !exameValido(plano)) return { ok: false, erro: 'O exame que abriu este plano não foi encontrado ou foi cancelado.' };
+  if (semOdontograma(plano)) return { ok: false, erro: 'Só um exame com odontograma abre um plano de tratamento.' };
+  // Qualquer CD do mesmo DSEI faz o retorno.
+  if (dseiClinico(u) === null || String(plano.dsei) !== dseiClinico(u)) return { ok: false, erro: 'Você só registra retornos de pessoas do DSEI do seu cadastro.' };
+  const cod = codigoIndividuoDe(plano);
+  // Um odontograma completo novo fecha o plano anterior (as pendências passam para o novo).
+  const depois = lerResumos().filter(function (x) { return exameValido(x) && codigoIndividuoDe(x) === cod && x.id !== plano.id && !semOdontograma(x) && ordemExame(x, plano) > 0; });
+  if (depois.length) return { ok: false, planoFechado: true, erro: 'Este plano foi fechado por um exame com odontograma mais novo. Registre o retorno no plano mais novo.' };
+  const todos = lerRetornos(), antigo = todos.filter(function (x) { return x.id === r.id; })[0];
+  if (antigo && antigo.usuarioId !== u.id) return { ok: false, erro: 'Só quem registrou este retorno pode alterá-lo.' };
+  const hoje = hojeIso();
+  if (!dataValida(r.dataExame) || r.dataExame > hoje || r.dataExame < plano.dataExame) return { ok: false, erro: 'A data do retorno precisa ser entre a data do exame (' + dataBR(plano.dataExame) + ') e hoje.' };
+  if (r.localAtendimento && LOCAIS_ATENDIMENTO.indexOf(r.localAtendimento) < 0) return { ok: false, erro: 'Local de atendimento fora da lista.' };
+  /** @type {string[]} */ const fora = [];
+  const dentes = {}; const permitidos = dentesDaDenticao(plano.denticao).map(String);
+  Object.keys(r.dentes || {}).forEach(function (n) {
+    if (permitidos.indexOf(String(n)) < 0) { fora.push('dente ' + n); return; }
+    const dn = soCampos(r.dentes[n], CAMPOS_DENTE, 'dente ' + n + '.', fora);
+    if (dn.faces) dn.faces = soCampos(dn.faces, ['O', 'M', 'D', 'V', 'L'], 'dente ' + n + '.faces.', fora);
+    if (dn.conduta) dn.conduta = soCampos(dn.conduta, ['tipo', 'motivo', 'especialidade'], 'dente ' + n + '.conduta.', fora);
+    /** @type {any} */ (dentes)[n] = dn;
+  });
+  if (fora.length) return { ok: false, erro: 'O retorno tem dados que não existem no plano: ' + fora.slice(0, 5).join(', ') + '.' };
+  const enc = r.encaminhamentos && typeof r.encaminhamentos === 'object' ? r.encaminhamentos : {};
+  if (Object.keys(enc).some(function (k) { return !ESPECIALIDADES[k] || !SITUACAO_ENCAMINHAMENTO[enc[k]]; })) return { ok: false, erro: 'Encaminhamento fora da lista.' };
+  /** @type {any} */ const reg = { id: String(r.id), tipo: 'retorno', planoId: plano.id, codigoIndividuo: cod, dsei: plano.dsei, polo: plano.polo, aldeia: plano.aldeia, uf: plano.uf,
+    dataExame: r.dataExame, localAtendimento: r.localAtendimento || '', dentes: dentes, encaminhamentos: enc,
+    tratamento: { aps: (r.tratamento || {}).aps || '', motivo: String((r.tratamento || {}).motivo || '').trim().slice(0, 300) },
+    observacoes: String(r.observacoes || '').slice(0, 2000), usuarioId: u.id, criadoEm: antigo ? antigo.criadoEm : (r.criadoEm || new Date().toISOString()), atualizadoEm: new Date().toISOString(), situacao: 'válido' };
+  // O plano com este retorno aplicado é conferido como um exame (dentes, procedimentos, conduta).
+  const outros = todos.filter(function (x) { return x.id !== reg.id; });
+  const estado = estadoDoPlano(plano, outros.concat([reg]));
+  juntarEncaminhamentosDosDentes(estado);
+  const faltas = problemasDoExame(estado).filter(function (f) { return !/^(vigilância|placa|gengivite|prótese|localidade|procedimentos coletivos|insumos)/.test(f); });
+  if (faltas.length) return { ok: false, exameIncompleto: true, erro: 'O retorno não foi gravado. Falta ou está errado: ' + faltas.join('; ') + '.' };
+  if (reg.tratamento.aps === 'nao_concluido' && !reg.tratamento.motivo) return { ok: false, erro: 'Diga por que o tratamento básico ainda não foi concluído.' };
+  const aj = ajustesDoDsei(plano.dsei), sit = situacaoTratamento(estado, aj);
+  reg.tratamento = { aps: sit, motivo: sit === 'nao_concluido' ? reg.tratamento.motivo : '', pendencias: pendenciasAPS(estado, aj).length };
+  salvarRetorno(reg);
+  registrar(u, antigo ? 'Corrigiu consulta de retorno' : 'Registrou consulta de retorno', cod + ' · plano de ' + dataBR(plano.dataExame) + ' · ' + Object.keys(dentes).length + ' dente(s) · tratamento básico: ' + NOMES_TRATAMENTO[sit].toLowerCase());
+  return { ok: true, retorno: reg, plano: estado, situacao: sit };
 }
 /** @param {any} a @param {any} b */
 function mesesEntre(a, b) {
@@ -3510,6 +3583,24 @@ function situacaoEncaminhamento(ex) {
 }
 /** @type {any} */
 var NOMES_SIT_ENCAMINHAMENTO = {sem: "Sem encaminhamento", pendente: "Encaminhamento pendente", realizado: "Encaminhamento realizado"};
+// Plano de tratamento (decisão 7): o exame com odontograma abre o plano; cada consulta de retorno muda só os dentes que mexeu
+// (procedimento realizado, conduta, necessidade nova), os encaminhamentos que mudaram e a confirmação do tratamento básico.
+// O estado do plano é o exame com os retornos aplicados, do mais antigo para o mais novo. Nada é apagado.
+/** @param {any} plano @param {any[]} retornos */
+function estadoDoPlano(plano, retornos) {
+  var e = JSON.parse(JSON.stringify(plano || {}));
+  e.dentes = e.dentes || {}; e.encaminhamentos = e.encaminhamentos || {};
+  (retornos || []).filter(function (r) { return r && r.planoId === plano.id && r.situacao !== "cancelado"; })
+    .sort(function (a, b) { return String(a.dataExame).localeCompare(String(b.dataExame)) || String(a.criadoEm || "").localeCompare(String(b.criadoEm || "")); })
+    .forEach(function (r) {
+      Object.keys(r.dentes || {}).forEach(function (n) { e.dentes[n] = JSON.parse(JSON.stringify(r.dentes[n])); });
+      Object.keys(r.encaminhamentos || {}).forEach(function (k) { e.encaminhamentos[k] = r.encaminhamentos[k]; });
+      if (Object.keys(e.encaminhamentos).length) e.fezEncaminhamento = "sim";
+      if (r.tratamento && r.tratamento.aps) e.tratamento = {aps: r.tratamento.aps, motivo: r.tratamento.motivo || ""};
+      e.ultimoRetorno = r.dataExame;
+    });
+  return e;
+}
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
