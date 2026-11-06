@@ -299,12 +299,11 @@ function atuaisDoExame(e, u) {
     perfil_profissional_atual: u ? perfilTexto(u) : '', dsei_profissional_atual: u ? u.dsei || '' : '', situacao_profissional_atual: u ? u.status || '' : 'não encontrado',
     atualizado_em_principal: e.atualizadoEm || '' };
 }
-/** Perfil e DSEI do profissional no momento do exame: o que o exame guardou ou, nos exames antigos, o cadastro quando o exame entrou no backup. @param {any} e @param {any} u */
-function perfilNoExame(e, u) {
+/** Perfil e DSEI do profissional no momento do exame, como o servidor gravou no próprio exame ao recebê-lo.
+ * (Desde o recomeço da base, todo exame tem esse registro; o cadastro atual fica em outras colunas.) @param {any} e */
+function perfilNoExame(e) {
   const p = e.profissional || {};
-  if (p.perfil) return [p.perfil, p.dsei != null ? p.dsei : e.dsei || '', 'registrado no exame'];
-  if (u) return [perfilTexto(u), u.dsei || '', 'cadastro no dia em que o exame entrou no backup'];
-  return ['', '', 'profissional não encontrado no cadastro'];
+  return p.perfil ? [p.perfil, p.dsei != null ? p.dsei : e.dsei || '', 'registrado no exame'] : ['', '', 'não registrado no exame'];
 }
 /** Grava só as linhas que mudaram, juntando as linhas seguidas numa escrita só. @param {any} aba @param {number} col @param {any[][]} linhas @param {any} mudadas */
 function gravarMudadas(aba, col, linhas, mudadas) {
@@ -356,7 +355,7 @@ function backupExames(ss, agora, alertas, usuarios) {
     const imp = impressaoClinica(e);
     if (!(id in pos)) {
       // O original é a primeira versão que chegou ao servidor, mesmo que o exame tenha sido corrigido antes deste backup.
-      const o = cadeia[0], pn = perfilNoExame(o, u), pr = o.profissional || {};
+      const o = cadeia[0], pn = perfilNoExame(o), pr = o.profissional || {};
       const fixo = { id_exame: id, codigo_exame: o.codigo || '', codigo_individuo_original: codigoIndividuoDe(o), dsei: o.dsei || '', data_exame_original: o.dataExame || '',
         usuario_id: o.usuarioId || e.usuarioId || '', profissional: pr.nome || '', cro: pr.cro || '', perfil_profissional_no_exame: pn[0], dsei_profissional_no_exame: pn[1], origem_perfil_no_exame: pn[2],
         criado_em: o.criadoEm || e.criadoEm || '', entrou_no_backup_em: agora, impressao_original: impressaoClinica(o), dados_originais_json: registroParaJson(o) };
@@ -546,8 +545,6 @@ function ativarBackup() {
   const r = fazerBackup('instalação');
   Logger.log('Backup diário ativado: toda madrugada, junto com a tarefa diária. ' + r.resumo + '\n' + r.url);
 }
-// Nome antigo (o guia de instalação das versões anteriores mandava rodar esta).
-function ativarBackupSemanal() { ativarBackup(); }
 function backupAtivo() {
   try { return ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'tarefaDiaria'; }); } catch (x) { return false; }
 }
@@ -561,8 +558,6 @@ function garantirTarefaDiaria() {
   const criou = !tem('tarefaDiaria');
   if (criou) ScriptApp.newTrigger('tarefaDiaria').timeBased().everyDays(1).atHour(2).create();
   if (!tem('tarefaFaces')) ScriptApp.newTrigger('tarefaFaces').timeBased().everyDays(1).atHour(4).create();
-  // O backup semanal antigo (uma cópia inteira por semana) sai: o backup agora é incremental, na tarefa diária.
-  ts.forEach(function (t) { if (t.getHandlerFunction() === 'fazerBackup') ScriptApp.deleteTrigger(t); });
   return criou;
 }
 function tarefaDiaria() {
@@ -670,17 +665,7 @@ const simNao = function (/** @type {any} */ b) { return b ? 'sim' : 'não'; };
 function baseAnalise() {
   const regs = todosExamesCompletos();
   /** @type {any} */ const usuarios = {}; lerAbaPrincipal('Usuarios', CAB_USUARIOS).forEach(function (u) { if (u.id) usuarios[u.id] = u; });
-  return { regs: regs, usuarios: usuarios, perfis: perfisDoBackup() };
-}
-/** Perfil do profissional no momento de cada exame, como o backup guardou (exames antigos não têm no próprio exame). */
-function perfisDoBackup() {
-  /** @type {any} */ const o = {};
-  if (!propriedade('BACKUP_ID')) return o;
-  try {
-    const a = planilhaBackup().getSheetByName('Exames'), c = BK_EX_FIXAS.indexOf('perfil_profissional_no_exame') + 1;
-    if (a) lerBloco(a, 1, c).forEach(function (l) { if (l[0]) o[l[0]] = l[c - 1]; });
-  } catch (x) {}
-  return o;
+  return { regs: regs, usuarios: usuarios };
 }
 /** Tudo o que o dente diz, pronto para as linhas de Dentes, Procedimentos e Faces. @param {any} e @param {any} n */
 function dadosDoDente(e, n) {
@@ -699,7 +684,7 @@ function dentesDoExame(e) { return Object.keys(e.dentes || {}).map(Number).sort(
 /** Linha da aba Exames. @param {any} e @param {any} b */
 function linhaAnExame(e, b) {
   const o = valoresDoExame(e, false), u = b.usuarios[e.usuarioId], pr = e.profissional || {}, ds = dentesDoExame(e);
-  o.perfil_profissional_no_exame = pr.perfil || b.perfis[e.id] || (u ? perfilTexto(u) : '');
+  o.perfil_profissional_no_exame = pr.perfil || '';
   o.perfil_profissional_atual = u ? perfilTexto(u) : ''; o.dsei_profissional_atual = u ? u.dsei || '' : ''; o.situacao_profissional_atual = u ? u.status || '' : 'não encontrado';
   o.n_dentes_presentes = ds.filter(function (x) { return x.pres; }).length;
   o.n_dentes_com_carie = ds.filter(function (x) { return x.faces_com_carie > 0; }).length;
@@ -2112,6 +2097,11 @@ function processarExame(reg, u, emLote) {
   const desde = propriedade('EXAMES_DESDE');
   if (desde && !anterior && String(reg.criadoEm || reg.dataExame || '') < desde)
     return { ok: false, antesDoRecomeco: true, erro: 'Este exame foi criado em ' + dataBR(reg.criadoEm || reg.dataExame) + ', antes de a base de exames recomeçar (' + dataBR(desde) + '), e não foi enviado. Ele continua guardado neste aparelho. Se ele precisa entrar, faça um exame novo com os mesmos dados.' };
+  // App anterior à versão 45 (não pergunta se o odontograma foi preenchido nem os Sim/Não dos coletivos e insumos):
+  // o exame não entra pela metade; o profissional atualiza o app, completa as respostas e envia de novo.
+  if (reg.odontograma == null || reg.fezColetivos == null || reg.deuInsumos == null)
+    return { ok: false, exameIncompleto: true, appDesatualizado: true, faltam: ['respostas que só o app atualizado pede'],
+      erro: 'Este exame veio de uma versão antiga do app e não foi gravado. Feche e abra o app com internet para atualizar, abra o exame, responda as perguntas novas e salve de novo.' };
   // Só quem fez o exame pode alterá-lo.
   if (anterior && !ehDoUsuario(anterior, u)) return { ok: false, erro: 'Só o profissional que fez este exame pode alterá-lo.' };
   if (anterior && !exameValido(anterior)) return { ok: false, erro: 'Este exame foi cancelado e não pode ser alterado.' };
@@ -2285,10 +2275,10 @@ function problemasDoExame(r) {
   if (!Array.isArray(r.gerais || []) || (r.gerais || []).some(function (g) { return GERAIS.indexOf(g) < 0; })) f.push('procedimentos coletivos (fora da lista)');
   if (!Array.isArray(r.insumos || []) || (r.insumos || []).some(function (g) { return INSUMOS.indexOf(g) < 0; })) f.push('insumos (fora da lista)');
   if (r.observacoes != null && (typeof r.observacoes !== 'string' || r.observacoes.length > 2000)) f.push('observações (texto até 2.000 caracteres)');
-  // Perguntas de Sim ou Não dos coletivos e dos insumos (desde a versão 45; os apps antigos não mandam).
-  if (r.fezColetivos != null && (['sim', 'nao'].indexOf(r.fezColetivos) < 0 || (r.fezColetivos === 'sim') !== !!(r.gerais || []).length)) f.push('procedimentos coletivos (Sim e quais, ou Não)');
-  if (r.deuInsumos != null && (['sim', 'nao'].indexOf(r.deuInsumos) < 0 || (r.deuInsumos === 'sim') !== !!(r.insumos || []).length)) f.push('insumos (Sim e quais, ou Não)');
-  if (r.odontograma != null && ['sim', 'nao'].indexOf(r.odontograma) < 0) f.push('se o odontograma foi preenchido (Sim ou Não)');
+  // Perguntas de Sim ou Não dos coletivos e dos insumos, e se o odontograma foi preenchido: sempre respondidas.
+  if (['sim', 'nao'].indexOf(r.fezColetivos) < 0 || (r.fezColetivos === 'sim') !== !!(r.gerais || []).length) f.push('procedimentos coletivos (Sim e quais, ou Não)');
+  if (['sim', 'nao'].indexOf(r.deuInsumos) < 0 || (r.deuInsumos === 'sim') !== !!(r.insumos || []).length) f.push('insumos (Sim e quais, ou Não)');
+  if (['sim', 'nao'].indexOf(r.odontograma) < 0) f.push('se o odontograma foi preenchido (Sim ou Não)');
   // Sem odontograma: só o principal motivo, e nada que dependa do exame clínico (dentes, vigilância, prótese, placa, gengivite).
   if (r.odontograma === 'nao') {
     if (MOTIVOS_SEM_ODONTOGRAMA.indexOf(r.odontogramaMotivo) < 0) f.push('o principal motivo de não preencher o odontograma');
@@ -4035,22 +4025,6 @@ function obterAba(planilha, nome, cabecalho) {
   }
   if (cache) cache[nome] = aba;
   return aba;
-}
-
-/** @param {any} aba @param {any} id */
-function removerLinhas(aba, id) {
-  const ultima = aba.getLastRow();
-  if (ultima < 2) return;
-  const ids = aba.getRange(2, 1, ultima - 1, 1).getValues();
-  // Apaga de baixo para cima, em blocos de linhas seguidas (mais rápido que uma por uma).
-  let i = ids.length - 1;
-  while (i >= 0) {
-    if (String(ids[i][0]) !== String(id)) { i--; continue; }
-    let j = i;
-    while (j - 1 >= 0 && String(ids[j - 1][0]) === String(id)) j--;
-    aba.deleteRows(j + 2, i - j + 1);
-    i = j - 1;
-  }
 }
 
 /** @param {any} obj */

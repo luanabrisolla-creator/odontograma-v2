@@ -2484,14 +2484,7 @@ function confirmarEnviado(l, i, r, t) {
 }
 async function enviarLote(lote) {
   const regs = lote.map(e => JSON.parse(registroParaJson(e)));
-  try { return (await api("enviarExames", {registros: regs}, {tempo: 45000})).resultados || []; }
-  catch (err) {
-    if (!/^Ação desconhecida/.test(err.message || "")) throw err;
-    // Servidor ainda na versão anterior: manda um por um.
-    const out = [];
-    for (const r of regs) { try { out.push(Object.assign({id: r.id, ok: true}, await api("enviarExame", {id: r.id, registro: r}))); } catch (x) { if (!x.dados || x.dados.passageiro || x.dados.ocupado) throw x; out.push(Object.assign({id: r.id}, x.dados, {ok: false, erro: x.message})); } }
-    return out;
-  }
+  return (await api("enviarExames", {registros: regs}, {tempo: 45000})).resultados || [];
 }
 let tProxEnvio = null;
 async function sincronizar(manual) {

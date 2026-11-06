@@ -832,9 +832,8 @@ r = P(C, { acao: "fazerBackup" });
 T("se a planilha de backup não abrir, nenhuma outra é criada no lugar", !r.ok && /backup/i.test(G.ctx.estadoBackup().erro) && Object.values(G.est.extras).filter(x => x.nome === "Odontograma - backup").length === 1, r);
 G.est.falharBackup = false;
 T("o erro do backup aparece em Erros recentes, explicado", aba("_erros").some(l => l[2] === "backup"), aba("_erros").slice(-1));
-G.ctx.ScriptApp.newTrigger("fazerBackup").timeBased().onWeekDay(1).atHour(3).create();
 G.ctx.garantirTarefaDiaria();
-T("o backup semanal antigo (cópia inteira) é desligado sozinho", !G.est.triggers.some(t => t.fn === "fazerBackup") && G.est.triggers.some(t => t.fn === "tarefaDiaria"));
+T("a tarefa diária (com o backup incremental) fica ligada", G.est.triggers.some(t => t.fn === "tarefaDiaria"));
 
 /* ---------------------------------------------------------------- sessões */
 parte("sessões");
@@ -983,7 +982,11 @@ parte("odontograma opcional");
   T("\"Sim\" nos coletivos sem marcar nenhum é recusado", /procedimentos coletivos \(Sim e quais, ou Não\)/.test(R.P(R.ANA, { acao: "enviarExame", registro: inc }).erro || ""));
   const ok1 = exame({ id: "SN2", sufixo: "SNSNSN32", gerais: ["Escovação supervisionada"], insumos: ["Escova dental"] }); ok1.fezColetivos = "sim"; ok1.deuInsumos = "sim"; ok1.odontograma = "sim";
   T("exame com odontograma e as respostas novas é aceito", R.P(R.ANA, { acao: "enviarExame", registro: ok1 }).ok);
-  T("exame do jeito antigo (sem as perguntas novas) continua aceito", R.P(R.ANA, { acao: "enviarExame", registro: exame({ id: "SN3", sufixo: "SNSNSN42", mud: { 46: { faces: { O: "ca" } } } }) }).ok);
+  const antigo = exame({ id: "SN3", sufixo: "SNSNSN42", mud: { 46: { faces: { O: "ca" } } } }); delete antigo.odontograma; delete antigo.fezColetivos; delete antigo.deuInsumos;
+  const qa = R.P(R.ANA, { acao: "enviarExame", registro: antigo });
+  T("exame de app anterior à 45 (sem as perguntas novas) é recusado, pedindo para atualizar o app", !qa.ok && qa.appDesatualizado && /versão antiga do app/.test(qa.erro) && !aba5("Exames").some(l => l[0] === "SN3"), qa);
+  delete antigo.id; Object.assign(antigo, { id: "SN3", odontograma: "sim", fezColetivos: "nao", deuInsumos: "nao" });
+  T("o mesmo exame, com as respostas que o app atualizado pede, é aceito", R.P(R.ANA, { acao: "enviarExame", registro: antigo }).ok);
   // Painel: atendimentos separados; o sem odontograma não entra nas contas clínicas.
   const pn = R.P(R.ANA, { acao: "painel", minha: true }).resumo, at = pn.atend;
   T("painel: atendimentos individuais, com e sem odontograma, e coletivos à parte", at.registrados === 5 && at.preenchidos === 2 && at.naoPreenchidos === 3 && at.coletivos === 1, at);
