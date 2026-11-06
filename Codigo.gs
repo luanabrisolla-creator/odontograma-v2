@@ -1075,6 +1075,9 @@ function reescreverAba(ss, nome, cab, linhas, posicao) {
   const tmpNome = nome + ' (nova)';
   const sobra = ss.getSheetByName(tmpNome); if (sobra) ss.deleteSheet(sobra);
   const nova = ss.insertSheet(tmpNome);
+  // Aba nova nasce com 1000 linhas e 26 colunas: aumenta antes de escrever, senão o Google recusa.
+  if (nova.getMaxColumns() < cab.length) nova.insertColumnsAfter(nova.getMaxColumns(), cab.length - nova.getMaxColumns());
+  if (nova.getMaxRows() < linhas.length + 1) nova.insertRowsAfter(nova.getMaxRows(), linhas.length + 1 - nova.getMaxRows());
   nova.getRange(1, 1, 1, cab.length).setValues([cab]).setFontWeight('bold');
   nova.setFrozenRows(1);
   for (let i = 0; i < linhas.length; i += 4000) {
@@ -1255,6 +1258,11 @@ const ACOES = {
   enviarExame:    { escreve: true, fn: enviarExame },
   enviarExames:   { escreve: true, fn: enviarExames },
   enviarRetorno:  { escreve: true, fn: enviarRetorno },
+  historico:      { fn: historico },
+  importarHistorico: { perfis: ['coord'], escreve: true, fn: importarHistorico },
+  salvarMetaPdsi: { perfis: ['coord'], escreve: true, fn: salvarMetaPdsi },
+  salvarDica:     { perfis: ['coord'], escreve: true, fn: salvarDica },
+  sugerirDica:    { perfis: ['rt', 'coord'], escreve: true, fn: sugerirDica },
   registrarAtividade: { escreve: true, fn: registrarAtividade },
   cancelarAtividade:  { escreve: true, fn: cancelarAtividade },
   atividades:     { fn: atividades },
@@ -3430,15 +3438,132 @@ function calcularPainel(p, u) {
     return { dsei: d, n: a.n, alto: ocultarNumero(alto), pctAlto: pctOk ? Math.round(alto / a.n * 100) : null,
              ceod: a.ceod.n >= MINIMO ? a.ceodMedia : null, cpod: a.cpod.n >= MINIMO ? a.cpodMedia : null, procs: a.procsRealizados,
              pctOdonto: a.atend.registrados >= MINIMO ? Math.round(a.atend.preenchidos / a.atend.registrados * 100) : null };
-  }).sort(function (x, y) { return (typeof y.n === 'number' ? y.n : 0) - (typeof x.n === 'number' ? x.n : 0); });
+  }).sort(function (x, y) { return String(x.dsei).localeCompare(String(y.dsei), 'pt-BR'); });
 
   const profs = {};
   doRecorte.filter(function (r) { return exameCombina(r, filtros); }).forEach(function (r) { const k = r.usuarioId; if (k) profs[k] = 1; });
 
   return { ok: true, versao: VERSAO, geradoEm: new Date().toISOString(), dseis: Object.keys(porDsei).sort(),
            totalExames: regs.length, recorteDsei: p.minha ? '' : dr, participantes: Object.keys(profs).length,
-           resumo: blocos.resumo, blocos: blocos, filtros: filtros, comparacao: comparacao,
+           resumo: blocos.resumo, blocos: blocos, filtros: filtros, comparacao: comparacao, indApp: indicadoresDoApp(doRecorte, de, ate, !p.minha),
            cobertura: p.minha ? null : (function () { const pop = lerPopulacao(); return pop ? cobertura(noPeriodo, pop, dr, u) : { vazio: true }; })() };
+}
+
+/* ---------- indicadores com os dados do app (ao lado do histórico, nunca somados a ele) ----------
+ * ART entre as restaurações realizadas; aldeias com exame em 4 meses ou mais (no ano do período); tratamento básico concluído no
+ * app (pessoas com TC confirmado ÷ pessoas com 1º exame com odontograma no período: não é o indicador oficial); gestantes atendidas. */
+/** @param {any[]} regs @param {string} de @param {string} ate @param {boolean} ocultarPoucos */
+function indicadoresDoApp(regs, de, ate, ocultarPoucos) {
+  const validos = regs.filter(function (r) { return exameValido(r) && !semOdontograma(r); });
+  let art = 0, rest = 0;
+  validos.forEach(function (r) { const p = r.procsR || procsDe(r); art += (p.art || {}).realizado || 0; ['art', 'civ', 'resina', 'amalgama', 'coroa'].forEach(function (k) { rest += (p[k] || {}).realizado || 0; }); });
+  /** @type {any} */ const meses = {};
+  regs.filter(exameValido).forEach(function (r) { const k = (r.codAldeia || '') + '|' + (r.aldeia || ''); (meses[k] = meses[k] || {})[String(r.dataExame).slice(0, 7)] = 1; });
+  const aldeias = Object.keys(meses).length, ald4 = Object.keys(meses).filter(function (k) { return Object.keys(meses[k]).length >= 4; }).length;
+  /** @type {any} */ const primeiro = {}, tc = {};
+  validos.slice().sort(ordemExame).forEach(function (r) { const c = codigoIndividuoDe(r); if (!primeiro[c]) primeiro[c] = r; if ((r.tratamento || {}).aps === 'concluido') tc[c] = 1; });
+  lerRetornos().filter(function (r) { const d = String(r.dataExame || ''); return r.situacao !== 'cancelado' && (!de || d >= de) && (!ate || d <= ate) && primeiro[r.codigoIndividuo] && (r.tratamento || {}).aps === 'concluido'; })
+    .forEach(function (r) { tc[r.codigoIndividuo] = 1; });
+  const nPrim = Object.keys(primeiro).length, nTc = Object.keys(tc).length;
+  const v = function (/** @type {number} */ n) { return ocultarPoucos ? ocultarNumero(n) : n; };
+  return { art: [v(art), v(rest)], aldeias4: [ald4, aldeias], tc: [v(nTc), v(nPrim)], gestantes: v(regs.filter(function (r) { return exameValido(r) && r.gestante === 'sim'; }).length) };
+}
+
+/* ---------- histórico do SIASI (planilha separada, só leitura) ----------
+ * A coordenação titular envia, uma vez por ano, o arquivo preparado a partir dos dados abertos e da resposta do Fala.BR:
+ * os indicadores oficiais por DSEI e as somas da Ficha 7 e da Ficha 3 por aldeia e ano. Fica na planilha
+ * "Odontograma - histórico SIASI", que não se mistura com a base de exames. Todos veem o histórico de tudo. */
+const HIST_NOME = 'Odontograma - histórico SIASI';
+/** @param {any} d @param {any} u */
+function importarHistorico(d, u) {
+  if (!u.titular) return { ok: false, erro: 'Só a coordenação titular envia o histórico.' };
+  const h = d.historico;
+  if (!h || !Array.isArray(h.oficiais) || !Array.isArray(h.aldeias) || !h.versao) return { ok: false, erro: 'Arquivo do histórico inválido: faltam a versão, os indicadores oficiais ou as aldeias.' };
+  if (h.oficiais.length < 30 || h.aldeias.length < 100) return { ok: false, erro: 'O arquivo tem poucos registros. Confira se é o arquivo completo preparado para o app.' };
+  const ss = planilhaSeparada('HISTORICO_ID', HIST_NOME, false);
+  const colsO = Object.keys(h.oficiais.reduce(function (o, r) { Object.keys(r).forEach(function (k) { o[k] = 1; }); return o; }, {}));
+  const colsA = Object.keys(h.aldeias.reduce(function (o, r) { Object.keys(r).forEach(function (k) { o[k] = 1; }); return o; }, {}));
+  reescreverAba(ss, 'Indicadores_DSEI', colsO, h.oficiais.map(function (r) { return colsO.map(function (k) { return r[k] == null ? '' : r[k]; }); }), null);
+  reescreverAba(ss, 'Aldeias_ano', colsA, h.aldeias.map(function (r) { return colsA.map(function (k) { return r[k] == null ? '' : r[k]; }); }), null);
+  reescreverAba(ss, 'Sobre', ['item', 'descrição'], [['Versão', h.versao], ['Enviado por', u.nome], ['Enviado em', new Date().toISOString()]].concat((h.fontes || []).map(function (f) { return ['Fonte', String(f)]; }))
+    .concat([['Atenção', 'Dados agregados do Ministério da Saúde. Não se somam aos exames do app. Cada número guarda a fonte e a data da extração.']]), null);
+  // Cópia em texto, por DSEI, para o app ler rápido: [dsei, parte, texto].
+  /** @type {any} */ const porDsei = {};
+  h.aldeias.forEach(function (r) { (porDsei[r.dsei] = porDsei[r.dsei] || { aldeias: [] }).aldeias.push(r); });
+  const linhas = [];
+  Object.keys(porDsei).forEach(function (ds) {
+    const txt = JSON.stringify(porDsei[ds]);
+    for (let i = 0, k = 0; i < txt.length; i += TAM_PEDACO, k++) linhas.push([ds, k, '#' + txt.slice(i, i + TAM_PEDACO)]);
+  });
+  const of = JSON.stringify({ oficiais: h.oficiais, fontes: h.fontes || [], versao: h.versao });
+  for (let i = 0, k = 0; i < of.length; i += TAM_PEDACO, k++) linhas.push(['_oficiais', k, '#' + of.slice(i, i + TAM_PEDACO)]);
+  reescreverAba(ss, '_dados', ['dsei', 'parte', 'texto'], linhas, null);
+  PropertiesService.getScriptProperties().setProperty('HISTORICO_VERSAO', String(h.versao));
+  registrar(u, 'Atualizou o histórico do SIASI', 'Versão ' + h.versao + ' · ' + h.oficiais.length + ' indicadores de DSEI · ' + h.aldeias.length + ' aldeias por ano');
+  return { ok: true, versao: h.versao, oficiais: h.oficiais.length, aldeias: h.aldeias.length, url: ss.getUrl() };
+}
+/** @param {string} chave */
+function lerHistorico(chave) {
+  if (!propriedade('HISTORICO_ID')) return null;
+  const aba = planilhaSeparada('HISTORICO_ID', HIST_NOME, false).getSheetByName('_dados');
+  if (!aba || aba.getLastRow() < 2) return null;
+  const l = aba.getRange(2, 1, aba.getLastRow() - 1, 3).getValues().filter(function (x) { return String(x[0]) === chave; })
+    .sort(function (a, b) { return Number(a[1]) - Number(b[1]); }).map(function (x) { return String(x[2]).replace(/^'?#/, ''); }).join('');
+  try { return l ? JSON.parse(l) : null; } catch (x) { return null; }
+}
+/** Histórico de um DSEI: os indicadores oficiais (do DSEI e do Brasil), as aldeias, as metas do PDSI e as dicas aprovadas. @param {any} d @param {any} u */
+function historico(d, u) {
+  const dsei = String(d.dsei || u.dsei || '');
+  const of = lerHistorico('_oficiais'), al = dsei ? lerHistorico(dsei) : null;
+  const pdsi = (function () { try { return JSON.parse(propriedade('METAS_PDSI') || '{}'); } catch (x) { return {}; } })();
+  return { ok: true, versao: propriedade('HISTORICO_VERSAO') || '', vazio: !of, dsei: dsei, fontes: of ? of.fontes : [],
+    oficiais: of ? of.oficiais.filter(function (r) { return r.dsei === dsei || r.dsei === 'BRASIL'; }) : [], aldeias: al ? al.aldeias : [],
+    metasPdsi: pdsi[dsei] || {}, dicas: dicasParaApp(u) };
+}
+/** Meta do PDSI de um DSEI (a coordenação digita; vale no lugar da nacional). @param {any} d @param {any} u */
+function salvarMetaPdsi(d, u) {
+  const dsei = String(d.dsei || ''), k = String(d.indicador || ''), ano = String(d.ano || '');
+  if (!dseiValido(dsei)) return { ok: false, erro: 'Escolha um DSEI da lista.' };
+  if (!INDICADORES_NT3.some(function (x) { return x.k === k; })) return { ok: false, erro: 'Indicador fora da lista.' };
+  if (!/^20\d\d$/.test(ano)) return { ok: false, erro: 'Ano inválido.' };
+  const v = d.valor === '' || d.valor == null ? null : Number(d.valor);
+  if (v != null && !(v >= 0 && v <= 1000)) return { ok: false, erro: 'Valor da meta inválido.' };
+  /** @type {any} */ let todas = {}; try { todas = JSON.parse(propriedade('METAS_PDSI') || '{}'); } catch (x) {}
+  todas[dsei] = todas[dsei] || {}; todas[dsei][k] = todas[dsei][k] || {};
+  if (v == null) delete todas[dsei][k][ano]; else todas[dsei][k][ano] = v;
+  PropertiesService.getScriptProperties().setProperty('METAS_PDSI', JSON.stringify(todas));
+  registrar(u, 'Mudou meta do PDSI', 'DSEI ' + dsei + ' · ' + k + ' · ' + ano + ': ' + (v == null ? 'apagada (volta a meta nacional)' : v));
+  return { ok: true, metas: todas[dsei] };
+}
+/* Dicas: a coordenação titular aprova o texto de cada uma (e pode reescrever); só as aprovadas aparecem no app. A RT e a coordenação
+ * sugerem dicas novas, que ficam numa aba para a titular ler. */
+function dicasGuardadas() { try { return JSON.parse(propriedade('DICAS_APROVADAS') || '{}') || {}; } catch (x) { return {}; } }
+/** @param {any} u */
+function dicasParaApp(u) {
+  const g = dicasGuardadas(), r = { aprovadas: DICAS.filter(function (x) { return (g[x.id] || {}).aprovada; }).map(function (x) { return Object.assign({}, x, { texto: g[x.id].texto || x.texto }); }) };
+  if (u.titular) {
+    /** @type {any} */ (r).catalogo = DICAS.map(function (x) { return Object.assign({}, x, { aprovada: !!(g[x.id] || {}).aprovada, textoAprovado: (g[x.id] || {}).texto || '' }); });
+    /** @type {any} */ (r).sugestoes = lerAbaPrincipal('Sugestoes_dicas', ['em', 'usuario_id', 'nome', 'dsei', 'texto']).slice(-50).reverse();
+  }
+  return r;
+}
+/** @param {any} d @param {any} u */
+function salvarDica(d, u) {
+  if (!u.titular) return { ok: false, erro: 'Só a coordenação titular aprova as dicas.' };
+  const x = DICAS.filter(function (y) { return y.id === d.id; })[0]; if (!x) return { ok: false, erro: 'Dica não encontrada.' };
+  const g = dicasGuardadas(), texto = String(d.texto || '').trim().slice(0, 400) || x.texto;
+  g[x.id] = { aprovada: !!d.aprovada, texto: texto, por: u.nome, em: new Date().toISOString() };
+  PropertiesService.getScriptProperties().setProperty('DICAS_APROVADAS', JSON.stringify(g));
+  registrar(u, d.aprovada ? 'Aprovou dica' : 'Tirou a aprovação de dica', x.titulo + ': ' + texto);
+  return { ok: true, dicas: dicasParaApp(u) };
+}
+/** @param {any} d @param {any} u */
+function sugerirDica(d, u) {
+  const t = String(d.texto || '').trim();
+  if (t.length < 10) return { ok: false, erro: 'Escreva a sugestão de dica (pelo menos 10 letras).' };
+  obterAba(planilha(), 'Sugestoes_dicas', ['em', 'usuario_id', 'nome', 'dsei', 'texto']).appendRow(linhaSegura([new Date().toISOString(), u.id, u.nome || '', u.dsei || '', t.slice(0, 600)]));
+  registrar(u, 'Sugeriu uma dica', t.slice(0, 120));
+  return { ok: true };
 }
 
 /* ---------- população e territórios (planilha da SESAI) ---------- */
@@ -3754,6 +3879,46 @@ var TIPOS_ATIVIDADE = ["Escovação dental supervisionada", "Aplicação tópica
 var NIVEIS_PROF = {medio: "Nível médio", superior: "Nível superior"};
 /** @type {any} */
 var LOCAIS_ATIVIDADE = {comunidade: "Na comunidade", estabelecimento: "No estabelecimento de saúde"};
+// Os 8 indicadores de saúde bucal da Nota Técnica 3/2025 e as metas nacionais por ano. 2020 a 2023 vêm do Fala.BR
+// (a meta repetida em cada tabela anual); 2026 dos intermediários, do quadro do SIPLAM. A meta do PDSI vale no lugar, quando houver.
+/** @type {any} */
+var INDICADORES_NT3 = [
+  {k: "cop_pct", nome: "% da população com 1ª consulta odontológica programática", curto: "1ª consulta programática", un: "%", tipo: "principal",
+    num: "pessoas com 1ª consulta odontológica programática no período", den: "população indígena cadastrada no SIASI, no mesmo local e período", cuidado: "Exclui urgência, retorno e manutenção. Num período parcial, o valor ainda acumula até dezembro."},
+  {k: "tc_pct", nome: "% de tratamento odontológico básico concluído (TC/COP)", curto: "Tratamento concluído", un: "%", tipo: "principal",
+    num: "tratamentos odontológicos básicos concluídos", den: "pessoas com 1ª consulta odontológica programática", cuidado: "Pode subir só porque a 1ª consulta caiu: leia junto com o indicador acima."},
+  {k: "gest_pct", nome: "% de gestantes com ao menos 1 consulta odontológica no pré-natal", curto: "Gestantes no pré-natal", un: "%", tipo: "principal",
+    num: "gestações finalizadas com ao menos 1 consulta com o CD na APS, da DUM até 42 semanas", den: "gestações finalizadas no SIASI, sem as finalizadas por aborto", cuidado: "Conta gestações, não mulheres. Exige também consulta com médico ou enfermeiro."},
+  {k: "media_atend", nome: "Média de atendimentos odontológicos por habitante", curto: "Atendimentos por habitante", un: "", tipo: "intermediario",
+    num: "total de atendimentos odontológicos", den: "população (no PDF do Fala.BR, só aldeias com 4 meses ou mais de atendimento)", cuidado: "Os documentos podem usar populações diferentes."},
+  {k: "menores5_pct", nome: "% de crianças menores de 5 anos com 1ª consulta programática", curto: "Menores de 5 anos", un: "%", tipo: "intermediario",
+    num: "crianças até 4 anos, 9 meses e 29 dias com 1ª consulta programática", den: "crianças menores de 5 anos cadastradas no SIASI", cuidado: ""},
+  {k: "art_pct", nome: "% de ART entre as restaurações", curto: "ART", un: "%", tipo: "intermediario",
+    num: "restaurações em ART (tratamento restaurador atraumático)", den: "todas as restaurações do período", cuidado: "Fala de procedimentos, não de pessoas."},
+  {k: "esc_media", nome: "Média da população em escovação dental supervisionada", curto: "Escovação supervisionada", un: "", tipo: "intermediario",
+    num: "escovações no período ÷ 12 meses × 100", den: "população", cuidado: "É uma média por 100 habitantes, não %. A fórmula divide por 12 mesmo num período parcial."},
+  {k: "ald_4mais_pct", nome: "% de aldeias com atenção odontológica regular", curto: "Aldeias com atenção regular", un: "%", tipo: "intermediario",
+    num: "aldeias com 4 meses ou mais com ao menos 1 atendimento odontológico", den: "total de aldeias", cuidado: "Cada tabela pode usar uma lista de aldeias diferente. Num período parcial, o valor é baixo por definição."}];
+/** @type {any} */
+var METAS_NT3 = {cop_pct: {2020: 45, 2021: 25, 2022: 30, 2023: 50, 2024: 45, 2025: 50, 2026: 55, 2027: 60}, tc_pct: {2020: 55, 2021: 52, 2022: 55, 2023: 58, 2024: 52, 2025: 55, 2026: 58, 2027: 60},
+  gest_pct: {2024: 8, 2025: 50, 2026: 55, 2027: 60}, media_atend: {2025: 0.7, 2026: 0.8}, menores5_pct: {2025: 45, 2026: 50}, art_pct: {2025: 37, 2026: 40},
+  esc_media: {2025: 7.5, 2026: 8}, ald_4mais_pct: {2025: 40, 2026: 45}};
+/** Meta de um indicador num ano: a do PDSI do DSEI, se a coordenação digitou; senão a nacional. @param {string} k @param {any} ano @param {any} [pdsi] */
+function metaDe(k, ano, pdsi) {
+  var p = pdsi && pdsi[k] && pdsi[k][ano]; if (p != null && p !== "") return {valor: Number(p), fonte: "PDSI do DSEI"};
+  var n = (METAS_NT3[k] || {})[ano]; return n != null ? {valor: n, fonte: Number(ano) <= 2023 ? "meta nacional (Fala.BR)" : k === "cop_pct" || k === "tc_pct" || k === "gest_pct" ? "NT 3/2025" : Number(ano) >= 2026 ? "SIPLAM 2026" : "NT 3/2025"} : null;
+}
+// Catálogo de dicas: cada uma é uma regra escrita. Só aparece depois que a coordenação titular aprova o texto.
+/** @type {any} */
+var DICAS = [
+  {id: "tc_baixo", ind: "tc_pct", titulo: "Tratamento concluído abaixo da meta", texto: "Priorize na agenda o retorno das pessoas que estão a 1 ou 2 procedimentos de concluir o tratamento básico."},
+  {id: "art_baixo", ind: "art_pct", titulo: "ART abaixo da meta", texto: "Confira os insumos de ART e priorize crianças e adolescentes com lesões iniciais."},
+  {id: "cop_baixo", ind: "cop_pct", titulo: "Pouca cobertura de 1ª consulta programática", texto: "Planeje as visitas pelas aldeias e faixas etárias com menos exames, frente à população da SESAI."},
+  {id: "aldeias_regulares", ind: "ald_4mais_pct", titulo: "Aldeias com poucos meses de atendimento", texto: "Inclua na escala as aldeias com menos de 4 meses de atendimento no ano, antes de dezembro."},
+  {id: "menores5", ind: "menores5_pct", titulo: "Crianças menores de 5 anos", texto: "Combine o exame odontológico com a puericultura e a vacinação."},
+  {id: "gestantes", ind: "gest_pct", titulo: "Gestantes no pré-natal", texto: "Combine com a enfermagem a consulta odontológica de cada gestante no pré-natal."},
+  {id: "escovacao", ind: "esc_media", titulo: "Escovação supervisionada abaixo da meta", texto: "Mantenha a escovação dental supervisionada nas aldeias com menos registro."},
+  {id: "urgencia", ind: "", titulo: "Mais da metade das consultas são de urgência", texto: "Depois de cada atendimento de urgência, já marque a 1ª consulta programática da pessoa."}];
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
@@ -3919,6 +4084,12 @@ function idsUltimoPorPessoa(regs) {
   Object.keys(por).forEach(function (k) { ids[por[k].id] = true; });
   return ids;
 }
+// Idades-índice das Diretrizes da saúde bucal indígena (ceo-d, CPO-D e livres de cárie), ao lado das faixas de hoje.
+var GRUPOS_CEOD = [["1 ano", 1, 1], ["2 anos", 2, 2], ["3 anos", 3, 3], ["4 anos", 4, 4], ["5 anos", 5, 5], ["6 anos", 6, 6]];
+var GRUPOS_CPOD = [["7 anos", 7, 7], ["8 anos", 8, 8], ["9 anos", 9, 9], ["10 anos", 10, 10], ["11 anos", 11, 11], ["12 anos", 12, 12], ["15 a 19 anos", 15, 19], ["35 a 44 anos", 35, 44], ["65 a 74 anos", 65, 74]];
+var GRUPOS_LIVRES = [["5 anos", 5, 5], ["12 anos", 12, 12], ["15 a 19 anos", 15, 19], ["35 a 44 anos", 35, 44], ["65 a 74 anos", 65, 74]];
+/** @param {any} grupos @param {any} idade */
+function grupoDe(grupos, idade) { for (var i = 0; i < grupos.length; i++) if (idade != null && idade >= grupos[i][1] && idade <= grupos[i][2]) return grupos[i][0]; return null; }
 /** @param {any} regs @param {any} agrup @param {any} [ult] */
 function agregarExames(regs, agrup, ult) {
   ult = ult || idsUltimoPorPessoa(regs);
@@ -3937,7 +4108,10 @@ function agregarExames(regs, agrup, ult) {
   var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
     ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
     vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0},
-    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}, pessoasSemClassificacao: 0}};
+    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}, pessoasSemClassificacao: 0},
+    // versão 47: idades-índice, tratamento básico, encaminhamentos, prescrições e gestantes
+    oficiais: {ceod: {}, cpod: {}, livres: {}}, tratamento: {concluido: 0, nao_concluido: 0, pendente: 0, a_confirmar: 0}, encaminhamentos: {}, prescricoes: {}, gestantes: 0,
+    dorOuAbscesso: 0, comCarie: 0, art: 0, restauracoes: 0, exodontias: 0};
   // Pessoas com classificação de risco (algum exame com odontograma) e sem (só atendimentos sem odontograma no recorte).
   /** @type {any} */ var comClasse = {}, semClasse = {};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
@@ -3960,6 +4134,9 @@ function agregarExames(regs, agrup, ult) {
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
     if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
+    Object.keys(e.encaminhamentos || {}).forEach(function (k) { var o = r.encaminhamentos[k] = r.encaminhamentos[k] || {pendente: 0, realizado: 0}; o[e.encaminhamentos[k]] = (o[e.encaminhamentos[k]] || 0) + 1; });
+    (e.prescricoes || []).forEach(function (p) { r.prescricoes[p] = (r.prescricoes[p] || 0) + 1; });
+    if (e.gestante === "sim") r.gestantes++;
     // Daqui em diante, só o que vem do exame clínico (o atendimento sem odontograma não entra nas contas por dente nem na classe).
     if (sem) return;
     var pe = procsDe(e);
@@ -3967,6 +4144,10 @@ function agregarExames(regs, agrup, ult) {
       if (!r.procs[k]) r.procs[k] = {indicado: 0, realizado: 0};
       r.procs[k].indicado += pe[k].indicado; r.procs[k].realizado += pe[k].realizado; r.procsRealizados += pe[k].realizado;
     });
+    // ART entre as restaurações realizadas (indicador da NT 3) e exodontias realizadas.
+    r.art += (pe.art || {}).realizado || 0;
+    ["art", "civ", "resina", "amalgama", "coroa"].forEach(function (k) { r.restauracoes += (pe[k] || {}).realizado || 0; });
+    ["exo_carie", "exodontia"].forEach(function (k) { r.exodontias += (pe[k] || {}).realizado || 0; });
     // situação das pessoas: só o último exame de cada pessoa
     if (!ult[e.id]) return;
     r.n++;
@@ -3981,6 +4162,14 @@ function agregarExames(regs, agrup, ult) {
     }
     if (e.placa) r.placa++;
     if (e.gengivite) r.gengivite++;
+    // Pessoas: idades-índice oficiais, tratamento básico (pelo último exame), dor ou abscesso e cárie ativa.
+    var t = (e.tratamento || {}).aps; if (t && r.tratamento[t] != null) r.tratamento[t]++;
+    if (dentesComDor(e).length) r.dorOuAbscesso++;
+    if (cariadosDe(e) > 0) r.comCarie++;
+    var gc = grupoDe(GRUPOS_CEOD, idade), gp = grupoDe(GRUPOS_CPOD, idade), gl = grupoDe(GRUPOS_LIVRES, idade);
+    if (gc && res.ceod) { var oc = r.oficiais.ceod[gc] = r.oficiais.ceod[gc] || {n: 0, soma: 0}; oc.n++; oc.soma += Number(res.ceod.total) || 0; }
+    if (gp && res.cpod) { var op = r.oficiais.cpod[gp] = r.oficiais.cpod[gp] || {n: 0, soma: 0}; op.n++; op.soma += Number(res.cpod.total) || 0; }
+    if (gl) { var ol = r.oficiais.livres[gl] = r.oficiais.livres[gl] || {n: 0, livres: 0}; ol.n++; if (!(Number((res.ceod || {}).total) || 0) && !(Number((res.cpod || {}).total) || 0)) ol.livres++; }
     if (e.fluorose) r.fluorose++;
     (e.vigilancia || []).forEach(function (/** @type {any} */ g) { r.vigilancia[g] = (r.vigilancia[g] || 0) + 1; });
     var pr = e.protese || {};

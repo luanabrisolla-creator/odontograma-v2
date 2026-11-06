@@ -575,6 +575,29 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .ini-stat span.t{display:block;margin-top:3px;font-size:.92rem;color:var(--muted)}
 .dente.sem-conduta svg{outline:2px dashed #E5702A;outline-offset:1px;border-radius:4px}
 .enc{display:grid;gap:6px}
+.p-abas{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:12px;margin:0 0 12px}
+.p-abas button{flex:1;border:0;background:transparent;padding:10px 6px;border-radius:9px;font:inherit;font-weight:600;color:var(--muted);cursor:pointer}
+.p-abas button[aria-selected="true"]{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(19,35,58,.12)}
+.hist-chip{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#FBEBDD;color:#8A4300;white-space:nowrap}
+.app-chip{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#E3EEFC;color:#0F4FA3;white-space:nowrap}
+.sit-chip{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.sit-chip.ok{background:#E2F3E7;color:#1A7F3C}.sit-chip.quase{background:#FFF3D1;color:#6A4A00}.sit-chip.bad{background:#FCE6E6;color:#A31B14}.sit-chip.sem{background:var(--surface-2);color:var(--muted)}
+.ind-grade{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr))}
+.ind-card{text-align:left;border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px;display:grid;gap:6px;cursor:pointer;font:inherit;color:inherit}
+.ind-card[aria-pressed="true"]{outline:2px solid #1F4EA3;outline-offset:1px}
+.ind-card .l1{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.ind-card .nome{font-size:.86rem;font-weight:600}
+.ind-card .val{font-size:1.35rem;font-weight:800;font-variant-numeric:tabular-nums}
+.ind-card .l3{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:.76rem;color:var(--muted)}
+.ind-barra{height:8px;border-radius:4px;background:var(--surface-2);position:relative}.ind-barra i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#C2620A}
+.ind-barra b{position:absolute;top:-4px;width:3px;height:16px;background:#13233A;border-radius:1px}
+.serie>svg{width:100%;max-width:720px;height:auto;display:block}.serie .lg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.78rem;color:var(--muted);margin:4px 0 8px}.serie .lg span{display:inline-flex;align-items:center;gap:6px}.serie .lg svg{flex:none}
+.ficha-ind{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:.86rem;margin:8px 0 0}.ficha-ind dt{color:var(--muted)}.ficha-ind dd{margin:0}
+.comp-l{display:grid;grid-template-columns:minmax(0,9rem) 1fr 3.5rem;gap:8px;align-items:center;font-size:.84rem;padding:3px 0}
+.comp-l .bar{height:10px;border-radius:5px;background:var(--surface-2);position:relative}.comp-l .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:#C5CCD6}
+.comp-l.sel .bar i{background:#C2620A}.comp-l.sel{font-weight:700}.comp-l .bar b{position:absolute;top:-3px;width:2px;height:16px;background:#13233A}
+.dica-card{border:1px solid var(--line);border-left:4px solid #C42B2B;background:#fff;border-radius:10px;padding:12px 14px;display:grid;gap:6px}
+.dica-card .acao{background:#E2F3E7;color:#14532D;border-radius:8px;padding:8px 10px}
+.grupo-dados{font-size:1.05rem;margin:18px 4px 8px;color:var(--ink)}
 .plano{margin-bottom:12px}.lista-pend{margin:4px 0 0;padding-left:1.1rem}
 .rt-nec{display:grid;gap:6px;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);align-items:center}.rt-nec input{grid-column:1/-1}
 .rt-novo{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -1094,9 +1117,13 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
 
   <!-- PAINEL -->
   <section id="aba-painel" hidden>
+    <div class="p-abas" role="tablist" aria-label="Painel" id="pAbas"><button role="tab" type="button" data-pab="indicadores">Indicadores</button><button role="tab" type="button" data-pab="dicas">Dicas</button><button role="tab" type="button" data-pab="dados">Dados do app</button></div>
+    <div id="pIndicadores"></div>
+    <div id="pDicas" hidden></div>
+    <div id="pDados" hidden>
     <div class="bloco">
       <div class="bloco-topo">
-        <h2>Painel</h2>
+        <h2>Dados do app</h2>
         <div class="seg" role="group" aria-label="O que mostrar" id="segVisao"><button data-visao="geral">Geral</button><button data-visao="dsei">Por DSEI</button><button data-visao="minha">Minha produção</button></div>
       </div>
       <div class="grade">
@@ -1110,6 +1137,7 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     <div id="pConteudo"></div>
     <div id="pCobertura"></div>
     <div id="pAcomp"></div>
+    </div>
   </section>
 
   <!-- CONFIG -->
@@ -3116,6 +3144,46 @@ var TIPOS_ATIVIDADE = ["Escovação dental supervisionada", "Aplicação tópica
 var NIVEIS_PROF = {medio: "Nível médio", superior: "Nível superior"};
 /** @type {any} */
 var LOCAIS_ATIVIDADE = {comunidade: "Na comunidade", estabelecimento: "No estabelecimento de saúde"};
+// Os 8 indicadores de saúde bucal da Nota Técnica 3/2025 e as metas nacionais por ano. 2020 a 2023 vêm do Fala.BR
+// (a meta repetida em cada tabela anual); 2026 dos intermediários, do quadro do SIPLAM. A meta do PDSI vale no lugar, quando houver.
+/** @type {any} */
+var INDICADORES_NT3 = [
+  {k: "cop_pct", nome: "% da população com 1ª consulta odontológica programática", curto: "1ª consulta programática", un: "%", tipo: "principal",
+    num: "pessoas com 1ª consulta odontológica programática no período", den: "população indígena cadastrada no SIASI, no mesmo local e período", cuidado: "Exclui urgência, retorno e manutenção. Num período parcial, o valor ainda acumula até dezembro."},
+  {k: "tc_pct", nome: "% de tratamento odontológico básico concluído (TC/COP)", curto: "Tratamento concluído", un: "%", tipo: "principal",
+    num: "tratamentos odontológicos básicos concluídos", den: "pessoas com 1ª consulta odontológica programática", cuidado: "Pode subir só porque a 1ª consulta caiu: leia junto com o indicador acima."},
+  {k: "gest_pct", nome: "% de gestantes com ao menos 1 consulta odontológica no pré-natal", curto: "Gestantes no pré-natal", un: "%", tipo: "principal",
+    num: "gestações finalizadas com ao menos 1 consulta com o CD na APS, da DUM até 42 semanas", den: "gestações finalizadas no SIASI, sem as finalizadas por aborto", cuidado: "Conta gestações, não mulheres. Exige também consulta com médico ou enfermeiro."},
+  {k: "media_atend", nome: "Média de atendimentos odontológicos por habitante", curto: "Atendimentos por habitante", un: "", tipo: "intermediario",
+    num: "total de atendimentos odontológicos", den: "população (no PDF do Fala.BR, só aldeias com 4 meses ou mais de atendimento)", cuidado: "Os documentos podem usar populações diferentes."},
+  {k: "menores5_pct", nome: "% de crianças menores de 5 anos com 1ª consulta programática", curto: "Menores de 5 anos", un: "%", tipo: "intermediario",
+    num: "crianças até 4 anos, 9 meses e 29 dias com 1ª consulta programática", den: "crianças menores de 5 anos cadastradas no SIASI", cuidado: ""},
+  {k: "art_pct", nome: "% de ART entre as restaurações", curto: "ART", un: "%", tipo: "intermediario",
+    num: "restaurações em ART (tratamento restaurador atraumático)", den: "todas as restaurações do período", cuidado: "Fala de procedimentos, não de pessoas."},
+  {k: "esc_media", nome: "Média da população em escovação dental supervisionada", curto: "Escovação supervisionada", un: "", tipo: "intermediario",
+    num: "escovações no período ÷ 12 meses × 100", den: "população", cuidado: "É uma média por 100 habitantes, não %. A fórmula divide por 12 mesmo num período parcial."},
+  {k: "ald_4mais_pct", nome: "% de aldeias com atenção odontológica regular", curto: "Aldeias com atenção regular", un: "%", tipo: "intermediario",
+    num: "aldeias com 4 meses ou mais com ao menos 1 atendimento odontológico", den: "total de aldeias", cuidado: "Cada tabela pode usar uma lista de aldeias diferente. Num período parcial, o valor é baixo por definição."}];
+/** @type {any} */
+var METAS_NT3 = {cop_pct: {2020: 45, 2021: 25, 2022: 30, 2023: 50, 2024: 45, 2025: 50, 2026: 55, 2027: 60}, tc_pct: {2020: 55, 2021: 52, 2022: 55, 2023: 58, 2024: 52, 2025: 55, 2026: 58, 2027: 60},
+  gest_pct: {2024: 8, 2025: 50, 2026: 55, 2027: 60}, media_atend: {2025: 0.7, 2026: 0.8}, menores5_pct: {2025: 45, 2026: 50}, art_pct: {2025: 37, 2026: 40},
+  esc_media: {2025: 7.5, 2026: 8}, ald_4mais_pct: {2025: 40, 2026: 45}};
+/** Meta de um indicador num ano: a do PDSI do DSEI, se a coordenação digitou; senão a nacional. @param {string} k @param {any} ano @param {any} [pdsi] */
+function metaDe(k, ano, pdsi) {
+  var p = pdsi && pdsi[k] && pdsi[k][ano]; if (p != null && p !== "") return {valor: Number(p), fonte: "PDSI do DSEI"};
+  var n = (METAS_NT3[k] || {})[ano]; return n != null ? {valor: n, fonte: Number(ano) <= 2023 ? "meta nacional (Fala.BR)" : k === "cop_pct" || k === "tc_pct" || k === "gest_pct" ? "NT 3/2025" : Number(ano) >= 2026 ? "SIPLAM 2026" : "NT 3/2025"} : null;
+}
+// Catálogo de dicas: cada uma é uma regra escrita. Só aparece depois que a coordenação titular aprova o texto.
+/** @type {any} */
+var DICAS = [
+  {id: "tc_baixo", ind: "tc_pct", titulo: "Tratamento concluído abaixo da meta", texto: "Priorize na agenda o retorno das pessoas que estão a 1 ou 2 procedimentos de concluir o tratamento básico."},
+  {id: "art_baixo", ind: "art_pct", titulo: "ART abaixo da meta", texto: "Confira os insumos de ART e priorize crianças e adolescentes com lesões iniciais."},
+  {id: "cop_baixo", ind: "cop_pct", titulo: "Pouca cobertura de 1ª consulta programática", texto: "Planeje as visitas pelas aldeias e faixas etárias com menos exames, frente à população da SESAI."},
+  {id: "aldeias_regulares", ind: "ald_4mais_pct", titulo: "Aldeias com poucos meses de atendimento", texto: "Inclua na escala as aldeias com menos de 4 meses de atendimento no ano, antes de dezembro."},
+  {id: "menores5", ind: "menores5_pct", titulo: "Crianças menores de 5 anos", texto: "Combine o exame odontológico com a puericultura e a vacinação."},
+  {id: "gestantes", ind: "gest_pct", titulo: "Gestantes no pré-natal", texto: "Combine com a enfermagem a consulta odontológica de cada gestante no pré-natal."},
+  {id: "escovacao", ind: "esc_media", titulo: "Escovação supervisionada abaixo da meta", texto: "Mantenha a escovação dental supervisionada nas aldeias com menos registro."},
+  {id: "urgencia", ind: "", titulo: "Mais da metade das consultas são de urgência", texto: "Depois de cada atendimento de urgência, já marque a 1ª consulta programática da pessoa."}];
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
@@ -3281,6 +3349,12 @@ function idsUltimoPorPessoa(regs) {
   Object.keys(por).forEach(function (k) { ids[por[k].id] = true; });
   return ids;
 }
+// Idades-índice das Diretrizes da saúde bucal indígena (ceo-d, CPO-D e livres de cárie), ao lado das faixas de hoje.
+var GRUPOS_CEOD = [["1 ano", 1, 1], ["2 anos", 2, 2], ["3 anos", 3, 3], ["4 anos", 4, 4], ["5 anos", 5, 5], ["6 anos", 6, 6]];
+var GRUPOS_CPOD = [["7 anos", 7, 7], ["8 anos", 8, 8], ["9 anos", 9, 9], ["10 anos", 10, 10], ["11 anos", 11, 11], ["12 anos", 12, 12], ["15 a 19 anos", 15, 19], ["35 a 44 anos", 35, 44], ["65 a 74 anos", 65, 74]];
+var GRUPOS_LIVRES = [["5 anos", 5, 5], ["12 anos", 12, 12], ["15 a 19 anos", 15, 19], ["35 a 44 anos", 35, 44], ["65 a 74 anos", 65, 74]];
+/** @param {any} grupos @param {any} idade */
+function grupoDe(grupos, idade) { for (var i = 0; i < grupos.length; i++) if (idade != null && idade >= grupos[i][1] && idade <= grupos[i][2]) return grupos[i][0]; return null; }
 /** @param {any} regs @param {any} agrup @param {any} [ult] */
 function agregarExames(regs, agrup, ult) {
   ult = ult || idsUltimoPorPessoa(regs);
@@ -3299,7 +3373,10 @@ function agregarExames(regs, agrup, ult) {
   var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
     ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
     vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0},
-    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}, pessoasSemClassificacao: 0}};
+    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}, pessoasSemClassificacao: 0},
+    // versão 47: idades-índice, tratamento básico, encaminhamentos, prescrições e gestantes
+    oficiais: {ceod: {}, cpod: {}, livres: {}}, tratamento: {concluido: 0, nao_concluido: 0, pendente: 0, a_confirmar: 0}, encaminhamentos: {}, prescricoes: {}, gestantes: 0,
+    dorOuAbscesso: 0, comCarie: 0, art: 0, restauracoes: 0, exodontias: 0};
   // Pessoas com classificação de risco (algum exame com odontograma) e sem (só atendimentos sem odontograma no recorte).
   /** @type {any} */ var comClasse = {}, semClasse = {};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
@@ -3322,6 +3399,9 @@ function agregarExames(regs, agrup, ult) {
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
     if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
+    Object.keys(e.encaminhamentos || {}).forEach(function (k) { var o = r.encaminhamentos[k] = r.encaminhamentos[k] || {pendente: 0, realizado: 0}; o[e.encaminhamentos[k]] = (o[e.encaminhamentos[k]] || 0) + 1; });
+    (e.prescricoes || []).forEach(function (p) { r.prescricoes[p] = (r.prescricoes[p] || 0) + 1; });
+    if (e.gestante === "sim") r.gestantes++;
     // Daqui em diante, só o que vem do exame clínico (o atendimento sem odontograma não entra nas contas por dente nem na classe).
     if (sem) return;
     var pe = procsDe(e);
@@ -3329,6 +3409,10 @@ function agregarExames(regs, agrup, ult) {
       if (!r.procs[k]) r.procs[k] = {indicado: 0, realizado: 0};
       r.procs[k].indicado += pe[k].indicado; r.procs[k].realizado += pe[k].realizado; r.procsRealizados += pe[k].realizado;
     });
+    // ART entre as restaurações realizadas (indicador da NT 3) e exodontias realizadas.
+    r.art += (pe.art || {}).realizado || 0;
+    ["art", "civ", "resina", "amalgama", "coroa"].forEach(function (k) { r.restauracoes += (pe[k] || {}).realizado || 0; });
+    ["exo_carie", "exodontia"].forEach(function (k) { r.exodontias += (pe[k] || {}).realizado || 0; });
     // situação das pessoas: só o último exame de cada pessoa
     if (!ult[e.id]) return;
     r.n++;
@@ -3343,6 +3427,14 @@ function agregarExames(regs, agrup, ult) {
     }
     if (e.placa) r.placa++;
     if (e.gengivite) r.gengivite++;
+    // Pessoas: idades-índice oficiais, tratamento básico (pelo último exame), dor ou abscesso e cárie ativa.
+    var t = (e.tratamento || {}).aps; if (t && r.tratamento[t] != null) r.tratamento[t]++;
+    if (dentesComDor(e).length) r.dorOuAbscesso++;
+    if (cariadosDe(e) > 0) r.comCarie++;
+    var gc = grupoDe(GRUPOS_CEOD, idade), gp = grupoDe(GRUPOS_CPOD, idade), gl = grupoDe(GRUPOS_LIVRES, idade);
+    if (gc && res.ceod) { var oc = r.oficiais.ceod[gc] = r.oficiais.ceod[gc] || {n: 0, soma: 0}; oc.n++; oc.soma += Number(res.ceod.total) || 0; }
+    if (gp && res.cpod) { var op = r.oficiais.cpod[gp] = r.oficiais.cpod[gp] || {n: 0, soma: 0}; op.n++; op.soma += Number(res.cpod.total) || 0; }
+    if (gl) { var ol = r.oficiais.livres[gl] = r.oficiais.livres[gl] || {n: 0, livres: 0}; ol.n++; if (!(Number((res.ceod || {}).total) || 0) && !(Number((res.cpod || {}).total) || 0)) ol.livres++; }
     if (e.fluorose) r.fluorose++;
     (e.vigilancia || []).forEach(function (/** @type {any} */ g) { r.vigilancia[g] = (r.vigilancia[g] || 0) + 1; });
     var pr = e.protese || {};
@@ -3757,7 +3849,7 @@ function abrirPainelAba() {
   $('#segVisao [data-visao="minha"]').hidden = !fazExames();
   if (!fazExames() && estP.visao === "minha") estP.visao = "geral";
   $("#pPeriodo").value = estP.periodo;
-  carregarPainel();
+  abaPainel(estH.aba);
 }
 const dseiPedido = () => estP.visao === "dsei" ? estP.dsei : "";
 function textoRecorte(de, ate) { return (estP.visao === "minha" ? "sua produção, de todos os aparelhos" : estP.visao === "geral" ? "todos os participantes" : estP.dsei) + (de ? `, de ${fmtData(de)} a ${fmtData(ate)}` : ", todo o período"); }
@@ -4010,11 +4102,11 @@ function desenharPainel(d, local) {
   const kpis = semDados ? "" : `<div class="kpis">
     ${!local && d.participantes != null ? `<div class="kpi"><b>${fmtN(d.participantes)}</b><span>${d.participantes === 1 ? "profissional participante" : "profissionais participantes"}</span></div>` : ""}
     <div class="kpi kpi-destaque"><b>${fmtN(r.n)}</b><span>pessoas com classificação de risco</span></div>
-    ${r.nExames != null ? `<div class="kpi"><b>${fmtN(r.nExames)}</b><span>${r.nExames === 1 ? "exame realizado" : "exames realizados"}</span></div>` : ""}
-    <div class="kpi"><b>${pctDe(r.nivel.Alto, r.n)}</b><span>em alto risco (${fmtN(r.nivel.Alto)})</span></div>
-    <div class="kpi"><b>${fmtN(r.ceodMedia)}</b><span>ceo-d médio</span></div>
-    <div class="kpi"><b>${fmtN(r.cpodMedia)}</b><span>CPO-D médio</span></div>
-    <div class="kpi"><b>${fmtN(r.procsRealizados)}</b><span>procedimentos realizados</span></div></div>`;
+    ${r.nExames != null ? `<div class="kpi"><b>${fmtN(r.nExames)}</b><span>${r.nExames === 1 ? "atendimento registrado" : "atendimentos registrados"}</span></div>` : ""}
+    <div class="kpi"><b>${pctDe(r.nivel.Alto, r.n)}</b><span>das pessoas em alto risco (${fmtN(r.nivel.Alto)} pessoas)</span></div>
+    <div class="kpi"><b>${fmtN(r.ceodMedia)}</b><span>ceo-d médio por pessoa</span></div>
+    <div class="kpi"><b>${fmtN(r.cpodMedia)}</b><span>CPO-D médio por pessoa</span></div>
+    <div class="kpi"><b>${fmtN(r.procsRealizados)}</b><span>procedimentos realizados nos dentes</span></div></div>`;
 
   const R = B.risco, rOk = R && !R.poucos && R.n > 0;
   const classes = `<div class="bloco"><h3>Classificação de risco</h3>${!rOk ? `<p class="dica">Menos de 5 pessoas.</p>` : `<div class="barra-risco" aria-hidden="true">${CL.map(c => { const v = R.classe[c], w = ehNum(v) ? v : v === "<5" ? 2 : 0;
@@ -4054,14 +4146,44 @@ function desenharPainel(d, local) {
   if (!semDados) {
     const ms = Object.keys(r.meses).sort(), maxM = Math.max(1, ...ms.map(m => ehNum(r.meses[m]) ? r.meses[m] : 0));
     const nomeMes = m => ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"][+m.slice(5, 7) - 1] + "/" + m.slice(2, 4);
-    meses = `<div class="bloco"><h3>Exames por mês</h3><div class="meses">${ms.map(m => { const v = r.meses[m]; const h = ehNum(v) ? Math.max(4, v / maxM * 110) : 6;
+    meses = `<div class="bloco"><h3>Atendimentos por mês</h3><div class="meses">${ms.map(m => { const v = r.meses[m]; const h = ehNum(v) ? Math.max(4, v / maxM * 110) : 6;
       return `<div class="mes"><b>${fmtN(v)}</b><i style="height:${h}px"></i><span>${nomeMes(m)}</span></div>`; }).join("")}</div></div>`;
   }
+  // Seis blocos, cada um respondendo uma pergunta, sem repetir números (versão 47).
+  const gr = (n, t, q) => `<h3 class="grupo-dados">${n}. ${t} <small class="dica">· ${q}</small></h3>`;
   box.innerHTML = (interativo ? barraFiltros() : `<p class="nota" style="margin:0 4px 12px">Atualize o Codigo.gs da planilha para filtrar o painel com um toque.</p>`)
-    + kpis + blocoAtendimentos(atB) + avisoSel + `<div class="p-grade">${classes}${cpod12}</div>` + cpo + faixas + `<div class="p-grade">${procs}${gerais}</div>` + blocosV20(B, r, semDados) + meses + tabelaComparacao(d.comparacao) + nota;
+    + gr(1, "Produção", "o que a equipe fez?") + kpis + meses + `<div class="p-grade">${procs}${gerais}</div>`
+    + gr(2, "Registro clínico", "o odontograma está sendo feito?") + blocoAtendimentos(atB)
+    + gr(3, "Situação de saúde bucal", "como está a população examinada?") + avisoSel + `<div class="p-grade">${classes}${cpod12}</div>` + cpo + faixas + blocoIdadesIndice(r, semDados) + blocosV20(B, r, semDados)
+    + gr(4, "Indicadores", "como estamos frente às metas?") + `<div class="bloco"><p class="dica" style="margin:0">Os 8 indicadores da Nota Técnica 3/2025, com o histórico do SIASI e as metas, estão na aba <button class="link" type="button" data-pab="indicadores">Indicadores</button>.</p></div>`
+    + gr(5, "Necessidades", "o que ainda falta fazer?") + blocoNecessidades(r, semDados)
+    + gr(6, "Cobertura", "quem já foi atendido?") + tabelaComparacao(d.comparacao) + nota;
   if (!interativo) $$("#pConteudo [data-f]").forEach(el => { el.removeAttribute("data-f"); el.removeAttribute("role"); el.removeAttribute("tabindex"); });
   ligarTipCPO();
   if (estP.flash) { estP.flash = false; $$("#pConteudo .bloco, #pConteudo .kpis").forEach(el => el.classList.add("piscar")); }
+}
+// Idades-índice das Diretrizes (ceo-d de 1 a 6 anos; CPO-D de 7 a 12, 15 a 19, 35 a 44 e 65 a 74; livres de cárie), ao lado das faixas de hoje.
+function blocoIdadesIndice(r, semDados) {
+  if (semDados || !r || !r.oficiais) return "";
+  const o = r.oficiais, med = x => x && typeof x.n === "number" && x.n >= 5 ? fmtN(Math.round(x.soma / x.n * 100) / 100) : x && x.n ? "<5" : "–";
+  const lin = (g, x, m) => `<tr><td>${esc(g[0])}</td><td>${x ? fmtN(x.n) : 0}</td><td>${m}</td></tr>`;
+  const tab = (t, gs, k) => `<div class="bloco"><h3>${t}</h3><div class="tabela"><table class="conta"><thead><tr><th>Idade</th><th>Pessoas</th><th>Média por pessoa</th></tr></thead><tbody>${gs.map(g => lin(g, o[k][g[0]], med(o[k][g[0]]))).join("")}</tbody></table></div></div>`;
+  const liv = `<div class="bloco"><h3>Livres de cárie <small class="dica">(ceo-d e CPO-D iguais a zero)</small></h3><div class="tabela"><table class="conta"><thead><tr><th>Idade</th><th>Pessoas</th><th>Livres de cárie</th></tr></thead><tbody>${GRUPOS_LIVRES.map(g => { const x = o.livres[g[0]]; return `<tr><td>${esc(g[0])}</td><td>${x ? fmtN(x.n) : 0}</td><td>${x && x.n >= 5 ? pctDe(x.livres, x.n) + ` (${fmtN(x.livres)} pessoas)` : x && x.n ? "<5" : "–"}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+  return `<p class="dica" style="margin:8px 4px">Idades-índice das Diretrizes para a atenção à saúde bucal nos DSEI. Cada pessoa conta uma vez, pelo último exame com odontograma no período.</p><div class="p-grade">${tab("ceo-d por idade", GRUPOS_CEOD, "ceod")}${tab("CPO-D por idade", GRUPOS_CPOD, "cpod")}</div>${liv}`;
+}
+// O que ainda falta: o tratamento básico das pessoas, os procedimentos indicados e não realizados, os encaminhamentos e as prescrições.
+function blocoNecessidades(r, semDados) {
+  if (semDados || !r) return "";
+  const t = r.tratamento || {}, lin = (n, v) => `<div class="linha-barra" style="grid-template-columns:1fr auto"><span>${n}</span><span class="val">${typeof v === "string" ? v : fmtN(v)}</span></div>`;
+  const ind = Object.entries(r.procs || {}).filter(([, v]) => v.indicado).sort((a, b) => (typeof b[1].indicado === "number" ? b[1].indicado : 0) - (typeof a[1].indicado === "number" ? a[1].indicado : 0));
+  const enc = Object.entries(r.encaminhamentos || {});
+  return `<div class="p-grade"><div class="bloco"><h3>Tratamento básico (APS) <small class="dica">(pessoas, pelo último exame)</small></h3>
+      ${lin("Concluído", t.concluido)}${lin("Com pendências da APS", t.pendente)}${lin("Sem pendências, a confirmar", t.a_confirmar)}${lin("Não concluído (com o motivo)", t.nao_concluido)}
+      <p class="dica" style="margin:6px 0 0">Pessoas com dor ou abscesso: <b>${fmtN(r.dorOuAbscesso)}</b> · com dente cariado: <b>${fmtN(r.comCarie)}</b></p></div>
+    <div class="bloco"><h3>Procedimentos indicados e ainda não realizados <small class="dica">(nº de dentes)</small></h3>${ind.length ? ind.slice(0, 10).map(([k, v]) => lin(esc(PROC_NOME[k] || k), v.indicado)).join("") : `<p class="dica">Nenhum.</p>`}</div></div>
+    <div class="p-grade"><div class="bloco"><h3>Encaminhamentos para a atenção especializada <small class="dica">(atendimentos)</small></h3>${enc.length ? enc.map(([k, v]) => lin(esc(ESPECIALIDADES[k] || k), `${fmtN(v.realizado)} realizados · ${fmtN(v.pendente)} pendentes`)).join("") : `<p class="dica">Nenhum.</p>`}</div>
+    <div class="bloco"><h3>Prescrições <small class="dica">(atendimentos)</small></h3>${Object.keys(r.prescricoes || {}).length ? PRESCRICOES.filter(p => (r.prescricoes || {})[p]).map(p => lin(esc(p), r.prescricoes[p])).join("") : `<p class="dica">Nenhuma.</p>`}
+      <p class="dica" style="margin:6px 0 0">Atendimentos de gestantes: <b>${fmtN(r.gestantes)}</b></p></div></div>`;
 }
 // Versão 45: atendimentos individuais, com e sem odontograma (e os motivos), e ações exclusivamente coletivas à parte.
 // O atendimento sem odontograma não entra nas contas por dente nem na classe de risco.
@@ -4091,6 +4213,185 @@ function blocosV20(B, r, semDados) {
     <h3 style="margin-top:18px">Local de atendimento <small class="dica">(exames)</small></h3>${LOCAIS_ATENDIMENTO.filter(l => (r.local || {})[l]).map(l => lin(esc(l), r.local[l])).join("") || `<p class="dica">Exames sem local registrado.</p>`}</div>`;
   return `<div class="p-grade">${vig}${protese}</div>`;
 }
+/* ---------- painel: abas Indicadores, Dicas e Dados do app ---------- */
+// O histórico do SIASI (agregado, do Ministério) e os dados do app (individuais) aparecem lado a lado e nunca se somam.
+const K_HIST = "odonto.historico.v1";
+const estH = {aba: "indicadores", dsei: "", polo: "", aldeia: "", ano: "2025", sel: "tc_pct", dados: null, msg: ""};
+const ANOS_HIST = ["2020", "2021", "2022", "2023", "2024", "2025", "2026"];
+function abaPainel(k) {
+  estH.aba = k; $$("#pAbas [data-pab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.pab === k)));
+  $("#pIndicadores").hidden = k !== "indicadores"; $("#pDicas").hidden = k !== "dicas"; $("#pDados").hidden = k !== "dados";
+  if (k === "dados") carregarPainel(); else carregarHistorico();
+}
+async function carregarHistorico(forcar) {
+  if (!estH.dsei) estH.dsei = dseiFixo() || (sessao() && sessao().usuario.dsei) || DSEIS[0];
+  const cache = store.get(K_HIST, {}) || {}, c = cache[estH.dsei];
+  if (c) estH.dados = c.dados;
+  renderHistorico();
+  if (!navigator.onLine || !sessao() || !cfg().url) { estH.msg = c ? `Sem internet: histórico guardado em ${fmtDataHora(c.em)}.` : "O histórico aparece quando houver internet."; return renderHistorico(); }
+  if (c && !forcar && Date.now() - new Date(c.em) < 6 * 3600e3) return;
+  try {
+    const j = await api("historico", {dsei: estH.dsei});
+    cache[estH.dsei] = {em: new Date().toISOString(), dados: j}; const ks = Object.keys(cache).sort((a, b) => cache[b].em.localeCompare(cache[a].em)); ks.slice(6).forEach(k => delete cache[k]);
+    store.set(K_HIST, cache); estH.dados = j; estH.msg = "";
+  } catch (err) { estH.msg = err.message; }
+  renderHistorico();
+  // Os números do app no mesmo DSEI, neste ano, para pôr ao lado do histórico (nunca somados a ele).
+  try {
+    const ano = hoje().slice(0, 4), j = await api("painel", {dsei: estH.dsei, de: ano + "-01-01", ate: hoje(), agrup: "tres"});
+    const ia = store.get(K_INDAPP, {}) || {}; ia[estH.dsei] = {em: new Date().toISOString(), ano, indApp: j.indApp, resumo: j.resumo}; store.set(K_INDAPP, ia);
+    renderHistorico();
+  } catch (err) {}
+}
+const K_INDAPP = "odonto.indapp.v1";
+const indAppDe = dsei => (store.get(K_INDAPP, {}) || {})[dsei] || null;
+// Números de um território (DSEI, polo ou aldeia) num ano. No DSEI, os 8 indicadores oficiais do Fala.BR; em polo e aldeia,
+// o que dá para calcular com os dados abertos (Ficha 7, por aldeia): tratamento concluído, ART e aldeias com atenção regular.
+function valoresTerritorio(h, ano) {
+  if (!h) return {};
+  if (!estH.polo) { const r = (h.oficiais || []).find(x => x.dsei === estH.dsei && String(x.ano) === String(ano)) || {}; return Object.fromEntries(INDICADORES_NT3.map(i => [i.k, r[i.k]])); }
+  const ls = (h.aldeias || []).filter(a => String(a.ano) === String(ano) && a.polo === estH.polo && (!estH.aldeia || a.aldeia === estH.aldeia));
+  if (!ls.length) return {};
+  const s = k => ls.reduce((t, a) => t + (Number(a[k]) || 0), 0), rest = s("art") + s("civ") + s("resina") + s("amalgama") + s("outra_rest");
+  return {tc_pct: s("cop") ? Math.round(1000 * s("tc") / s("cop")) / 10 : null, art_pct: rest ? Math.round(1000 * s("art") / rest) / 10 : null,
+    ald_4mais_pct: Math.round(1000 * ls.filter(a => (Number(a.meses) || 0) >= 4).length / ls.length) / 10};
+}
+const fmtInd = (v, un) => v == null || v === "" || isNaN(Number(v)) ? "–" : (un === "%" ? Number(v).toLocaleString("pt-BR", {maximumFractionDigits: 1}) + "%" : Number(v).toLocaleString("pt-BR", {maximumFractionDigits: 1}));
+function situacaoMeta(v, m) { if (v == null || m == null) return ["sem", "sem meta"]; if (Number(v) >= m.valor) return ["ok", "✓ atingiu"]; if (Number(v) >= m.valor * 0.95) return ["quase", "≈ quase"]; return ["bad", "✕ abaixo"]; }
+function renderHistorico() {
+  renderIndicadores(); renderDicas();
+}
+function renderIndicadores() {
+  const box = $("#pIndicadores"); if (!box) return;
+  const h = estH.dados, pdsi = (h && h.metasPdsi) || {}, ano = estH.ano, nivelPolo = !!estH.polo;
+  const polos = h ? [...new Set((h.aldeias || []).map(a => a.polo).filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt-BR")) : [];
+  const aldeias = h && estH.polo ? [...new Set((h.aldeias || []).filter(a => a.polo === estH.polo).map(a => a.aldeia))].sort((a, b) => a.localeCompare(b, "pt-BR")) : [];
+  const anos = nivelPolo ? ["2019", "2020", "2021", "2022", "2023", "2024"] : ANOS_HIST;
+  if (!anos.includes(ano)) estH.ano = anos.at(-1);
+  const v = valoresTerritorio(h, estH.ano), parcial = estH.ano === "2026";
+  const topo = `<div class="bloco"><div class="grade">
+      <label class="campo">DSEI<select id="hDsei">${DSEIS.map(d => `<option ${d === estH.dsei ? "selected" : ""}>${esc(d)}</option>`).join("")}</select></label>
+      <label class="campo">Polo base<select id="hPolo"><option value="">Todo o DSEI</option>${polos.map(x => `<option ${x === estH.polo ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></label>
+      ${estH.polo ? `<label class="campo">Aldeia<select id="hAldeia"><option value="">Todo o polo</option>${aldeias.map(x => `<option ${x === estH.aldeia ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></label>` : ""}
+      <label class="campo">Ano<select id="hAno">${anos.map(a => `<option value="${a}" ${a === estH.ano ? "selected" : ""}>${a}${a === "2026" ? " (1º semestre)" : ""}</option>`).join("")}</select></label></div>
+    <p class="dica" style="margin:8px 0 0"><span class="hist-chip">SIASI</span> ${nivelPolo ? "Dados abertos do Ministério (Ficha 7, por aldeia, 2019 a 2024)." : "Indicadores oficiais do Fala.BR (por DSEI). "} Todos veem o histórico de todos os DSEIs. ${esc(estH.msg || "")}</p></div>`;
+  if (!h || h.vazio) { box.innerHTML = topo + `<div class="bloco vazio">${h && h.vazio ? "O histórico do SIASI ainda não foi enviado pela coordenação titular (Administração › Histórico do SIASI)." : "Carregando o histórico…"}</div>`; return; }
+  const cards = INDICADORES_NT3.map(i => {
+    const val = v[i.k], m = metaDe(i.k, estH.ano, pdsi), sit = parcial ? ["sem", "período parcial"] : situacaoMeta(val, m);
+    const disp = val != null && val !== "";
+    const max = i.un === "%" ? 100 : Math.max(1.5 * (m ? m.valor : 1), Number(val) || 0, 1);
+    return `<button type="button" class="ind-card" data-ind="${i.k}" aria-pressed="${estH.sel === i.k}"><span class="l1"><span class="nome">${esc(i.curto)}</span><span class="val">${disp ? fmtInd(val, i.un) : "–"}</span></span>
+      ${disp ? `<span class="ind-barra" aria-hidden="true"><i style="width:${Math.min(100, 100 * Number(val) / max)}%"></i>${m ? `<b style="left:calc(${Math.min(100, 100 * m.valor / max)}% - 1px)"></b>` : ""}</span>` : ""}
+      <span class="l3"><span>${disp ? (m ? `meta ${estH.ano}: ${fmtInd(m.valor, i.un)} (${esc(m.fonte)})` : "sem meta neste ano") : nivelPolo ? "disponível só por DSEI" : "sem dado neste ano"}</span>${disp ? `<span class="sit-chip ${sit[0]}">${sit[1]}</span>` : ""}</span></button>`;
+  }).join("");
+  box.innerHTML = topo + `<div class="bloco"><h3>Os 8 indicadores da Nota Técnica 3/2025 · ${esc(estH.aldeia || estH.polo || "DSEI " + estH.dsei)} · ${estH.ano}</h3>
+    ${parcial ? `<p class="aviso">2026 tem só o 1º semestre: os indicadores anuais não são comparados com a meta antes de o ano fechar.</p>` : ""}
+    <div class="ind-grade">${cards}</div><p class="dica" style="margin-top:8px">Toque num indicador para ver a série, a meta de cada ano e com qual população ele conversa.</p></div>`
+    + detalheIndicador(h, pdsi) + comparacaoTerritorios(h, pdsi);
+}
+// Série do indicador: o histórico (âmbar, tracejado), o Brasil (cinza), a meta de cada ano (degraus) e o ponto do app (azul).
+function detalheIndicador(h, pdsi) {
+  const i = INDICADORES_NT3.find(x => x.k === estH.sel); if (!i) return "";
+  const nivelPolo = !!estH.polo, anos = nivelPolo ? ["2019", "2020", "2021", "2022", "2023", "2024"] : ANOS_HIST;
+  const salva = estH.ano, ser = anos.map(a => { estH.ano = a; const x = valoresTerritorio(h, a)[i.k]; return x == null || x === "" ? null : Number(x); }); estH.ano = salva;
+  const br = nivelPolo ? anos.map(() => null) : anos.map(a => { const r = (h.oficiais || []).find(x => x.dsei === "BRASIL" && String(x.ano) === a); return r && r[i.k] != null && r[i.k] !== "" ? Number(r[i.k]) : null; });
+  const metas = anos.map(a => (metaDe(i.k, a, pdsi) || {}).valor ?? null);
+  const app = appIndicador(i.k);
+  const vals = [...ser, ...br, ...metas, app ? app.v : null].filter(x => x != null);
+  if (!vals.length) return `<div class="bloco"><h3>${esc(i.nome)}</h3><p class="dica">Sem dados para este território.</p></div>`;
+  const topo = Math.max(...vals) * 1.1 || 1, passo = [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50].find(p => topo / p <= 5) || 100;
+  const W = 340, H = 200, ml = 36, mr = 12, mt = 10, mb = 24, maxV = i.un === "%" ? Math.min(100, Math.ceil(topo / passo) * passo) : Math.ceil(topo / passo) * passo, minV = 0;
+  const x = k => ml + (W - ml - mr) * (k + 0.5) / anos.length, bw = (W - ml - mr) / anos.length, y = v => mt + (H - mt - mb) * (1 - (v - minV) / (maxV - minV));
+  const ticks = []; for (let t = 0; t <= maxV + 1e-9; t += passo) ticks.push(Math.round(t * 100) / 100);
+  const linha = (arr, extra) => { let d = ""; arr.forEach((v, k) => { if (v == null) return; d += (d ? "L" : "M") + x(k).toFixed(1) + " " + y(v).toFixed(1); }); return d ? `<path d="${d}" fill="none" ${extra}/>` : ""; };
+  let degraus = ""; metas.forEach((m, k) => { if (m == null) return; degraus += `M${(x(k) - bw / 2).toFixed(1)} ${y(m).toFixed(1)}L${(x(k) + bw / 2).toFixed(1)} ${y(m).toFixed(1)}`; });
+  const ip = anos.indexOf("2026");
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Série de ${esc(i.curto)}">
+    ${ip >= 0 ? `<rect x="${x(ip) - bw / 2}" y="${mt}" width="${bw}" height="${H - mt - mb}" fill="#C5CCD6" opacity=".25"/>` : ""}
+    ${ticks.map(t => `<line x1="${ml}" x2="${W - mr}" y1="${y(t)}" y2="${y(t)}" stroke="#E6ECF3"/><text x="${ml - 5}" y="${y(t) + 3.5}" text-anchor="end" font-size="9" fill="#556275">${fmtInd(t, i.un)}</text>`).join("")}
+    ${anos.map((a, k) => `<text x="${x(k)}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#556275">${a === "2026" ? "2026*" : a}</text>`).join("")}
+    ${degraus ? `<path d="${degraus}" fill="none" stroke="#13233A" stroke-width="1.5"/>` : ""}
+    ${linha(br, 'stroke="#8A96A8" stroke-width="1.5"')}
+    ${linha(ser, 'stroke="#C2620A" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round" stroke-linejoin="round"')}
+    ${ser.map((v, k) => v == null ? "" : `<circle cx="${x(k)}" cy="${y(v)}" r="3" fill="#C2620A"><title>${anos[k]}: ${fmtInd(v, i.un)}</title></circle>`).join("")}
+    ${app ? `<circle cx="${x(anos.length - 1) + 6}" cy="${y(app.v)}" r="5" fill="#1D6FD8" stroke="#fff" stroke-width="2"><title>App: ${fmtInd(app.v, i.un)}</title></circle>` : ""}</svg>`;
+  return `<div class="bloco serie"><h3>${esc(i.nome)}</h3>
+    <div class="lg"><span><svg width="18" height="6"><line x1="1" y1="3" x2="17" y2="3" stroke="#C2620A" stroke-width="2.5" stroke-dasharray="4 3"/></svg> ${esc(estH.aldeia || estH.polo || estH.dsei)} (SIASI)</span>${nivelPolo ? "" : `<span><svg width="18" height="6"><line x1="1" y1="3" x2="17" y2="3" stroke="#8A96A8" stroke-width="1.5"/></svg> Brasil</span>`}<span><svg width="18" height="6"><path d="M1 5 H9 V1 H17" fill="none" stroke="#13233A" stroke-width="1.5"/></svg> Meta do ano</span>${app ? `<span><svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#1D6FD8"/></svg> App (${esc(app.txt)})</span>` : ""}</div>
+    ${svg}
+    ${anos.includes("2026") ? '<p class="dica" style="margin:2px 0 0">* 2026: só o 1º semestre (faixa cinza).</p>' : ''}
+    ${app ? `<p class="dica"><span class="app-chip">app</span> ${esc(app.nota)}</p>` : ""}
+    <dl class="ficha-ind"><dt>Numerador</dt><dd>${esc(i.num)}</dd><dt>Denominador</dt><dd>${esc(i.den)}</dd><dt>Unidade</dt><dd>${i.un === "%" ? "%" : "média"}</dd><dt>Fonte</dt><dd>${nivelPolo ? "dados abertos do SIASI (Ficha 7, por aldeia)" : "SIASI, resposta do Fala.BR (NUP 25072.061009/2026-11)"}</dd>${i.cuidado ? `<dt>Cuidado</dt><dd>${esc(i.cuidado)}</dd>` : ""}</dl></div>`;
+}
+// O mesmo indicador com os dados do app, quando a definição é a mesma (ou parecida, com o aviso).
+function appIndicador(k) {
+  const x = indAppDe(estH.dsei), ia = x && x.indApp; if (!ia || estH.polo) return null;
+  const pct = (a) => typeof a[0] === "number" && typeof a[1] === "number" && a[1] > 0 ? Math.round(1000 * a[0] / a[1]) / 10 : null;
+  if (k === "art_pct" && pct(ia.art) != null) return {v: pct(ia.art), txt: "ART entre as restaurações", nota: `No app, neste ano: ${ia.art[0]} ART de ${ia.art[1]} restaurações realizadas. Mesma definição do indicador.`};
+  if (k === "ald_4mais_pct" && pct(ia.aldeias4) != null) return {v: pct(ia.aldeias4), txt: "aldeias com exame em 4 meses ou mais", nota: `No app: ${ia.aldeias4[0]} de ${ia.aldeias4[1]} aldeias com exame. Denominadores diferentes: o SIASI usa o total de aldeias.`};
+  if (k === "tc_pct" && pct(ia.tc) != null) return {v: pct(ia.tc), txt: "não é o indicador oficial", nota: `No app: ${ia.tc[0]} pessoas com tratamento básico concluído de ${ia.tc[1]} com 1º exame com odontograma no período. Não é o indicador oficial (o app não registra a 1ª consulta programática).`};
+  return null;
+}
+// Comparar territórios: os polos do DSEI (ou as aldeias do polo), em ordem alfabética, com a meta.
+function comparacaoTerritorios(h, pdsi) {
+  const i = INDICADORES_NT3.find(x => x.k === estH.sel); if (!i || !["tc_pct", "art_pct", "ald_4mais_pct"].includes(i.k)) return "";
+  const ano = ["2019", "2020", "2021", "2022", "2023", "2024"].includes(estH.ano) ? estH.ano : "2024";
+  const ls = (h.aldeias || []).filter(a => String(a.ano) === ano), porAldeia = !!estH.polo;
+  const grupos = {}; ls.filter(a => !porAldeia || a.polo === estH.polo).forEach(a => { const k = porAldeia ? a.aldeia : a.polo; (grupos[k] = grupos[k] || []).push(a); });
+  const s = (l, k) => l.reduce((t, a) => t + (Number(a[k]) || 0), 0);
+  const val = l => i.k === "tc_pct" ? (s(l, "cop") ? 100 * s(l, "tc") / s(l, "cop") : null) : i.k === "art_pct" ? ((r => r ? 100 * s(l, "art") / r : null)(s(l, "art") + s(l, "civ") + s(l, "resina") + s(l, "amalgama") + s(l, "outra_rest"))) : 100 * l.filter(a => (Number(a.meses) || 0) >= 4).length / l.length;
+  const nomes = Object.keys(grupos).sort((a, b) => a.localeCompare(b, "pt-BR")); if (!nomes.length) return "";
+  const m = metaDe(i.k, ano, pdsi), sel = porAldeia ? estH.aldeia : estH.polo;
+  return `<div class="bloco"><h3>${esc(i.curto)} por ${porAldeia ? "aldeia do polo " + esc(estH.polo) : "polo base"} · ${ano}</h3>
+    <p class="dica" style="margin:0 0 8px">Em ordem alfabética. ${m ? `O traço é a meta de ${ano} (${fmtInd(m.valor, i.un)}).` : ""} Dados abertos (Ficha 7). Territórios com menos de 20 primeiras consultas aparecem com "poucos dados".</p>
+    ${nomes.map(n => { const v = val(grupos[n]), poucos = i.k !== "ald_4mais_pct" && s(grupos[n], "cop") < 20;
+      return `<div class="comp-l ${n === sel ? "sel" : ""}"><span>${esc(n)}</span><span class="bar">${v != null ? `<i style="width:${Math.min(100, v)}%"></i>` : ""}${m ? `<b style="left:${Math.min(100, m.valor)}%"></b>` : ""}</span><span>${v == null ? "–" : fmtInd(Math.round(v * 10) / 10, "%")}${poucos ? " ·" : ""}</span></div>`; }).join("")}
+    <p class="dica" style="margin-top:6px">· poucos dados</p></div>`;
+}
+// Dicas: só as aprovadas pela coordenação titular, quando o indicador do DSEI está abaixo da meta (no último ano fechado).
+function renderDicas() {
+  const box = $("#pDicas"); if (!box) return;
+  const h = estH.dados, d = (h && h.dicas) || {}, pdsi = (h && h.metasPdsi) || {}, ano = "2025";
+  const r = h ? (h.oficiais || []).find(x => x.dsei === estH.dsei && String(x.ano) === ano) || {} : {};
+  const ia = indAppDe(estH.dsei);
+  const fatoApp = id => { const re = ia && ia.resumo; if (!re) return "";
+    if (id === "tc_baixo") return `${fmtN((re.tratamento || {}).pendente)} pessoas com pendência da APS no recorte do painel`;
+    if (id === "art_baixo") return `${fmtN(re.art)} ART de ${fmtN(re.restauracoes)} restaurações realizadas no app`;
+    if (id === "urgencia") return `${fmtN(re.dorOuAbscesso)} pessoas com dor ou abscesso no último exame`;
+    if (id === "gestantes") return `${fmtN(re.gestantes)} atendimentos de gestantes no app`;
+    return ""; };
+  const ativas = (d.aprovadas || []).filter(x => {
+    if (x.id === "urgencia") { const t = (Number(r.agendamento) || 0) + (Number(r.demanda_espontanea) || 0); return t && Number(r.demanda_espontanea) / t > 0.5; }
+    const m = metaDe(x.ind, ano, pdsi); return m && r[x.ind] != null && r[x.ind] !== "" && Number(r[x.ind]) < m.valor; });
+  const ind = k => INDICADORES_NT3.find(i => i.k === k) || {};
+  const cards = ativas.map(x => { const m = metaDe(x.ind, ano, pdsi), fa = fatoApp(x.id);
+    return `<div class="dica-card"><b>${esc(x.titulo)}</b>
+      ${x.ind ? `<span><span class="hist-chip">SIASI</span> ${esc(ind(x.ind).curto)}: ${fmtInd(r[x.ind], ind(x.ind).un)} em ${ano} · meta ${fmtInd(m.valor, ind(x.ind).un)} (${esc(m.fonte)})</span>` : `<span><span class="hist-chip">SIASI</span> demanda espontânea: ${fmtInd(100 * Number(r.demanda_espontanea) / ((Number(r.agendamento) || 0) + (Number(r.demanda_espontanea) || 0)), "%")} das consultas em ${ano}</span>`}
+      ${fa ? `<span><span class="app-chip">app</span> ${esc(fa)}</span>` : ""}
+      <span class="acao"><b>Sugestão:</b> ${esc(x.texto)}</span><span class="dica">Sugestão, não ordem: a decisão clínica é da equipe.</span></div>`; }).join("");
+  const titular = d.catalogo ? `<div class="bloco"><h3>Aprovar as dicas (coordenação titular)</h3><p class="dica" style="margin:0 0 8px">Só as dicas aprovadas aparecem para as equipes. Você pode reescrever o texto antes de aprovar.</p>
+    ${d.catalogo.map(x => `<div class="dica-card" style="border-left-color:${x.aprovada ? "#1A7F3C" : "#C5CCD6"}"><b>${esc(x.titulo)}</b><textarea data-dica-texto="${x.id}" maxlength="400">${esc(x.textoAprovado || x.texto)}</textarea>
+      <div class="acoes-l"><button class="${x.aprovada ? "sec" : "prim"} mini" type="button" data-dica-salvar="${x.id}" data-aprovar="${x.aprovada ? "" : "1"}">${x.aprovada ? "Tirar a aprovação" : "Aprovar esta dica"}</button>${x.aprovada ? `<button class="sec mini" type="button" data-dica-salvar="${x.id}" data-aprovar="1">Salvar o texto</button>` : ""}</div></div>`).join("")}
+    ${(d.sugestoes || []).length ? `<h4>Sugestões das equipes</h4><ul>${d.sugestoes.map(x => `<li>${fmtData(String(x.em).slice(0, 10))} · ${esc(x.nome)} (${esc(x.dsei || "coordenação")}): ${esc(x.texto)}</li>`).join("")}</ul>` : ""}</div>` : "";
+  const sugerir = ["rt", "coord"].includes(perfil()) ? `<div class="bloco"><h3>Sugerir uma dica</h3><textarea id="dicaSug" maxlength="600" placeholder="O que você observou e o que sugere às equipes"></textarea><div class="acoes-l"><button class="sec" type="button" id="dicaSugEnviar">Enviar sugestão</button></div></div>` : "";
+  box.innerHTML = `<div class="bloco"><h3>Dicas · DSEI ${esc(estH.dsei)}</h3><p class="dica" style="margin:0 0 8px">Cada dica junta um número do histórico do SIASI (${ano}) e, quando houver, um do app. Aparece quando o indicador está abaixo da meta. Troque o DSEI na aba Indicadores.</p>
+    ${!h ? `<p class="dica">Carregando…</p>` : cards || `<p class="dica">${(d.aprovadas || []).length ? "Nenhuma dica para este DSEI agora: os indicadores com dica aprovada estão na meta." : "Nenhuma dica aprovada ainda pela coordenação titular."}</p>`}</div>` + titular + sugerir;
+}
+$("#pAbas").addEventListener("click", e => { const b = e.target.closest("[data-pab]"); if (b) abaPainel(b.dataset.pab); });
+$("#pConteudo").addEventListener("click", e => { const b = e.target.closest("[data-pab]"); if (b) abaPainel(b.dataset.pab); });
+$("#pIndicadores").addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "hDsei") { estH.dsei = t.value; estH.polo = ""; estH.aldeia = ""; estH.dados = null; return carregarHistorico(); }
+  if (t.id === "hPolo") { estH.polo = t.value; estH.aldeia = ""; return renderHistorico(); }
+  if (t.id === "hAldeia") { estH.aldeia = t.value; return renderHistorico(); }
+  if (t.id === "hAno") { estH.ano = t.value; return renderHistorico(); }
+});
+$("#pIndicadores").addEventListener("click", e => { const b = e.target.closest("[data-ind]"); if (b) { estH.sel = b.dataset.ind; renderIndicadores(); } });
+$("#pDicas").addEventListener("click", async e => {
+  const b = e.target.closest("[data-dica-salvar]");
+  if (b) { const id = b.dataset.dicaSalvar; try { const j = await api("salvarDica", {id, aprovada: !!b.dataset.aprovar, texto: $(`[data-dica-texto="${id}"]`).value}); estH.dados.dicas = j.dicas; toast(b.dataset.aprovar ? "Dica aprovada." : "A dica deixou de aparecer."); renderDicas(); } catch (err) { toast(err.message); } return; }
+  if (e.target.id === "dicaSugEnviar") { try { await api("sugerirDica", {texto: $("#dicaSug").value}); $("#dicaSug").value = ""; toast("Sugestão enviada para a coordenação titular."); } catch (err) { toast(err.message); } }
+});
+
 /* ---------- acompanhamento: pessoas com 2 ou mais exames ---------- */
 const estA = {vis: "pessoa", dados: null, fFaixa: "", fEvol: "", fCod: "", pessoa: null, carregando: false};
 const NOME_EVOL = {menor: "Risco menor", igual: "Mesma classe", maior: "Risco maior"};
@@ -5442,6 +5743,25 @@ $("#admConteudo").addEventListener("change", e => { if (e.target.id === "admPopA
 
 /* ---------- administração (coordenação) ---------- */
 const estAdm = {dados: null, fPerfil: "", fDsei: "", fStatus: "", subst: null};
+// Histórico do SIASI (titular envia uma vez por ano) e metas do PDSI (a coordenação digita; valem no lugar da nacional).
+function blocoHistoricoAdm() {
+  const tit = !!((sessao() || {}).usuario || {}).titular, m = estAdm.meta || {dsei: DSEIS[0], indicador: "tc_pct", ano: hoje().slice(0, 4)};
+  return `<div class="bloco"><h2>Histórico do SIASI e metas</h2>
+    <p class="dica" style="margin:4px 0 10px">O histórico (indicadores oficiais por DSEI e dados abertos por aldeia) fica numa planilha própria, separada dos exames. Todos veem o histórico de todos os DSEIs na aba Indicadores do Painel.</p>
+    ${tit ? `<div class="acoes-l"><button class="prim" type="button" id="admHistApp">Enviar o histórico que vem com o app</button><label class="sec botao-arq">Enviar outro arquivo<input type="file" id="admHistArq" accept=".json"></label></div>` : `<p class="dica">Só a coordenação titular envia o histórico.</p>`}
+    <p class="dica" id="admHistStatus" aria-live="polite"></p>
+    <h3 style="margin-top:14px">Meta do PDSI</h3><p class="dica" style="margin:4px 0 8px">Quando o DSEI pactuou uma meta no PDSI, ela vale no lugar da meta nacional. Deixe o valor vazio para voltar à nacional.</p>
+    <div class="grade"><label class="campo">DSEI<select id="admMetaDsei">${DSEIS.map(x => `<option ${x === m.dsei ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></label>
+      <label class="campo">Indicador<select id="admMetaInd">${INDICADORES_NT3.map(i => `<option value="${i.k}" ${i.k === m.indicador ? "selected" : ""}>${esc(i.curto)}</option>`).join("")}</select></label>
+      <label class="campo">Ano<input id="admMetaAno" type="number" min="2024" max="2030" value="${esc(m.ano)}"></label>
+      <label class="campo">Meta<input id="admMetaValor" type="number" step="0.1" min="0" placeholder="vazio = nacional"></label></div>
+    <div class="acoes-l"><button class="sec" type="button" id="admMetaSalvar">Salvar a meta do PDSI</button></div><p class="dica" id="admMetaStatus" aria-live="polite"></p></div>`;
+}
+async function enviarHistorico(h) {
+  const st = $("#admHistStatus"); st.textContent = `Enviando ${fmtN(h.aldeias.length)} registros de aldeias e ${fmtN(h.oficiais.length)} indicadores de DSEI… pode levar alguns minutos.`;
+  try { const j = await api("importarHistorico", {historico: h}, {tempo: 360000}); st.textContent = `Histórico ${j.versao} gravado na planilha "Odontograma - histórico SIASI".`; store.set(K_HIST, {}); }
+  catch (err) { st.textContent = err.message; }
+}
 // Nível dos procedimentos por DSEI (decisão 3): todos são da APS; a coordenação passa algum para a atenção especializada.
 function blocoNiveis() {
   const dsei = estAdm.nivDsei || DSEIS[0], aj = Object.assign({}, ajustesNivel(dsei), estAdm.nivEdit && estAdm.nivEdit.dsei === dsei ? estAdm.nivEdit.aj : {});
@@ -5610,7 +5930,7 @@ function renderAdmin() {
   const senha = "";
   const aud = d.auditoria && d.auditoria.falhas ? `<div class="aviso-servidor" style="padding:12px 14px;border-radius:10px"><b>${d.auditoria.falhas} ${d.auditoria.falhas === 1 ? "registro" : "registros"} de acesso não ${d.auditoria.falhas === 1 ? "pôde" : "puderam"} ser gravado${d.auditoria.falhas === 1 ? "" : "s"} na aba Acessos.</b> O atendimento continuou normalmente, mas a trilha de auditoria ficou incompleta. Última falha: ${esc(textoFalha(d.auditoria.ultima))}. Isso costuma acontecer só quando duas pessoas usam o app no mesmo instante em que a aba Acessos está sendo recriada (depois de publicar o servidor ou reorganizar a planilha).${d.titular ? ` <button class="sec mini" type="button" id="limparAuditoria" style="margin-left:6px">Entendi, limpar aviso</button>` : ""}</div>` : "";
   setTimeout(mostrarDiagnostico, 0);
-  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + blocoPlanAnalise(d.analise) + blocoBackup(d.backup) + conv + ped + blocoPopulacao(d.populacao) + blocoNiveis() + coordBloco + rtBloco + mapa + usuarios + acessos;
+  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + blocoPlanAnalise(d.analise) + blocoBackup(d.backup) + conv + ped + blocoPopulacao(d.populacao) + blocoHistoricoAdm() + blocoNiveis() + coordBloco + rtBloco + mapa + usuarios + acessos;
   if ($("#admRtDsei")) preencherDsei($("#admRtDsei"), "", "");
   if ($("#admCoordDsei")) preencherDsei($("#admCoordDsei"), "", "");
 }
@@ -5622,13 +5942,28 @@ $("#admConteudo").addEventListener("change", e => {
   if (e.target.id === "admRtUf") preencherDsei($("#admRtDsei"), e.target.value, "");
   const m = {admFPerfil: "fPerfil", admFDsei: "fDsei", admFStatus: "fStatus"}[e.target.id]; if (m) { estAdm[m] = e.target.value; renderAdmin(); }
 });
-$("#admConteudo").addEventListener("change", e => { if (e.target.id !== "admNivDsei") return; estAdm.nivDsei = e.target.value; estAdm.nivEdit = null; renderAdmin(); });
+$("#admConteudo").addEventListener("change", async e => {
+  if (e.target.id === "admHistArq" && e.target.files[0]) { try { await enviarHistorico(JSON.parse(await e.target.files[0].text())); } catch (err) { $("#admHistStatus").textContent = "Arquivo inválido: " + err.message; } return; }
+  if (e.target.id !== "admNivDsei") return; estAdm.nivDsei = e.target.value; estAdm.nivEdit = null; renderAdmin(); });
 $("#admConteudo").addEventListener("click", async e => {
   const nv = e.target.closest("[data-niv]");
   if (nv) {
     const dsei = estAdm.nivDsei || DSEIS[0];
     if (!estAdm.nivEdit || estAdm.nivEdit.dsei !== dsei) estAdm.nivEdit = {dsei, aj: Object.assign({}, ajustesNivel(dsei))};
     estAdm.nivEdit.aj[nv.dataset.niv] = nv.dataset.nivel; return renderAdmin();
+  }
+  if (e.target.id === "admHistApp") {
+    $("#admHistStatus").textContent = "Baixando o arquivo do histórico…";
+    try { const r = await fetch("./dados/historico-siasi.json", {cache: "no-store"}); if (!r.ok) throw new Error("Não encontrei o arquivo do histórico no site do app."); await enviarHistorico(await r.json()); }
+    catch (err) { $("#admHistStatus").textContent = err.message; }
+    return;
+  }
+  if (e.target.id === "admMetaSalvar") {
+    const d = {dsei: $("#admMetaDsei").value, indicador: $("#admMetaInd").value, ano: $("#admMetaAno").value, valor: $("#admMetaValor").value};
+    estAdm.meta = d;
+    try { await api("salvarMetaPdsi", d); store.set(K_HIST, {}); $("#admMetaStatus").textContent = d.valor === "" ? "Meta do PDSI apagada: vale a meta nacional." : `Meta do PDSI salva: ${d.dsei}, ${d.ano}.`; }
+    catch (err) { $("#admMetaStatus").textContent = err.message; }
+    return;
   }
   if (e.target.id === "admNivSalvar") {
     const dsei = estAdm.nivDsei || DSEIS[0], aj = (estAdm.nivEdit && estAdm.nivEdit.dsei === dsei ? estAdm.nivEdit.aj : ajustesNivel(dsei));

@@ -1178,5 +1178,44 @@ parte("atividade coletiva e Fichas 3 e 7");
   T("a atividade entra no backup", (R.G.ctx.fazerBackup("teste"), Object.values(R.G.est.extras).find(x => x.nome === "Odontograma - backup").abas.Atividades_coletivas.length === 4));
 }
 
+/* ---------------------------------------------------------------- histórico do SIASI, metas e dicas (cenário separado) */
+parte("histórico do SIASI, metas e dicas");
+{
+  const R = cenario(), H = JSON.parse(require("fs").readFileSync(require("path").join(__dirname, "..", "dados", "historico-siasi.json"), "utf8"));
+  // Um pedaço do arquivo de verdade: todos os indicadores oficiais e as aldeias do Litoral Sul e do Yanomami.
+  const peq = { versao: H.versao, fontes: H.fontes, oficiais: H.oficiais, aldeias: H.aldeias.filter(a => a.dsei === "Litoral Sul" || a.dsei === "Yanomami") };
+  T("o arquivo do app tem os 34 DSEIs e o Brasil, de 2020 a 2026", new Set(H.oficiais.map(r => r.dsei)).size === 35 && new Set(H.oficiais.map(r => r.ano)).size === 7);
+  T("no arquivo, o Litoral Sul em 2025 bate com o PDF do Fala.BR", (r => r && r.cop_pct === 49.3 && r.tc_pct === 48.99 && r.gest_pct === 81.08 && r.menores5_pct === 62 && r.ald_4mais_pct === 55.5)(H.oficiais.find(r => r.dsei === "Litoral Sul" && r.ano === "2025")));
+  T("só a coordenação titular envia o histórico", !R.P(R.RT, { acao: "importarHistorico", historico: peq }).ok && !R.P(R.PAULA, { acao: "importarHistorico", historico: peq }).ok);
+  T("arquivo pequeno demais é recusado", /poucos registros/.test(R.P(R.C, { acao: "importarHistorico", historico: { versao: "x", oficiais: [], aldeias: [] } }).erro || "") || /inválido/.test(R.P(R.C, { acao: "importarHistorico", historico: { versao: "x", oficiais: [], aldeias: [] } }).erro || ""));
+  const im = R.P(R.C, { acao: "importarHistorico", historico: peq });
+  T("a titular envia o histórico: vai para uma planilha separada", im.ok && !!Object.values(R.G.est.extras).find(x => x.nome === "Odontograma - histórico SIASI"), im);
+  const h = R.P(R.ANA, { acao: "historico", dsei: "Litoral Sul" });
+  T("qualquer pessoa vê o histórico de qualquer DSEI (a dentista do Yanomami vê o Litoral Sul)", h.ok && h.oficiais.some(r => r.dsei === "Litoral Sul") && h.oficiais.some(r => r.dsei === "BRASIL") && h.aldeias.length > 100 && h.aldeias.every(a => a.dsei === "Litoral Sul"));
+  T("o histórico não entra na base de exames", !(R.G.est.sheets.Exames || []).slice(1).length);
+  T("meta do PDSI só pela coordenação", !R.P(R.RT, { acao: "salvarMetaPdsi", dsei: "Litoral Sul", indicador: "tc_pct", ano: "2026", valor: 60 }).ok);
+  T("a meta do PDSI fica guardada e volta com o histórico do DSEI", R.P(R.C, { acao: "salvarMetaPdsi", dsei: "Litoral Sul", indicador: "tc_pct", ano: "2026", valor: 60 }).ok && R.P(R.ANA, { acao: "historico", dsei: "Litoral Sul" }).metasPdsi.tc_pct[2026] === 60);
+  const metaDe = require("vm").runInContext("metaDe", R.G.ctx);
+  T("a meta do PDSI vale no lugar da nacional; sem ela, vale a da NT 3", metaDe("tc_pct", 2026, { tc_pct: { 2026: 60 } }).valor === 60 && metaDe("tc_pct", 2026, {}).valor === 58 && metaDe("gest_pct", 2025, {}).valor === 50);
+  // Dicas: nada aparece antes da aprovação da titular.
+  T("antes da aprovação, nenhuma dica aparece para as equipes", h.dicas.aprovadas.length === 0 && !h.dicas.catalogo);
+  const ht = R.P(R.C, { acao: "historico", dsei: "Litoral Sul" });
+  T("a titular vê o catálogo de dicas para aprovar", ht.dicas.catalogo && ht.dicas.catalogo.length === 8);
+  T("só a titular aprova", !R.P(R.PAULA, { acao: "salvarDica", id: "tc_baixo", aprovada: true }).ok);
+  T("a titular aprova a dica com o texto dela", R.P(R.C, { acao: "salvarDica", id: "tc_baixo", aprovada: true, texto: "Priorize o retorno de quem está perto de concluir." }).ok
+    && R.P(R.ANA, { acao: "historico", dsei: "Litoral Sul" }).dicas.aprovadas.map(x => x.texto).join() === "Priorize o retorno de quem está perto de concluir.");
+  T("a RT sugere uma dica; a dentista não", R.P(R.RT, { acao: "sugerirDica", texto: "Fazer mutirão de ART nas escolas." }).ok && !R.P(R.ANA, { acao: "sugerirDica", texto: "Fazer mutirão de ART nas escolas." }).ok);
+  T("a sugestão aparece para a titular", R.P(R.C, { acao: "historico", dsei: "Litoral Sul" }).dicas.sugestoes.some(x => /mutirão/.test(x.texto)));
+  // Indicadores com os dados do app, ao lado do histórico.
+  const e = Object.assign(exame({ id: "IA1", sufixo: "HAHAHAH2", data: hojeBR(), mud: { 46: { faces: { O: "ca" }, procs: { art: "realizado" } }, 36: { faces: { O: "ca" }, procs: { resina: "realizado" } } } }),
+    { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [], tratamento: { aps: "concluido" } });
+  const env = R.P(R.ANA, { acao: "enviarExame", registro: e });
+  T("o exame de teste do indicador foi aceito", env.ok, env);
+  const pn = R.P(R.ANA, { acao: "painel", minha: true });
+  T("o painel traz os indicadores do app: ART entre as restaurações e tratamento concluído", pn.indApp && pn.indApp.art[0] === 1 && pn.indApp.art[1] === 2 && pn.indApp.tc[0] === 1 && pn.indApp.tc[1] === 1, pn.indApp);
+  T("o painel traz o tratamento básico e as idades-índice", pn.resumo.tratamento.concluido === 1 && !!pn.resumo.oficiais);
+  T("a comparação entre DSEIs está em ordem alfabética", (c => c.map(x => x.dsei).join() === c.map(x => x.dsei).sort((a, b) => a.localeCompare(b, "pt-BR")).join())(R.P(R.C, { acao: "painel" }).comparacao));
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);

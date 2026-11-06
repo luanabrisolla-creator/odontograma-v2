@@ -141,6 +141,46 @@ var TIPOS_ATIVIDADE = ["Escovação dental supervisionada", "Aplicação tópica
 var NIVEIS_PROF = {medio: "Nível médio", superior: "Nível superior"};
 /** @type {any} */
 var LOCAIS_ATIVIDADE = {comunidade: "Na comunidade", estabelecimento: "No estabelecimento de saúde"};
+// Os 8 indicadores de saúde bucal da Nota Técnica 3/2025 e as metas nacionais por ano. 2020 a 2023 vêm do Fala.BR
+// (a meta repetida em cada tabela anual); 2026 dos intermediários, do quadro do SIPLAM. A meta do PDSI vale no lugar, quando houver.
+/** @type {any} */
+var INDICADORES_NT3 = [
+  {k: "cop_pct", nome: "% da população com 1ª consulta odontológica programática", curto: "1ª consulta programática", un: "%", tipo: "principal",
+    num: "pessoas com 1ª consulta odontológica programática no período", den: "população indígena cadastrada no SIASI, no mesmo local e período", cuidado: "Exclui urgência, retorno e manutenção. Num período parcial, o valor ainda acumula até dezembro."},
+  {k: "tc_pct", nome: "% de tratamento odontológico básico concluído (TC/COP)", curto: "Tratamento concluído", un: "%", tipo: "principal",
+    num: "tratamentos odontológicos básicos concluídos", den: "pessoas com 1ª consulta odontológica programática", cuidado: "Pode subir só porque a 1ª consulta caiu: leia junto com o indicador acima."},
+  {k: "gest_pct", nome: "% de gestantes com ao menos 1 consulta odontológica no pré-natal", curto: "Gestantes no pré-natal", un: "%", tipo: "principal",
+    num: "gestações finalizadas com ao menos 1 consulta com o CD na APS, da DUM até 42 semanas", den: "gestações finalizadas no SIASI, sem as finalizadas por aborto", cuidado: "Conta gestações, não mulheres. Exige também consulta com médico ou enfermeiro."},
+  {k: "media_atend", nome: "Média de atendimentos odontológicos por habitante", curto: "Atendimentos por habitante", un: "", tipo: "intermediario",
+    num: "total de atendimentos odontológicos", den: "população (no PDF do Fala.BR, só aldeias com 4 meses ou mais de atendimento)", cuidado: "Os documentos podem usar populações diferentes."},
+  {k: "menores5_pct", nome: "% de crianças menores de 5 anos com 1ª consulta programática", curto: "Menores de 5 anos", un: "%", tipo: "intermediario",
+    num: "crianças até 4 anos, 9 meses e 29 dias com 1ª consulta programática", den: "crianças menores de 5 anos cadastradas no SIASI", cuidado: ""},
+  {k: "art_pct", nome: "% de ART entre as restaurações", curto: "ART", un: "%", tipo: "intermediario",
+    num: "restaurações em ART (tratamento restaurador atraumático)", den: "todas as restaurações do período", cuidado: "Fala de procedimentos, não de pessoas."},
+  {k: "esc_media", nome: "Média da população em escovação dental supervisionada", curto: "Escovação supervisionada", un: "", tipo: "intermediario",
+    num: "escovações no período ÷ 12 meses × 100", den: "população", cuidado: "É uma média por 100 habitantes, não %. A fórmula divide por 12 mesmo num período parcial."},
+  {k: "ald_4mais_pct", nome: "% de aldeias com atenção odontológica regular", curto: "Aldeias com atenção regular", un: "%", tipo: "intermediario",
+    num: "aldeias com 4 meses ou mais com ao menos 1 atendimento odontológico", den: "total de aldeias", cuidado: "Cada tabela pode usar uma lista de aldeias diferente. Num período parcial, o valor é baixo por definição."}];
+/** @type {any} */
+var METAS_NT3 = {cop_pct: {2020: 45, 2021: 25, 2022: 30, 2023: 50, 2024: 45, 2025: 50, 2026: 55, 2027: 60}, tc_pct: {2020: 55, 2021: 52, 2022: 55, 2023: 58, 2024: 52, 2025: 55, 2026: 58, 2027: 60},
+  gest_pct: {2024: 8, 2025: 50, 2026: 55, 2027: 60}, media_atend: {2025: 0.7, 2026: 0.8}, menores5_pct: {2025: 45, 2026: 50}, art_pct: {2025: 37, 2026: 40},
+  esc_media: {2025: 7.5, 2026: 8}, ald_4mais_pct: {2025: 40, 2026: 45}};
+/** Meta de um indicador num ano: a do PDSI do DSEI, se a coordenação digitou; senão a nacional. @param {string} k @param {any} ano @param {any} [pdsi] */
+function metaDe(k, ano, pdsi) {
+  var p = pdsi && pdsi[k] && pdsi[k][ano]; if (p != null && p !== "") return {valor: Number(p), fonte: "PDSI do DSEI"};
+  var n = (METAS_NT3[k] || {})[ano]; return n != null ? {valor: n, fonte: Number(ano) <= 2023 ? "meta nacional (Fala.BR)" : k === "cop_pct" || k === "tc_pct" || k === "gest_pct" ? "NT 3/2025" : Number(ano) >= 2026 ? "SIPLAM 2026" : "NT 3/2025"} : null;
+}
+// Catálogo de dicas: cada uma é uma regra escrita. Só aparece depois que a coordenação titular aprova o texto.
+/** @type {any} */
+var DICAS = [
+  {id: "tc_baixo", ind: "tc_pct", titulo: "Tratamento concluído abaixo da meta", texto: "Priorize na agenda o retorno das pessoas que estão a 1 ou 2 procedimentos de concluir o tratamento básico."},
+  {id: "art_baixo", ind: "art_pct", titulo: "ART abaixo da meta", texto: "Confira os insumos de ART e priorize crianças e adolescentes com lesões iniciais."},
+  {id: "cop_baixo", ind: "cop_pct", titulo: "Pouca cobertura de 1ª consulta programática", texto: "Planeje as visitas pelas aldeias e faixas etárias com menos exames, frente à população da SESAI."},
+  {id: "aldeias_regulares", ind: "ald_4mais_pct", titulo: "Aldeias com poucos meses de atendimento", texto: "Inclua na escala as aldeias com menos de 4 meses de atendimento no ano, antes de dezembro."},
+  {id: "menores5", ind: "menores5_pct", titulo: "Crianças menores de 5 anos", texto: "Combine o exame odontológico com a puericultura e a vacinação."},
+  {id: "gestantes", ind: "gest_pct", titulo: "Gestantes no pré-natal", texto: "Combine com a enfermagem a consulta odontológica de cada gestante no pré-natal."},
+  {id: "escovacao", ind: "esc_media", titulo: "Escovação supervisionada abaixo da meta", texto: "Mantenha a escovação dental supervisionada nas aldeias com menos registro."},
+  {id: "urgencia", ind: "", titulo: "Mais da metade das consultas são de urgência", texto: "Depois de cada atendimento de urgência, já marque a 1ª consulta programática da pessoa."}];
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
@@ -306,6 +346,12 @@ function idsUltimoPorPessoa(regs) {
   Object.keys(por).forEach(function (k) { ids[por[k].id] = true; });
   return ids;
 }
+// Idades-índice das Diretrizes da saúde bucal indígena (ceo-d, CPO-D e livres de cárie), ao lado das faixas de hoje.
+var GRUPOS_CEOD = [["1 ano", 1, 1], ["2 anos", 2, 2], ["3 anos", 3, 3], ["4 anos", 4, 4], ["5 anos", 5, 5], ["6 anos", 6, 6]];
+var GRUPOS_CPOD = [["7 anos", 7, 7], ["8 anos", 8, 8], ["9 anos", 9, 9], ["10 anos", 10, 10], ["11 anos", 11, 11], ["12 anos", 12, 12], ["15 a 19 anos", 15, 19], ["35 a 44 anos", 35, 44], ["65 a 74 anos", 65, 74]];
+var GRUPOS_LIVRES = [["5 anos", 5, 5], ["12 anos", 12, 12], ["15 a 19 anos", 15, 19], ["35 a 44 anos", 35, 44], ["65 a 74 anos", 65, 74]];
+/** @param {any} grupos @param {any} idade */
+function grupoDe(grupos, idade) { for (var i = 0; i < grupos.length; i++) if (idade != null && idade >= grupos[i][1] && idade <= grupos[i][2]) return grupos[i][0]; return null; }
 /** @param {any} regs @param {any} agrup @param {any} [ult] */
 function agregarExames(regs, agrup, ult) {
   ult = ult || idsUltimoPorPessoa(regs);
@@ -324,7 +370,10 @@ function agregarExames(regs, agrup, ult) {
   var r = {n: 0, nExames: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), nivel: zeros(["Baixo", "Moderado", "Alto"]), faixas: {}, meses: {},
     ceod: idxVazio(), cpod: idxVazio(), cpod12: {soma: 0, n: 0}, procs: {}, gerais: {}, insumos: {}, placa: 0, gengivite: 0, fluorose: 0, procsRealizados: 0,
     vigilancia: {}, local: {}, protese: {avaliados: 0, sup: 0, inf: 0, alguma: 0},
-    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}, pessoasSemClassificacao: 0}};
+    atend: {registrados: 0, preenchidos: 0, naoPreenchidos: 0, coletivos: 0, motivos: {}, pessoasSemClassificacao: 0},
+    // versão 47: idades-índice, tratamento básico, encaminhamentos, prescrições e gestantes
+    oficiais: {ceod: {}, cpod: {}, livres: {}}, tratamento: {concluido: 0, nao_concluido: 0, pendente: 0, a_confirmar: 0}, encaminhamentos: {}, prescricoes: {}, gestantes: 0,
+    dorOuAbscesso: 0, comCarie: 0, art: 0, restauracoes: 0, exodontias: 0};
   // Pessoas com classificação de risco (algum exame com odontograma) e sem (só atendimentos sem odontograma no recorte).
   /** @type {any} */ var comClasse = {}, semClasse = {};
   FX.forEach(function (f) { r.faixas[f] = {n: 0, sexo: zeros(["F", "M", "NI"]), classe: zeros(CL), ceod: idxVazio(), cpod: idxVazio()}; });
@@ -347,6 +396,9 @@ function agregarExames(regs, agrup, ult) {
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
     if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
+    Object.keys(e.encaminhamentos || {}).forEach(function (k) { var o = r.encaminhamentos[k] = r.encaminhamentos[k] || {pendente: 0, realizado: 0}; o[e.encaminhamentos[k]] = (o[e.encaminhamentos[k]] || 0) + 1; });
+    (e.prescricoes || []).forEach(function (p) { r.prescricoes[p] = (r.prescricoes[p] || 0) + 1; });
+    if (e.gestante === "sim") r.gestantes++;
     // Daqui em diante, só o que vem do exame clínico (o atendimento sem odontograma não entra nas contas por dente nem na classe).
     if (sem) return;
     var pe = procsDe(e);
@@ -354,6 +406,10 @@ function agregarExames(regs, agrup, ult) {
       if (!r.procs[k]) r.procs[k] = {indicado: 0, realizado: 0};
       r.procs[k].indicado += pe[k].indicado; r.procs[k].realizado += pe[k].realizado; r.procsRealizados += pe[k].realizado;
     });
+    // ART entre as restaurações realizadas (indicador da NT 3) e exodontias realizadas.
+    r.art += (pe.art || {}).realizado || 0;
+    ["art", "civ", "resina", "amalgama", "coroa"].forEach(function (k) { r.restauracoes += (pe[k] || {}).realizado || 0; });
+    ["exo_carie", "exodontia"].forEach(function (k) { r.exodontias += (pe[k] || {}).realizado || 0; });
     // situação das pessoas: só o último exame de cada pessoa
     if (!ult[e.id]) return;
     r.n++;
@@ -368,6 +424,14 @@ function agregarExames(regs, agrup, ult) {
     }
     if (e.placa) r.placa++;
     if (e.gengivite) r.gengivite++;
+    // Pessoas: idades-índice oficiais, tratamento básico (pelo último exame), dor ou abscesso e cárie ativa.
+    var t = (e.tratamento || {}).aps; if (t && r.tratamento[t] != null) r.tratamento[t]++;
+    if (dentesComDor(e).length) r.dorOuAbscesso++;
+    if (cariadosDe(e) > 0) r.comCarie++;
+    var gc = grupoDe(GRUPOS_CEOD, idade), gp = grupoDe(GRUPOS_CPOD, idade), gl = grupoDe(GRUPOS_LIVRES, idade);
+    if (gc && res.ceod) { var oc = r.oficiais.ceod[gc] = r.oficiais.ceod[gc] || {n: 0, soma: 0}; oc.n++; oc.soma += Number(res.ceod.total) || 0; }
+    if (gp && res.cpod) { var op = r.oficiais.cpod[gp] = r.oficiais.cpod[gp] || {n: 0, soma: 0}; op.n++; op.soma += Number(res.cpod.total) || 0; }
+    if (gl) { var ol = r.oficiais.livres[gl] = r.oficiais.livres[gl] || {n: 0, livres: 0}; ol.n++; if (!(Number((res.ceod || {}).total) || 0) && !(Number((res.cpod || {}).total) || 0)) ol.livres++; }
     if (e.fluorose) r.fluorose++;
     (e.vigilancia || []).forEach(function (/** @type {any} */ g) { r.vigilancia[g] = (r.vigilancia[g] || 0) + 1; });
     var pr = e.protese || {};

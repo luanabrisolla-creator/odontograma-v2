@@ -35,6 +35,7 @@ self.addEventListener("fetch", e => {
   if (r.method !== "GET") return;
   const u = new URL(r.url);
   if (u.hostname.endsWith("script.google.com") || u.hostname.endsWith("googleusercontent.com")) return; // envio: sempre pela rede
+  if (u.pathname.includes("/dados/")) return; // arquivo do histórico do SIASI: grande e usado uma vez, não fica guardado
   if (r.mode === "navigate") {
     // Página: tenta a versão mais nova. Se não vier o Odontograma (sem internet, Wi-Fi com login, erro), usa a guardada.
     e.respondWith((async () => {

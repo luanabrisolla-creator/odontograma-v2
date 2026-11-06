@@ -426,8 +426,13 @@ for (let i = 0; i < 8; i++) {
       T(nome + ": exame mostra procedimentos coletivos e insumos", /Escovação (dental )?supervisionada/.test(await pg.textContent("body")) && /Escova dental/.test(await pg.textContent("body")));
     }
     if (abas.includes("painel")) {
-      await irAba(pg, "painel"); await pg.waitForTimeout(400);
+      await irAba(pg, "painel"); await pg.waitForTimeout(600);
+      T(nome + ": o painel abre na aba Indicadores e avisa que o histórico ainda não foi enviado", await pg.isVisible("#pIndicadores") && !(await pg.isVisible("#pDados")) && /ainda não foi enviado/.test(await pg.textContent("#pIndicadores")), (await pg.textContent("#pIndicadores")).slice(0, 300));
+      await pg.click('#pAbas [data-pab="dicas"]'); await pg.waitForTimeout(500);
+      T(nome + ": aba Dicas abre sem erro", await pg.isVisible("#pDicas") && !pg.erros.length, pg.erros);
+      await pg.click('#pAbas [data-pab="dados"]'); await pg.waitForTimeout(800);
       await pg.selectOption("#pPeriodo", "tudo"); await pg.waitForTimeout(1500);
+      T(nome + ": aba Dados do app tem os 6 blocos", (await pg.$$("#pConteudo .grupo-dados")).length === 6, (await pg.textContent("#pConteudo")).slice(0, 200));
       T(nome + ": painel mostra os índices por faixa etária", /Índices médios por faixa etária/.test(await pg.textContent("#pConteudo")), (await pg.textContent("#pConteudo")).slice(0, 200));
     }
     await ctx.close();
@@ -591,6 +596,30 @@ for (let i = 0; i < 8; i++) {
   T("Administração mostra a situação do servidor", /Situação do servidor/.test(await pg.textContent("#admConteudo")) && /✓ ok/.test(await pg.textContent("#admConteudo")));
   const [da] = await Promise.all([pg.waitForEvent("download", { timeout: 30000 }), pg.click("#admAnBaixar")]);
   T("dados para análise: arquivo do Excel com todos os exames", /analise.*\.xlsx$/.test(da.suggestedFilename()), da.suggestedFilename());
+  // Histórico do SIASI: a titular envia o arquivo que vem com o app; todos passam a ver os indicadores.
+  T("Administração tem o bloco do histórico do SIASI e da meta do PDSI", await pg.isVisible("#admHistApp") && await pg.isVisible("#admMetaSalvar"));
+  await pg.click("#admHistApp");
+  await pg.waitForFunction(() => { const t = document.querySelector("#admHistStatus").textContent; return t && !/Enviando|Baixando/.test(t); }, null, { timeout: 180000 });
+  T("a titular envia o histórico que vem com o app", /gravado na planilha "Odontograma - histórico SIASI"/.test(await pg.textContent("#admHistStatus")), await pg.textContent("#admHistStatus"));
+  await pg.selectOption("#admMetaDsei", "Litoral Sul"); await pg.selectOption("#admMetaInd", "tc_pct"); await pg.fill("#admMetaAno", "2025"); await pg.fill("#admMetaValor", "70");
+  await pg.click("#admMetaSalvar"); await pg.waitForTimeout(1200);
+  T("a coordenação salva a meta do PDSI", /Meta do PDSI salva: Litoral Sul, 2025/.test(await pg.textContent("#admMetaStatus")), await pg.textContent("#admMetaStatus"));
+  await irAba(pg, "painel"); await pg.waitForTimeout(1500);
+  await pg.selectOption("#hDsei", "Litoral Sul"); await pg.waitForTimeout(2500);
+  await pg.selectOption("#hAno", "2025"); await pg.waitForTimeout(600);
+  const ind = await pg.textContent("#pIndicadores");
+  T("Indicadores: os 8 da NT 3 com o valor oficial do Litoral Sul em 2025", (await pg.$$("#pIndicadores .ind-card")).length === 8 && /49,3\s?%/.test(ind), ind.slice(0, 500));
+  T("a meta do PDSI aparece no lugar da nacional", /meta 2025: 70\s?% \(PDSI/.test(ind), ind.match(/meta 2025[^)]*\)/g));
+  T("comparação entre DSEIs em ordem alfabética", /Alagoas e Sergipe[\s\S]*Altamira[\s\S]*Litoral Sul[\s\S]*Yanomami/.test(ind), ind.slice(-600));
+  await pg.click('#pIndicadores .ind-card[data-ind="tc_pct"]'); await pg.waitForTimeout(600);
+  T("tocar no indicador abre a série com a meta e o Brasil", !!(await pg.$("#pIndicadores svg")) && /Brasil/.test(await pg.textContent("#pIndicadores")));
+  await foto(pg, "9_indicadores_pc", "#pIndicadores");
+  await pg.selectOption("#hPolo", { index: 1 }); await pg.waitForTimeout(600);
+  T("por polo base: dados abertos por aldeia, sem erro", /Dados abertos do Ministério/.test(await pg.textContent("#pIndicadores")) && !pg.erros.length, pg.erros);
+  await pg.click('#pAbas [data-pab="dicas"]'); await pg.waitForTimeout(600);
+  T("Dicas: a titular vê o catálogo para aprovar", /prov/.test(await pg.textContent("#pDicas")), (await pg.textContent("#pDicas")).slice(0, 300));
+  await foto(pg, "9_dicas_pc", "#pDicas");
+  await irAba(pg, "admin"); await pg.waitForTimeout(1200);
   // Planilha de análise para o Looker Studio (só a titular).
   T("Administração mostra a planilha de análise, ainda por criar", /Planilha de análise \(Looker Studio\)/.test(await pg.textContent("#admConteudo")) && (await pg.textContent("#admPlanAnalise")).trim() === "Criar agora");
   await pg.click("#admPlanAnalise"); await pg.waitForTimeout(2500);
