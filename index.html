@@ -1271,7 +1271,7 @@ function avisarSemEspaco() {
   a.classList.add("aviso-servidor"); a.hidden = false;
 }
 // Versão do app: a mesma do número no sw.js (odontograma-vNN). Vai junto em cada pedido ao servidor.
-const VERSAO_APP = 46;
+const VERSAO_APP = 47;
 const K_EXAMES = "odonto.exames.v1", K_CFG = "odonto.config.v1", K_RASC = "odonto.rascunho.v1", K_PAINEL = "odonto.painel.v1";
 const K_LEG = "odonto.legenda.v1";
 const K_SESSAO = "odonto.sessao.v1";
@@ -4967,7 +4967,7 @@ function acessoPerdido(msg) {
   renderAbas(); irAba("acesso");
 }
 // Esta versão do app precisa do Codigo.gs a partir desta versão (mostrada no /exec como "versao").
-const SERVIDOR_MIN = 45;
+const SERVIDOR_MIN = 47;
 // App e servidor têm numerações próprias: o aviso só aparece se o servidor for MAIS ANTIGO que o mínimo
 // de que este app precisa (servidor igual ou mais novo é compatível). Servidor que não informa a versão é antigo.
 function avisarServidor(v) {

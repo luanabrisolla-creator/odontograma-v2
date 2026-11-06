@@ -63,7 +63,7 @@ const CAB_DICIONARIO = ['aba', 'coluna', 'descricao', 'valores_possiveis'];
 // Todas as datas e horas do servidor no horário de Brasília, qualquer que seja o fuso configurado no projeto.
 const FUSO = 'America/Sao_Paulo';
 const FORMATO = '26';
-const VERSAO = 46;
+const VERSAO = 47;
 const MOTIVOS_CANCELAMENTO = ['Digitado errado', 'Exame em duplicidade', 'Pessoa errada', 'Outro'];
 // Ações do dia a dia: viram contadores na aba Uso, sem uma linha por vez na aba Acessos.
 const ROTINA = { 'Entrou no app': 'entrada', 'Consultou a equipe': 'consulta' };
@@ -1513,7 +1513,7 @@ function zerarExames() {
     /** @type {any} */ const copiadas = {};
     ss.getSheets().forEach(function (a) {
       const nome = a.getName();
-      if ((nome.indexOf('Exames') !== 0 && nome !== ABA_VERSOES) || a.getLastRow() < 1) return;
+      if ((nome.indexOf('Exames') !== 0 && nome !== ABA_VERSOES && nome !== 'Retornos') || a.getLastRow() < 1) return;
       const v = a.getRange(1, 1, a.getLastRow(), Math.max(a.getLastColumn(), 1)).getValues().map(function (l) { return l.map(textoCelula); });
       const cab = v[0].map(String);
       const destino = arq.insertSheet(nome);
@@ -1542,7 +1542,7 @@ function zerarExames() {
     try { novoBackup = fazerBackup('base de exames recomeçada').url; } catch (x) { registrarErro(x, 'zerarExames: backup novo', null); }
     try { recalcularUso(ss, []); } catch (x) {}
     try { atualizarAnalise(); } catch (x) {}
-    const n = copiadas.Exames || 0, detalhe = n + ' exames arquivados em "' + arq.getName() + '" · backup antigo renomeado · base recomeçada em ' + dia + ' ' + fmtHora(agora);
+    const n = copiadas.Exames || 0, detalhe = n + ' exames' + (copiadas.Retornos ? ' e ' + copiadas.Retornos + (copiadas.Retornos === 1 ? ' retorno' : ' retornos') : '') + ' arquivados em "' + arq.getName() + '" · backup antigo renomeado · base recomeçada em ' + dia + ' ' + fmtHora(agora);
     registrar({ email: emailCoord(), nome: propriedade('NOME_COORDENACAO') || 'Coordenação titular' }, 'Zerou a base de exames', detalhe);
     Logger.log('Base de exames zerada: ' + detalhe + '.\nArquivo: ' + arq.getUrl() + (novoBackup ? '\nBackup novo: ' + novoBackup : '') + '\nCadastros e códigos de acesso continuam iguais.');
     return { exames: n, arquivo: arq.getUrl(), backup: novoBackup, desde: agora.toISOString() };

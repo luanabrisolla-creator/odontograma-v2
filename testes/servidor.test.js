@@ -929,11 +929,13 @@ parte("zerar exames");
   const ed = JSON.parse(aba4("Exames").find(l => l[0] === "ZA1").at(-1)); ed.dentes[16].faces.O = "ca"; ed.atualizadoEm = new Date().toISOString();
   R.P(R.ANA, { acao: "enviarExame", registro: ed });
   R.P(R.ANA, { acao: "cancelarExame", id: "ZA3", motivo: "Digitado errado" });
+  G4.ctx.salvarRetorno({ id: "RZ1", planoId: "ZA2", codigoIndividuo: "RR-SUR-SAU-ZAZAZA32", dsei: "Yanomami", dataExame: ontem, usuarioId: "x", dentes: {} });
   G4.ctx.fazerBackup("teste");
   const nUsuarios = aba4("Usuarios").length, idBkAntigo = G4.est.props.BACKUP_ID, nAntes = aba4("Exames").length - 1;
   const res = G4.ctx.zerarExames();
   const arq = Object.values(G4.est.extras).find(x => /^Odontograma - exames arquivados até /.test(x.nome));
   T("zerar: todos os exames (e as versões anteriores) vão para a planilha de arquivo, antes de sair da base", res.exames === nAntes && nAntes === 3 && arq && arq.abas.Exames.length - 1 === 3 && arq.abas._versoes_exames.length - 1 === 1, [res, arq && arq.ordem]);
+  T("os retornos vão junto para o arquivo e saem da base", arq.abas.Retornos && arq.abas.Retornos.length - 1 === 1 && !aba4("Retornos").slice(1).length && /3 exames e 1 retorno arquivados/.test(aba4("Acessos").map(l => l.join("|")).join()));
   T("a base de exames fica vazia, com o cabeçalho certo", aba4("Exames").length === 1 && aba4("Exames")[0].join() === G4.ctx.CAB_EXAME.join() && !aba4("_versoes_exames").length);
   T("cadastros e acessos não mudam: as pessoas continuam entrando", aba4("Usuarios").length === nUsuarios && R.P(R.ANA, { acao: "entrar" }).ok && R.P(R.C, { acao: "entrar" }).ok);
   T("o backup antigo fica com outro nome e um backup novo começa limpo (sem alertas de exames sumidos)", G4.est.extras[idBkAntigo].nome === "Odontograma - backup (exames até " + G4.ctx.fmtDia(new Date()) + ")"
@@ -947,7 +949,7 @@ parte("zerar exames");
   const hojeISO = new Date().toISOString().slice(0, 10), novo = exame({ id: "ZNOVO", sufixo: "ZNZNZNZ2", data: hojeISO }); novo.criadoEm = new Date().toISOString(); novo.atualizadoEm = novo.criadoEm;
   r4 = R.P(R.ANA, { acao: "enviarExame", registro: novo });
   T("exame novo entra normalmente", r4.ok && aba4("Exames").length === 2, r4);
-  T("o recomeço fica anotado em Acessos", aba4("Acessos").some(l => l[7] === "Zerou a base de exames" && /3 exames arquivados/.test(l[8])));
+  T("o recomeço fica anotado em Acessos", aba4("Acessos").some(l => l[7] === "Zerou a base de exames" && /3 exames e 1 retorno arquivados/.test(l[8])));
 }
 
 /* ---------------------------------------------------------------- odontograma opcional (cenário separado) */

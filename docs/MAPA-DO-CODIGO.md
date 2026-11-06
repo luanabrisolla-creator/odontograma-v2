@@ -23,7 +23,9 @@ O app é dividido em três partes, que conversam entre si.
 | `exceljs.min.js` | Biblioteca pronta (de outra pessoa) que lê e escreve arquivos do Excel. É usada para ler a planilha de população da SESAI e gerar os arquivos de análise. |
 | `mapa-ti.json` | Lista das terras indígenas, usada nos territórios. |
 | `paisagem*.webp` | Imagens da tela de entrada. |
-| `LEIA-ME.md` | Guia de instalação e de cada versão. |
+| `LEIA-ME.md` | Guia do app como ele é hoje: instalação do zero, perfis, exame, painel, planilha. |
+| `docs/HISTORICO-DE-VERSOES.md` | O que mudou em cada versão. |
+| `docs/INSTALAR-VERSAO-47.md` | Passo a passo para instalar a versão atual. |
 | `testes/` | Os testes automáticos (veja a seção 5). |
 | `ferramentas/` | Conferências rápidas: `verificar.js` (o app e o servidor combinam?) e `abrir-app.js` (o app abre sem erro?). |
 | `.github/workflows/verificar.yml` | Faz o GitHub rodar todos os testes sozinho a cada mudança. É o ✓ verde ou o ✗ vermelho que aparece no pull request. |
