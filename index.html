@@ -799,8 +799,10 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 #resRisco[data-nivel="baixo"]{color:var(--sesai-verde)}
 #resRisco[data-nivel="moderado"]{color:#946A00}
 #resRisco[data-nivel="alto"]{color:var(--sesai-vermelho)}
-[data-c="A"]{background:#1A7F3C}[data-c="B"]{background:#4E9A2F}[data-c="C"]{background:#F5C400;color:#13233A}
-[data-c="D"]{background:#E07A1F}[data-c="E"]{background:#C8261E}[data-c="F"]{background:#7E1026}
+/* Classes de risco: verde (baixo), amarelo e laranja (moderado), vermelho (alto). A letra é escura nos tons claros
+   (B, C e D) e branca nos escuros, sempre com contraste de leitura de 5 ou mais. C tem contorno para aparecer no branco. */
+[data-c="A"]{background:#17693A}[data-c="B"]{background:#7DBA3C;color:#13233A}[data-c="C"]{background:#F2C230;color:#13233A;box-shadow:inset 0 0 0 1px #B38A00}
+[data-c="D"]{background:#E5702A;color:#13233A}[data-c="E"]{background:#C42B2B}[data-c="F"]{background:#7A1230}
 
 /* situação do envio */
 .estado.enviado{background:#D6F0DE;color:#135E2D}
@@ -3389,7 +3391,7 @@ function avaliarExame(ex) {
 
 /* ---------- painel ---------- */
 const estP = {visao: "geral", periodo: "ano", dsei: null, extras: []};
-const COR_CLASSE = {A:"#2E8B57", B:"#5E9C35", C:"#D7A406", D:"#E07A1F", E:"#D7263D", F:"#86112C"};
+const COR_CLASSE = {A:"#17693A", B:"#7DBA3C", C:"#F2C230", D:"#E5702A", E:"#C42B2B", F:"#7A1230"}; // as mesmas cores das etiquetas de classe
 const ehNum = v => typeof v === "number";
 const fmtN = v => v == null ? "–" : ehNum(v) ? v.toLocaleString("pt-BR", {maximumFractionDigits: 2}) : String(v);
 const pctDe = (v, t) => ehNum(v) && ehNum(t) && t ? Math.round(v / t * 100) + "%" : v === "<5" ? "<5" : "–";
