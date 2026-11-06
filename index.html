@@ -221,9 +221,19 @@ table.cruz tr.total td{border-top:2px solid var(--line)}
 .classe.micro{width:28px;height:28px;font-size:.95rem;border-radius:6px}
 .barra{display:block;height:16px;background:var(--surface-2);border-radius:3px;overflow:hidden}
 .barra span{display:block;height:100%;border-radius:3px}
-.tabela{overflow-x:auto}
+.tabela{overflow-x:visible;max-width:100%}
 .tabela table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
-.tabela th,.tabela td{padding:7px 8px;border-bottom:1px solid var(--surface-2);text-align:right;white-space:nowrap}
+.tabela th,.tabela td{padding:7px 8px;border-bottom:1px solid var(--surface-2);text-align:right;white-space:normal;overflow-wrap:anywhere}
+.tabela td .bts{display:flex;flex-wrap:wrap;gap:6px}
+@media (max-width:760px){
+  .tabela table.tab-cartao,.tabela table.tab-cartao tbody,.tabela table.tab-cartao tr,.tabela table.tab-cartao td{display:block;width:100%}
+  .tabela table.tab-cartao thead{display:none}
+  .tabela table.tab-cartao tr{border:1px solid var(--line);border-radius:12px;padding:6px 12px;margin:0 0 10px;background:var(--surface)}
+  .tabela table.tab-cartao td{border:0;text-align:left;padding:4px 0;display:flex;gap:10px;align-items:baseline}
+  .tabela table.tab-cartao td[data-rotulo]::before{content:attr(data-rotulo);flex:0 0 38%;color:var(--muted);font-size:.78rem;font-weight:700}
+  .tabela table.tab-cartao td:not([data-rotulo]),.tabela table.tab-cartao td[data-rotulo=""]{display:block}
+  .tabela table.tab-cartao td[data-rotulo=""]::before{display:none}
+}
 .tabela th:first-child,.tabela td:first-child{text-align:left}
 .tabela th{color:var(--muted);font-weight:700;font-size:.8rem;vertical-align:bottom}
 .tabela tr.meu td{background:var(--accent-soft);font-weight:700}
@@ -590,13 +600,15 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .ind-card .l3{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:.76rem;color:var(--muted)}
 .ind-barra{height:8px;border-radius:4px;background:var(--surface-2);position:relative}.ind-barra i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#C2620A}
 .ind-barra b{position:absolute;top:-4px;width:3px;height:16px;background:#13233A;border-radius:1px}
+.grupo-ind{margin:12px 0 8px;font-size:.85rem;color:var(--muted);font-weight:700}
 .termo-texto{white-space:pre-wrap;font-size:.9rem;line-height:1.5;max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0 12px;background:var(--bg)}
 .termo-li{display:flex;gap:8px;align-items:center;margin:0 0 10px;font-weight:600}.termo-li input{width:22px;height:22px;min-height:0;flex:none;margin:0;padding:0;accent-color:var(--azul,#1D6FD8)}
-.serie>svg{width:100%;max-width:720px;height:auto;display:block}.serie .lg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.78rem;color:var(--muted);margin:4px 0 8px}.serie .lg span{display:inline-flex;align-items:center;gap:6px}.serie .lg svg{flex:none}
+.serie>svg{width:100%;max-width:720px;height:auto;display:block}.serie .lg{display:flex;flex-wrap:wrap;gap:6px 18px;line-height:1.3;font-size:.78rem;color:var(--muted);margin:4px 0 8px}.serie .lg span{display:inline-flex;align-items:center;gap:6px}.serie .lg svg{flex:none}
 .ficha-ind{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:.86rem;margin:8px 0 0}.ficha-ind dt{color:var(--muted)}.ficha-ind dd{margin:0}
 .comp-l{display:grid;grid-template-columns:minmax(0,9rem) 1fr 3.5rem;gap:8px;align-items:center;font-size:.84rem;padding:3px 0}
 .comp-l .bar{height:10px;border-radius:5px;background:var(--surface-2);position:relative}.comp-l .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;background:#C5CCD6}
-.comp-l.sel .bar i{background:#C2620A}.comp-l.sel{font-weight:700}.comp-l .bar b{position:absolute;top:-3px;width:2px;height:16px;background:#13233A}
+.comp-l.sel .bar{outline:2px solid #13233A;outline-offset:1px}.comp-l.sel{font-weight:700}
+.leg-meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.74rem;color:var(--muted);margin:10px 0 0}.leg-meta span{display:inline-flex;align-items:center;gap:5px}.leg-meta i{width:14px;height:8px;border-radius:3px;display:inline-block}.comp-l .bar b{position:absolute;top:-3px;width:2px;height:16px;background:#13233A}
 .dica-card{border:1px solid var(--line);border-left:4px solid #C42B2B;background:#fff;border-radius:10px;padding:12px 14px;display:grid;gap:6px}
 .dica-card .acao{background:#E2F3E7;color:#14532D;border-radius:8px;padding:8px 10px}
 .grupo-dados{font-size:1.05rem;margin:18px 4px 8px;color:var(--ink)}
@@ -1012,7 +1024,8 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
         <label class="campo">Sexo<select data-campo="crianca.sexo" id="inSexo" required><option value="">Escolha</option><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
         <div class="campo">Idade no exame<output id="idade" style="font-size:1rem;color:var(--ink);padding:10px 0">Informe a data de nascimento</output></div>
       </div>
-      <div class="campo" style="margin-top:12px">Localidade de residência<div class="locais" id="localidades" role="group" aria-label="Localidade de residência"></div></div>
+      <div class="campo" style="margin-top:12px">Onde a pessoa mora (localidade de residência, Ficha 4)<div class="locais" id="localidades" role="group" aria-label="Onde a pessoa mora"></div>
+        <span class="dica" style="font-weight:400">Aldeia: mora na aldeia. Acampamento: mora em acampamento (por exemplo, retomada ou beira de estrada). Logradouro: mora na cidade, com endereço de rua.</span></div>
       <div id="gestBox" hidden style="margin-top:12px">
         <div class="linha-op"><span><b>Está gestante?</b></span><div class="seg" role="group" aria-label="Está gestante?" data-sn="gestante"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div></div>
         <label class="campo" id="semanasCampo" hidden style="margin-top:8px;max-width:220px">Semanas de gestação<input type="number" inputmode="numeric" min="1" max="42" step="1" id="inSemanas" placeholder="1 a 42"></label>
@@ -3172,6 +3185,9 @@ var INDICADORES_NT3 = [
   {k: "ald_4mais_pct", nome: "% de aldeias com atenção odontológica regular", curto: "Aldeias com atenção regular", un: "%", tipo: "intermediario",
     num: "aldeias com 4 meses ou mais com ao menos 1 atendimento odontológico", den: "total de aldeias", cuidado: "Cada tabela pode usar uma lista de aldeias diferente. Num período parcial, o valor é baixo por definição."}];
 /** @type {any} */
+// Pela NT 3/2025, só os 3 primeiros são pactuados no PDSI (e no PNS); os outros 5 são intermediários do SIPLAM,
+// monitorados pela área técnica nacional. Por isso a meta do PDSI só existe para estes três.
+var INDICADORES_PDSI = ["cop_pct", "tc_pct", "gest_pct"];
 var METAS_NT3 = {cop_pct: {2020: 45, 2021: 25, 2022: 30, 2023: 50, 2024: 45, 2025: 50, 2026: 55, 2027: 60}, tc_pct: {2020: 55, 2021: 52, 2022: 55, 2023: 58, 2024: 52, 2025: 55, 2026: 58, 2027: 60},
   gest_pct: {2024: 8, 2025: 50, 2026: 55, 2027: 60}, media_atend: {2025: 0.7, 2026: 0.8}, menores5_pct: {2025: 45, 2026: 50}, art_pct: {2025: 37, 2026: 40},
   esc_media: {2025: 7.5, 2026: 8}, ald_4mais_pct: {2025: 40, 2026: 45}};
@@ -3973,10 +3989,12 @@ function tabelaIndicesFaixa(fx) {
     <tbody>${fx.map(([f, v]) => `<tr><td>${esc(f)}</td>${cel(v.ceod, ["c", "e", "o"])}${cel(v.cpod, ["c", "p", "o"])}</tr>`).join("")}</tbody></table></div>
     <p class="nota">Cada pessoa conta uma vez, pelo exame mais recente do período. No ceo-d entram só as pessoas com dentes decíduos no exame; no CPO-D, só as com dentes permanentes. Médias só com 5 pessoas ou mais.</p>`;
 }
+// Plural certo: 1 pessoa, 2 pessoas.
+function pl(n, um, varios) { return `${fmtN(n)} ${Number(n) === 1 ? um : varios}`; }
+// Dentes com cárie, perdidos e obturados, somando todas as pessoas da seleção (itens de lista).
 function totaisDentes(r) {
-  const t = (x, pk, nomes) => temMedia(x) ? `<li><b>${x.c + x[pk] + x.o}</b> ${nomes[0]}: ${x.c} cariados, ${x[pk]} ${nomes[1]} e ${x.o} obturados</li>` : "";
-  const l = t(r.cpod, "p", ["dentes permanentes atacados", "perdidos"]) + t(r.ceod, "e", ["dentes decíduos atacados", "extraídos ou com extração indicada"]);
-  return l ? `<ul class="totais">${l}</ul>` : "";
+  const t = (x, pk, tipo, perd) => temMedia(x) ? `<li>Dentes ${tipo} atacados por cárie: <b>${fmtN(x.c + x[pk] + x.o)}</b> (${pl(x.c, "cariado", "cariados")}, ${fmtN(x[pk])} ${perd} e ${pl(x.o, "obturado", "obturados")})</li>` : "";
+  return t(r.cpod, "p", "permanentes", Number(r.cpod && r.cpod.p) === 1 ? "perdido" : "perdidos") + t(r.ceod, "e", "decíduos", "extraídos ou com extração indicada");
 }
 function ligarTipCPO() {
   const b = $("#blocoCPO"), tip = $("#cpoTip"); if (!b || !matchMedia("(hover: hover)").matches) return;
@@ -4122,11 +4140,12 @@ function desenharPainel(d, local) {
     ${rOk ? `<p class="nota">${niveis.map(n => `${n} risco: ${fmtN(R.nivel[n])} (${pctDe(R.nivel[n], R.n)})`).join("; ")}. Toque numa classe para ver só ela.</p>` : ""}</div>`;
 
   const c12 = r && r.cpod12 && r.cpod12.n;
-  const cpod12 = semDados ? "" : `<div class="bloco"><h3>CPO-D aos 12 anos</h3>${
-    !c12 ? `<p class="dica">Ninguém de 12 anos com dentes permanentes nesta seleção.</p>` :
-    r.cpod12Media == null ? `<p class="dica">${fmtN(c12)} pessoas de 12 anos. A média aparece a partir de 5 pessoas.</p>` :
-    `<p class="destaque">${fmtN(r.cpod12Media)}</p><p class="dica">Severidade ${esc(r.cpod12Severidade.toLowerCase())} pela classificação da OMS, com ${fmtN(c12)} pessoas de 12 anos.</p>`}
-    <p class="nota" style="margin-top:12px">Placa visível em ${fmtN(r.placa)}, gengivite em ${fmtN(r.gengivite)}${r.fluorose != null ? ` e fluorose moderada ou severa em ${fmtN(r.fluorose)}` : ""} pessoas.</p>${totaisDentes(r)}</div>`;
+  const cpod12 = semDados ? "" : `<div class="bloco"><h3>CPO-D aos 12 anos <small class="dica">(idade-índice da OMS)</small></h3>${
+    !c12 ? `<p class="dica">Nenhuma pessoa de 12 anos examinada nesta seleção.</p>` :
+    r.cpod12Media == null ? `<p class="dica">${pl(c12, "pessoa", "pessoas")} de 12 anos. A média aparece a partir de 5 pessoas.</p>` :
+    `<p class="destaque">${fmtN(r.cpod12Media)}</p><p class="dica">Severidade ${esc(r.cpod12Severidade.toLowerCase())} pela classificação da OMS, com ${pl(c12, "pessoa", "pessoas")} de 12 anos.</p>`}
+    <h3 style="margin-top:16px">Todas as idades nesta seleção</h3>
+    <ul class="totais"><li>Pessoas com placa visível: <b>${fmtN(r.placa)}</b></li><li>Pessoas com gengivite: <b>${fmtN(r.gengivite)}</b></li>${r.fluorose != null ? `<li>Pessoas com fluorose moderada ou severa: <b>${fmtN(r.fluorose)}</b></li>` : ""}${totaisDentes(r)}</ul></div>`;
 
   const F = B.faixa, cpo = F && !F.poucos && F.n > 0 ? blocoIndices(F) : "";
 
@@ -4236,7 +4255,8 @@ async function carregarHistorico(forcar) {
   if (c) estH.dados = c.dados;
   renderHistorico();
   if (!navigator.onLine || !sessao() || !cfg().url) { estH.msg = c ? `Sem internet: histórico guardado em ${fmtDataHora(c.em)}.` : "O histórico aparece quando houver internet."; return renderHistorico(); }
-  if (c && !forcar && Date.now() - new Date(c.em) < 6 * 3600e3) return;
+  // Resposta "ainda não enviado" não vale guardada: pergunta de novo até o histórico chegar.
+  if (c && !(c.dados || {}).vazio && !forcar && Date.now() - new Date(c.em) < 6 * 3600e3) return;
   try {
     const j = await api("historico", {dsei: estH.dsei});
     cache[estH.dsei] = {em: new Date().toISOString(), dados: j}; const ks = Object.keys(cache).sort((a, b) => cache[b].em.localeCompare(cache[a].em)); ks.slice(6).forEach(k => delete cache[k]);
@@ -4264,6 +4284,10 @@ function valoresTerritorio(h, ano) {
     ald_4mais_pct: Math.round(1000 * ls.filter(a => (Number(a.meses) || 0) >= 4).length / ls.length) / 10};
 }
 const fmtInd = (v, un) => v == null || v === "" || isNaN(Number(v)) ? "–" : (un === "%" ? Number(v).toLocaleString("pt-BR", {maximumFractionDigits: 1}) + "%" : Number(v).toLocaleString("pt-BR", {maximumFractionDigits: 1}));
+// Cor da barra pelo quanto da meta foi alcançado, nas mesmas cores da classificação de risco (verde = atingiu; vinho = longe).
+const FAIXAS_META = [[1, "A", "atingiu"], [0.9, "B", "90% a 99% da meta"], [0.75, "C", "75% a 89%"], [0.5, "D", "50% a 74%"], [0.25, "E", "25% a 49%"], [0, "F", "menos de 25%"]];
+function corMeta(v, m) { if (v == null || v === "" || m == null || !(m > 0)) return "#B8C0CC"; const r = Number(v) / m; return COR_CLASSE[(FAIXAS_META.find(f => r >= f[0]) || FAIXAS_META.at(-1))[1]]; }
+function legendaMeta() { return `<div class="leg-meta" aria-label="Cores das barras">${FAIXAS_META.map(f => `<span><i style="background:${COR_CLASSE[f[1]]}"></i>${f[2]}</span>`).join("")}<span><i style="background:#B8C0CC"></i>sem meta ou ano parcial</span></div>`; }
 function situacaoMeta(v, m) { if (v == null || m == null) return ["sem", "sem meta"]; if (Number(v) >= m.valor) return ["ok", "✓ atingiu"]; if (Number(v) >= m.valor * 0.95) return ["quase", "≈ quase"]; return ["bad", "✕ abaixo"]; }
 function renderHistorico() {
   renderIndicadores(); renderDicas();
@@ -4288,12 +4312,13 @@ function renderIndicadores() {
     const disp = val != null && val !== "";
     const max = i.un === "%" ? 100 : Math.max(1.5 * (m ? m.valor : 1), Number(val) || 0, 1);
     return `<button type="button" class="ind-card" data-ind="${i.k}" aria-pressed="${estH.sel === i.k}"><span class="l1"><span class="nome">${esc(i.curto)}</span><span class="val">${disp ? fmtInd(val, i.un) : "–"}</span></span>
-      ${disp ? `<span class="ind-barra" aria-hidden="true"><i style="width:${Math.min(100, 100 * Number(val) / max)}%"></i>${m ? `<b style="left:calc(${Math.min(100, 100 * m.valor / max)}% - 1px)"></b>` : ""}</span>` : ""}
+      ${disp ? `<span class="ind-barra" aria-hidden="true"><i style="width:${Math.min(100, 100 * Number(val) / max)}%;background:${parcial ? "#B8C0CC" : corMeta(val, m && m.valor)}"></i>${m ? `<b style="left:calc(${Math.min(100, 100 * m.valor / max)}% - 1px)"></b>` : ""}</span>` : ""}
       <span class="l3"><span>${disp ? (m ? `meta ${estH.ano}: ${fmtInd(m.valor, i.un)} (${esc(m.fonte)})` : "sem meta neste ano") : nivelPolo ? "disponível só por DSEI" : "sem dado neste ano"}</span>${disp ? `<span class="sit-chip ${sit[0]}">${sit[1]}</span>` : ""}</span></button>`;
-  }).join("");
+  });
   box.innerHTML = topo + `<div class="bloco"><h3>Os 8 indicadores da Nota Técnica 3/2025 · ${esc(estH.aldeia || estH.polo || "DSEI " + estH.dsei)} · ${estH.ano}</h3>
     ${parcial ? `<p class="aviso">2026 tem só o 1º semestre: os indicadores anuais não são comparados com a meta antes de o ano fechar.</p>` : ""}
-    <div class="ind-grade">${cards}</div><p class="dica" style="margin-top:8px">Toque num indicador para ver a série, a meta de cada ano e com qual população ele conversa.</p></div>`
+    <h4 class="grupo-ind">Pactuados no PDSI e no PNS</h4><div class="ind-grade">${INDICADORES_NT3.map((x, n) => INDICADORES_PDSI.includes(x.k) ? cards[n] : "").join("")}</div>
+    <h4 class="grupo-ind">Intermediários do SIPLAM <small class="dica">(monitoramento nacional, meta nacional)</small></h4><div class="ind-grade">${INDICADORES_NT3.map((x, n) => INDICADORES_PDSI.includes(x.k) ? "" : cards[n]).join("")}</div>${legendaMeta()}<p class="dica" style="margin-top:8px">Toque num indicador para ver a série, a meta de cada ano e com qual população ele conversa.</p></div>`
     + detalheIndicador(h, pdsi) + comparacaoTerritorios(h, pdsi);
 }
 // Série do indicador: o histórico (âmbar, tracejado), o Brasil (cinza), a meta de cada ano (degraus) e o ponto do app (azul).
@@ -4303,29 +4328,46 @@ function detalheIndicador(h, pdsi) {
   const salva = estH.ano, ser = anos.map(a => { estH.ano = a; const x = valoresTerritorio(h, a)[i.k]; return x == null || x === "" ? null : Number(x); }); estH.ano = salva;
   const br = nivelPolo ? anos.map(() => null) : anos.map(a => { const r = (h.oficiais || []).find(x => x.dsei === "BRASIL" && String(x.ano) === a); return r && r[i.k] != null && r[i.k] !== "" ? Number(r[i.k]) : null; });
   const metas = anos.map(a => (metaDe(i.k, a, pdsi) || {}).valor ?? null);
-  const app = appIndicador(i.k);
+  const app = appIndicador(i.k), nome = estH.aldeia || estH.polo || estH.dsei;
   const vals = [...ser, ...br, ...metas, app ? app.v : null].filter(x => x != null);
   if (!vals.length) return `<div class="bloco"><h3>${esc(i.nome)}</h3><p class="dica">Sem dados para este território.</p></div>`;
-  const topo = Math.max(...vals) * 1.1 || 1, passo = [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50].find(p => topo / p <= 5) || 100;
-  const W = 340, H = 200, ml = 36, mr = 12, mt = 10, mb = 24, maxV = i.un === "%" ? Math.min(100, Math.ceil(topo / passo) * passo) : Math.ceil(topo / passo) * passo, minV = 0;
+  // 2026 tem só o 1º semestre: o ponto fica solto (sem linha), porque não dá para comparar meio ano com um ano inteiro.
+  const ip = anos.indexOf("2026"), fechado = arr => arr.map((v, k) => k === ip ? null : v);
+  // Eixo em passos redondos. Em %, vai até 100%; só passa disso quando algum valor passa (e o gráfico mostra).
+  const topo = Math.max(...vals) * 1.12 || 1, passo = [0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 25, 50].find(q => topo / q <= 5) || 100;
+  const W = 340, H = 210, ml = 36, mr = 12, mt = 16, mb = 24, teto = Math.ceil(topo / passo) * passo;
+  const maxV = i.un === "%" && Math.max(...vals) <= 100 ? Math.min(100, teto) : teto, minV = 0;
   const x = k => ml + (W - ml - mr) * (k + 0.5) / anos.length, bw = (W - ml - mr) / anos.length, y = v => mt + (H - mt - mb) * (1 - (v - minV) / (maxV - minV));
   const ticks = []; for (let t = 0; t <= maxV + 1e-9; t += passo) ticks.push(Math.round(t * 100) / 100);
-  const linha = (arr, extra) => { let d = ""; arr.forEach((v, k) => { if (v == null) return; d += (d ? "L" : "M") + x(k).toFixed(1) + " " + y(v).toFixed(1); }); return d ? `<path d="${d}" fill="none" ${extra}/>` : ""; };
-  let degraus = ""; metas.forEach((m, k) => { if (m == null) return; degraus += `M${(x(k) - bw / 2).toFixed(1)} ${y(m).toFixed(1)}L${(x(k) + bw / 2).toFixed(1)} ${y(m).toFixed(1)}`; });
-  const ip = anos.indexOf("2026");
-  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Série de ${esc(i.curto)}">
+  const linha = (arr, extra) => { let d = "", ant = false; arr.forEach((v, k) => { if (v == null) { ant = false; return; } d += (ant ? "L" : "M") + x(k).toFixed(1) + " " + y(v).toFixed(1); ant = true; }); return d ? `<path d="${d}" fill="none" ${extra}/>` : ""; };
+  let degraus = ""; metas.forEach((m, k) => { if (m == null) return; degraus += `M${(x(k) - bw / 2 + 2).toFixed(1)} ${y(m).toFixed(1)}L${(x(k) + bw / 2 - 2).toFixed(1)} ${y(m).toFixed(1)}`; });
+  // Número do ponto em cima ou embaixo, onde não houver traço de meta nem linha do Brasil.
+  const rot = (v, k) => { const perto = [metas[k], br[k]].filter(z => z != null).map(y), cima = y(v) - 8, baixo = y(v) + 14;
+    const folga = yy => Math.min(99, ...perto.map(z => Math.abs(z - (yy - 3))));
+    const yy = folga(cima) >= 8 || folga(cima) >= folga(baixo) ? cima : baixo;
+    return `<text x="${x(k)}" y="${yy.toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="#9A4D08" stroke="#fff" stroke-width="3" paint-order="stroke">${fmtInd(v, i.un)}</text>`; };
+  const svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Série de ${esc(i.curto)}: ${anos.map((a, k) => `${a} ${ser[k] == null ? "sem dado" : fmtInd(ser[k], i.un)}`).join(", ")}">
     ${ip >= 0 ? `<rect x="${x(ip) - bw / 2}" y="${mt}" width="${bw}" height="${H - mt - mb}" fill="#C5CCD6" opacity=".25"/>` : ""}
     ${ticks.map(t => `<line x1="${ml}" x2="${W - mr}" y1="${y(t)}" y2="${y(t)}" stroke="#E6ECF3"/><text x="${ml - 5}" y="${y(t) + 3.5}" text-anchor="end" font-size="9" fill="#556275">${fmtInd(t, i.un)}</text>`).join("")}
     ${anos.map((a, k) => `<text x="${x(k)}" y="${H - 8}" text-anchor="middle" font-size="9" fill="#556275">${a === "2026" ? "2026*" : a}</text>`).join("")}
     ${degraus ? `<path d="${degraus}" fill="none" stroke="#13233A" stroke-width="1.5"/>` : ""}
-    ${linha(br, 'stroke="#8A96A8" stroke-width="1.5"')}
-    ${linha(ser, 'stroke="#C2620A" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round" stroke-linejoin="round"')}
-    ${ser.map((v, k) => v == null ? "" : `<circle cx="${x(k)}" cy="${y(v)}" r="3" fill="#C2620A"><title>${anos[k]}: ${fmtInd(v, i.un)}</title></circle>`).join("")}
-    ${app ? `<circle cx="${x(anos.length - 1) + 6}" cy="${y(app.v)}" r="5" fill="#1D6FD8" stroke="#fff" stroke-width="2"><title>App: ${fmtInd(app.v, i.un)}</title></circle>` : ""}</svg>`;
+    ${linha(fechado(br), 'stroke="#8A96A8" stroke-width="1.5"')}
+    ${ip >= 0 && br[ip] != null ? `<circle cx="${x(ip)}" cy="${y(br[ip])}" r="2.5" fill="#fff" stroke="#8A96A8" stroke-width="1.5"><title>Brasil, 2026 (1º semestre): ${fmtInd(br[ip], i.un)}</title></circle>` : ""}
+    ${linha(fechado(ser), 'stroke="#C2620A" stroke-width="2.5" stroke-dasharray="6 4" stroke-linecap="round" stroke-linejoin="round"')}
+    ${ser.map((v, k) => v == null ? "" : `<circle cx="${x(k)}" cy="${y(v)}" r="3.2" ${k === ip ? 'fill="#fff" stroke="#C2620A" stroke-width="2"' : 'fill="#C2620A"'}><title>${anos[k]}${k === ip ? " (1º semestre)" : ""}: ${fmtInd(v, i.un)}</title></circle>${rot(v, k)}`).join("")}
+    ${app ? `<circle cx="${x(anos.length - 1) + 8}" cy="${y(app.v)}" r="5" fill="#1D6FD8" stroke="#fff" stroke-width="2"><title>App: ${fmtInd(app.v, i.un)}</title></circle>` : ""}</svg>`;
+  const tr = c => `<svg width="22" height="10" aria-hidden="true">${c}</svg>`;
+  const leg = [
+    `<span>${tr('<line x1="1" y1="5" x2="21" y2="5" stroke="#C2620A" stroke-width="2.5" stroke-dasharray="5 3"/><circle cx="11" cy="5" r="3" fill="#C2620A"/>')} ${esc(nome)}, dado oficial do SIASI</span>`,
+    nivelPolo ? "" : `<span>${tr('<line x1="1" y1="5" x2="21" y2="5" stroke="#8A96A8" stroke-width="1.5"/>')} Brasil (todos os DSEIs)</span>`,
+    `<span>${tr('<line x1="2" y1="5" x2="20" y2="5" stroke="#13233A" stroke-width="2"/>')} Meta de cada ano${Object.keys((pdsi || {})[i.k] || {}).length ? " (do PDSI, quando houver)" : ""}</span>`,
+    ip >= 0 ? `<span>${tr('<rect x="1" y="0" width="20" height="10" fill="#C5CCD6" opacity=".5"/><circle cx="11" cy="5" r="3" fill="#fff" stroke="#C2620A" stroke-width="2"/>')} 2026*: só o 1º semestre, ponto solto (ainda não comparável com um ano inteiro)</span>` : "",
+    app ? `<span>${tr('<circle cx="11" cy="5" r="4" fill="#1D6FD8"/>')} App (não oficial)</span>` : ""].filter(Boolean).join("");
+  const acima = ser.some((v, k) => k === ip && v != null && i.un === "%" && v > 100);
   return `<div class="bloco serie"><h3>${esc(i.nome)}</h3>
-    <div class="lg"><span><svg width="18" height="6"><line x1="1" y1="3" x2="17" y2="3" stroke="#C2620A" stroke-width="2.5" stroke-dasharray="4 3"/></svg> ${esc(estH.aldeia || estH.polo || estH.dsei)} (SIASI)</span>${nivelPolo ? "" : `<span><svg width="18" height="6"><line x1="1" y1="3" x2="17" y2="3" stroke="#8A96A8" stroke-width="1.5"/></svg> Brasil</span>`}<span><svg width="18" height="6"><path d="M1 5 H9 V1 H17" fill="none" stroke="#13233A" stroke-width="1.5"/></svg> Meta do ano</span>${app ? `<span><svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="#1D6FD8"/></svg> App (${esc(app.txt)})</span>` : ""}</div>
+    <div class="lg">${leg}</div>
     ${svg}
-    ${anos.includes("2026") ? '<p class="dica" style="margin:2px 0 0">* 2026: só o 1º semestre (faixa cinza).</p>' : ''}
+    ${acima ? `<p class="aviso" style="margin-top:6px">Em 2026 o valor passa de 100% porque o 1º semestre conta tratamentos concluídos de pessoas que começaram em 2025, mas só as primeiras consultas de 2026. O número fecha quando o ano acabar.</p>` : ""}
     ${app ? `<p class="dica"><span class="app-chip">app</span> ${esc(app.nota)}</p>` : ""}
     <dl class="ficha-ind"><dt>Numerador</dt><dd>${esc(i.num)}</dd><dt>Denominador</dt><dd>${esc(i.den)}</dd><dt>Unidade</dt><dd>${i.un === "%" ? "%" : "média"}</dd><dt>Fonte</dt><dd>${nivelPolo ? "dados abertos do SIASI (Ficha 7, por aldeia)" : "SIASI, resposta do Fala.BR (NUP 25072.061009/2026-11)"}</dd>${i.cuidado ? `<dt>Cuidado</dt><dd>${esc(i.cuidado)}</dd>` : ""}</dl></div>`;
 }
@@ -4349,10 +4391,11 @@ function comparacaoTerritorios(h, pdsi) {
   const nomes = Object.keys(grupos).sort((a, b) => a.localeCompare(b, "pt-BR")); if (!nomes.length) return "";
   const m = metaDe(i.k, ano, pdsi), sel = porAldeia ? estH.aldeia : estH.polo;
   return `<div class="bloco"><h3>${esc(i.curto)} por ${porAldeia ? "aldeia do polo " + esc(estH.polo) : "polo base"} · ${ano}</h3>
-    <p class="dica" style="margin:0 0 8px">Em ordem alfabética. ${m ? `O traço é a meta de ${ano} (${fmtInd(m.valor, i.un)}).` : ""} Dados abertos (Ficha 7). Territórios com menos de 20 primeiras consultas aparecem com "poucos dados".</p>
+    <p class="dica" style="margin:0 0 8px">Em ordem alfabética. ${m ? `O traço preto é a meta de ${ano} (${fmtInd(m.valor, i.un)}).` : ""} Dados abertos do SIASI (Ficha 7)${nomes.length === 1 ? `: nos dados abertos, este ${porAldeia ? "polo tem uma aldeia só" : "DSEI tem um polo base só"}` : ""}.</p>
     ${nomes.map(n => { const v = val(grupos[n]), poucos = i.k !== "ald_4mais_pct" && s(grupos[n], "cop") < 20;
-      return `<div class="comp-l ${n === sel ? "sel" : ""}"><span>${esc(n)}</span><span class="bar">${v != null ? `<i style="width:${Math.min(100, v)}%"></i>` : ""}${m ? `<b style="left:${Math.min(100, m.valor)}%"></b>` : ""}</span><span>${v == null ? "–" : fmtInd(Math.round(v * 10) / 10, "%")}${poucos ? " ·" : ""}</span></div>`; }).join("")}
-    <p class="dica" style="margin-top:6px">· poucos dados</p></div>`;
+      return `<div class="comp-l ${n === sel ? "sel" : ""}"><span>${esc(n)}</span><span class="bar">${v != null ? `<i style="width:${Math.min(100, v)}%;background:${corMeta(v, m && m.valor)}"></i>` : ""}${m ? `<b style="left:${Math.min(100, m.valor)}%"></b>` : ""}</span><span>${v == null ? "–" : fmtInd(Math.round(v * 10) / 10, "%")}${poucos ? " *" : ""}</span></div>`; }).join("")}
+    ${legendaMeta()}
+    ${nomes.some(n => i.k !== "ald_4mais_pct" && s(grupos[n], "cop") < 20) ? `<p class="dica" style="margin-top:6px">* poucos dados: menos de 20 primeiras consultas no ano. O número muda muito com poucos atendimentos.</p>` : ""}</div>`;
 }
 // Dicas: só as aprovadas pela coordenação titular, quando o indicador do DSEI está abaixo da meta (no último ano fechado).
 function renderDicas() {
@@ -5511,6 +5554,20 @@ $("#contaTermo").addEventListener("click", async () => {
   catch (err) { toast(navigator.onLine ? err.message : "Para ler o termo, conecte-se à internet."); }
 });
 
+/* ---------- tabelas que cabem na tela ----------
+ * Toda tabela com cabeçalho ganha, em cada célula, o nome da coluna (data-rotulo). No celular, o CSS usa esse nome para
+ * mostrar cada linha como um cartão; assim nada precisa de rolagem lateral. Roda sozinho quando uma tela é desenhada. */
+function rotularTabelas() {
+  $$(".tabela table").forEach(t => {
+    const cab = t.tHead && t.tHead.rows[0]; if (!cab) return;
+    const nomes = []; [...cab.cells].forEach(c => { for (let k = 0; k < (c.colSpan || 1); k++) nomes.push(c.textContent.trim()); });
+    t.classList.add("tab-cartao");
+    [...t.tBodies].forEach(b => [...b.rows].forEach(l => { let k = 0; [...l.cells].forEach(c => { if (!c.hasAttribute("data-rotulo")) c.setAttribute("data-rotulo", (c.colSpan || 1) > 1 ? "" : nomes[k] || ""); k += c.colSpan || 1; }); }));
+  });
+}
+let rotulando = false;
+new MutationObserver(() => { if (rotulando) return; rotulando = true; requestAnimationFrame(() => { rotularTabelas(); rotulando = false; }); }).observe(document.body, {childList: true, subtree: true});
+
 /* ---------- minha conta ---------- */
 function renderConfig() {
   const s = sessao(), u = (s && s.usuario) || {}, c = cfg();
@@ -5814,9 +5871,9 @@ function blocoHistoricoAdm() {
     <p class="dica" style="margin:4px 0 10px">O histórico (indicadores oficiais por DSEI e dados abertos por aldeia) fica numa planilha própria, separada dos exames. Todos veem o histórico de todos os DSEIs na aba Indicadores do Painel.</p>
     ${tit ? `<div class="acoes-l"><button class="prim" type="button" id="admHistApp">Enviar o histórico que vem com o app</button><label class="sec botao-arq">Enviar outro arquivo<input type="file" id="admHistArq" accept=".json"></label></div>` : `<p class="dica">Só a coordenação titular envia o histórico.</p>`}
     <p class="dica" id="admHistStatus" aria-live="polite"></p>
-    <h3 style="margin-top:14px">Meta do PDSI</h3><p class="dica" style="margin:4px 0 8px">Quando o DSEI pactuou uma meta no PDSI, ela vale no lugar da meta nacional. Deixe o valor vazio para voltar à nacional.</p>
+    <h3 style="margin-top:14px">Meta do PDSI</h3><p class="dica" style="margin:4px 0 8px">Pela NT 3/2025, o PDSI pactua três indicadores: 1ª consulta programática, tratamento concluído e gestantes. Quando o DSEI pactuou uma meta, ela vale no lugar da nacional. Deixe o valor vazio para voltar à nacional. Os outros cinco são intermediários do SIPLAM e usam sempre a meta nacional.</p>
     <div class="grade"><label class="campo">DSEI<select id="admMetaDsei">${DSEIS.map(x => `<option ${x === m.dsei ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></label>
-      <label class="campo">Indicador<select id="admMetaInd">${INDICADORES_NT3.map(i => `<option value="${i.k}" ${i.k === m.indicador ? "selected" : ""}>${esc(i.curto)}</option>`).join("")}</select></label>
+      <label class="campo">Indicador<select id="admMetaInd">${INDICADORES_NT3.filter(i => INDICADORES_PDSI.includes(i.k)).map(i => `<option value="${i.k}" ${i.k === m.indicador ? "selected" : ""}>${esc(i.curto)}</option>`).join("")}</select></label>
       <label class="campo">Ano<input id="admMetaAno" type="number" min="2024" max="2030" value="${esc(m.ano)}"></label>
       <label class="campo">Meta<input id="admMetaValor" type="number" step="0.1" min="0" placeholder="vazio = nacional"></label></div>
     <div class="acoes-l"><button class="sec" type="button" id="admMetaSalvar">Salvar a meta do PDSI</button></div><p class="dica" id="admMetaStatus" aria-live="polite"></p></div>`;

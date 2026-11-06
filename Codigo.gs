@@ -3624,7 +3624,7 @@ function historico(d, u) {
 function salvarMetaPdsi(d, u) {
   const dsei = String(d.dsei || ''), k = String(d.indicador || ''), ano = String(d.ano || '');
   if (!dseiValido(dsei)) return { ok: false, erro: 'Escolha um DSEI da lista.' };
-  if (!INDICADORES_NT3.some(function (x) { return x.k === k; })) return { ok: false, erro: 'Indicador fora da lista.' };
+  if (INDICADORES_PDSI.indexOf(k) < 0) return { ok: false, erro: 'Pela NT 3/2025, só a 1ª consulta programática, o tratamento concluído e as gestantes têm meta pactuada no PDSI.' };
   if (!/^20\d\d$/.test(ano)) return { ok: false, erro: 'Ano inválido.' };
   const v = d.valor === '' || d.valor == null ? null : Number(d.valor);
   if (v != null && !(v >= 0 && v <= 1000)) return { ok: false, erro: 'Valor da meta inválido.' };
@@ -4000,6 +4000,9 @@ var INDICADORES_NT3 = [
   {k: "ald_4mais_pct", nome: "% de aldeias com atenção odontológica regular", curto: "Aldeias com atenção regular", un: "%", tipo: "intermediario",
     num: "aldeias com 4 meses ou mais com ao menos 1 atendimento odontológico", den: "total de aldeias", cuidado: "Cada tabela pode usar uma lista de aldeias diferente. Num período parcial, o valor é baixo por definição."}];
 /** @type {any} */
+// Pela NT 3/2025, só os 3 primeiros são pactuados no PDSI (e no PNS); os outros 5 são intermediários do SIPLAM,
+// monitorados pela área técnica nacional. Por isso a meta do PDSI só existe para estes três.
+var INDICADORES_PDSI = ["cop_pct", "tc_pct", "gest_pct"];
 var METAS_NT3 = {cop_pct: {2020: 45, 2021: 25, 2022: 30, 2023: 50, 2024: 45, 2025: 50, 2026: 55, 2027: 60}, tc_pct: {2020: 55, 2021: 52, 2022: 55, 2023: 58, 2024: 52, 2025: 55, 2026: 58, 2027: 60},
   gest_pct: {2024: 8, 2025: 50, 2026: 55, 2027: 60}, media_atend: {2025: 0.7, 2026: 0.8}, menores5_pct: {2025: 45, 2026: 50}, art_pct: {2025: 37, 2026: 40},
   esc_media: {2025: 7.5, 2026: 8}, ald_4mais_pct: {2025: 40, 2026: 45}};

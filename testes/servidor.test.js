@@ -1195,6 +1195,7 @@ parte("histórico do SIASI, metas e dicas");
   const h = R.P(R.ANA, { acao: "historico", dsei: "Litoral Sul" });
   T("qualquer pessoa vê o histórico de qualquer DSEI (a dentista do Yanomami vê o Litoral Sul)", h.ok && h.oficiais.some(r => r.dsei === "Litoral Sul") && h.oficiais.some(r => r.dsei === "BRASIL") && h.aldeias.length > 100 && h.aldeias.every(a => a.dsei === "Litoral Sul"));
   T("o histórico não entra na base de exames", !(R.G.est.sheets.Exames || []).slice(1).length);
+  T("pela NT 3, indicador intermediário do SIPLAM não tem meta do PDSI", /NT 3\/2025/.test(R.P(R.C, { acao: "salvarMetaPdsi", dsei: "Litoral Sul", indicador: "art_pct", ano: "2026", valor: 50 }).erro || ""));
   T("meta do PDSI só pela coordenação", !R.P(R.RT, { acao: "salvarMetaPdsi", dsei: "Litoral Sul", indicador: "tc_pct", ano: "2026", valor: 60 }).ok);
   T("a meta do PDSI fica guardada e volta com o histórico do DSEI", R.P(R.C, { acao: "salvarMetaPdsi", dsei: "Litoral Sul", indicador: "tc_pct", ano: "2026", valor: 60 }).ok && R.P(R.ANA, { acao: "historico", dsei: "Litoral Sul" }).metasPdsi.tc_pct[2026] === 60);
   const metaDe = require("vm").runInContext("metaDe", R.G.ctx);
