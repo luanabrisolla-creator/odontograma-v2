@@ -135,12 +135,6 @@ function estadoDoPlano(plano, retornos) {
     });
   return e;
 }
-// Atividade coletiva (Ficha 3): um registro por atividade, com o número de participantes.
-var TIPOS_ATIVIDADE = ["Escovação dental supervisionada", "Aplicação tópica de flúor-gel", "Educação em saúde"];
-/** @type {any} */
-var NIVEIS_PROF = {medio: "Nível médio", superior: "Nível superior"};
-/** @type {any} */
-var LOCAIS_ATIVIDADE = {comunidade: "Na comunidade", estabelecimento: "No estabelecimento de saúde"};
 // Os 8 indicadores de saúde bucal da Nota Técnica 3/2025 e as metas nacionais por ano. 2020 a 2023 vêm do Fala.BR
 // (a meta repetida em cada tabela anual); 2026 dos intermediários, do quadro do SIPLAM. A meta do PDSI vale no lugar, quando houver.
 /** @type {any} */
