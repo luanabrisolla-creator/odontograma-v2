@@ -501,6 +501,10 @@ for (let i = 0; i < 8; i++) {
   await irAba(pg, "inicio"); await pg.waitForTimeout(800);
   const linhaIni = await pg.$eval(`#iniUltimos [data-ini-ex="${idSem}"]`, el => el.textContent).catch(() => "");
   T("início: o exame sem odontograma aparece \"Sem classificação\" (nunca \"Baixo\")", /Sem classificação/.test(linhaIni) && !/Baixo/.test(linhaIni) && /–/.test(linhaIni), linhaIni);
+  const stats = await pg.textContent("#iniStats"), status = await pg.textContent("#iniStatus");
+  T("início: \"Pessoas atendidas\" e \"Atendimentos registrados\", com quantos têm classificação e odontograma", /Pessoas atendidas/.test(stats) && /com classificação de risco: \d/.test(stats)
+    && /Atendimentos registrados/.test(stats) && /com odontograma: \d/.test(stats) && !/examinadas/.test(stats), stats);
+  T("início: diz de quem são os números", /Seus atendimentos/.test(status), status);
   T("sem erros na página (sem odontograma)", !pg.erros.length, pg.erros);
   await ctx.close();
   // Administração (titular): espaço, erros explicados e dados para análise.

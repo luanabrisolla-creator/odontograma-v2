@@ -2640,25 +2640,33 @@ function cancelarAcao(d, u) {
   registrar(u, 'Cancelou ação do Dia B', a.nome + ' · DSEI ' + a.dsei + ' · ' + dataBR(a.data_inicio) + ' a ' + dataBR(a.data_fim));
   return { ok: true };
 }
+/** Dia (AAAA-MM-DD, no fuso do app) em que a base de exames recomeçou; vazio se nunca recomeçou. */
+function diaDoRecomeco() {
+  const d = propriedade('EXAMES_DESDE');
+  return d ? Utilities.formatDate(new Date(d), FUSO, 'yyyy-MM-dd') : '';
+}
 // Página inicial: quem faz exames vê a própria produção; a coordenação (sem DSEI) vê todos os DSEIs.
 /** @param {any} d @param {any} u */
 function inicio(d, u) {
   const todos = lerResumos().filter(exameValido), hoje = hojeIso();
   const minha = u.perfil !== 'coord' || !!u.dsei;
   const meus = minha ? todos.filter(function (r) { return ehDoUsuario(r, u); }) : todos;
+  // A situação de cada pessoa vem do último exame COM odontograma, como no painel: o atendimento sem odontograma
+  // não tem classe de risco, então não tira a pessoa do alto risco nem conta como reavaliação.
   /** @type {any} */ const ultimo = {};
-  todos.slice().sort(ordemExame).forEach(function (r) { ultimo[codigoIndividuoDe(r)] = r; });
+  todos.filter(function (r) { return !semOdontograma(r); }).sort(ordemExame).forEach(function (r) { ultimo[codigoIndividuoDe(r)] = r; });
   /** @type {any} */ const cods = {};
   meus.forEach(function (r) { cods[codigoIndividuoDe(r)] = 1; });
-  const pessoas = Object.keys(cods);
-  const alto = pessoas.filter(function (c) { return nivelDaClasse(((ultimo[c] || {}).resultado || {}).classe) === 'Alto risco'; }).length;
-  const reavaliar = minha ? pessoas.filter(function (c) { return mesesEntre((ultimo[c] || {}).dataExame, hoje) >= MESES_REAVALIACAO; })
+  const pessoas = Object.keys(cods), comClasse = pessoas.filter(function (c) { return !!ultimo[c]; });
+  const alto = comClasse.filter(function (c) { return nivelDaClasse((ultimo[c].resultado || {}).classe) === 'Alto risco'; }).length;
+  const reavaliar = minha ? comClasse.filter(function (c) { return mesesEntre(ultimo[c].dataExame, hoje) >= MESES_REAVALIACAO; })
     .map(function (c) { const r = ultimo[c]; return { codigo: c, data: r.dataExame, aldeia: r.aldeia || '', polo: r.polo || '', dsei: r.dsei, classe: (r.resultado || {}).classe || '' }; })
     .sort(function (x, y) { return String(x.data).localeCompare(String(y.data)); }) : [];
   const vis = acoesVisiveis(u), ano = hoje.slice(0, 4);
   const acoesL = vis.filter(function (a) { return andamentoDe(a, hoje) !== 'encerrada'; }).map(function (a) { return resumoAcao(a, todos, u, hoje); })
     .sort(function (x, y) { return String(x.inicio).localeCompare(String(y.inicio)); });
-  return { ok: true, versao: VERSAO, hoje: hoje, escopo: minha ? 'minha' : 'geral', pessoas: pessoas.length, exames: meus.length, alto: alto,
+  return { ok: true, versao: VERSAO, hoje: hoje, escopo: minha ? 'minha' : 'geral', pessoas: pessoas.length, pessoasComClasse: comClasse.length,
+    exames: meus.length, comOdontograma: meus.filter(function (r) { return !semOdontograma(r); }).length, desde: diaDoRecomeco(), alto: alto,
     acoesAno: vis.filter(function (a) { return String(a.data_inicio).slice(0, 4) === ano; }).length,
     reavaliar: reavaliar.slice(0, 200), totalReavaliar: reavaliar.length, mesesReavaliacao: MESES_REAVALIACAO, acoes: acoesL };
 }

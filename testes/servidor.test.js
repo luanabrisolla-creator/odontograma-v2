@@ -998,5 +998,30 @@ parte("odontograma opcional");
     && !Object.values(G5.est.extras).find(x => x.nome === "Odontograma - análise - faces").abas.Faces.some(l => l[0] === "SO1"));
 }
 
+/* ---------------------------------------------------------------- página inicial (cenário separado) */
+parte("página inicial");
+{
+  const R = cenario(), MOT = require("vm").runInContext("MOTIVOS_SEM_ODONTOGRAMA", R.G.ctx);
+  // A mesma pessoa: um exame com odontograma em alto risco (classe F) há mais de 6 meses e, depois, um atendimento sem odontograma.
+  const m = {}; [16, 26, 36, 46].forEach(n => { m[n] = { faces: { O: "ca" }, dor: true }; });
+  const alto = exame({ id: "IN1", sufixo: "SPSPSP22", data: "2026-03-02", mud: m, denticao: "permanente", idade: 30, nasc: "1996-01-01" });
+  alto.odontograma = "sim";
+  const semOd = exame({ id: "IN2", data: "2026-10-30", denticao: "permanente", idade: 30, nasc: "1996-01-01", vinculo: { codigoIndividuo: "RR-SUR-SAU-SPSPSP22", chaves: [] } });
+  Object.assign(semOd, { odontograma: "nao", odontogramaMotivo: MOT[0], dentes: {}, vigilancia: [], placa: null, gengivite: null, fezColetivos: "nao", deuInsumos: "nao",
+    protese: { sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false }, resultado: { classe: "", risco: "Sem odontograma", motivos: [], ceod: null, cpod: null } });
+  T("(os dois atendimentos da mesma pessoa entram)", R.P(R.ANA, { acao: "enviarExame", registro: alto }).ok && R.P(R.ANA, { acao: "enviarExame", registro: semOd }).ok);
+  const ini = R.P(R.ANA, { acao: "inicio" });
+  T("quem estava em alto risco continua em alto risco depois de um atendimento sem odontograma", ini.ok && ini.alto === 1, ini);
+  T("o prazo de reavaliação conta desde o último exame com odontograma", ini.totalReavaliar === 1 && ini.reavaliar[0].data === "2026-03-02", ini.reavaliar);
+  T("pessoas atendidas, com classificação, atendimentos e com odontograma", ini.pessoas === 1 && ini.pessoasComClasse === 1 && ini.exames === 2 && ini.comOdontograma === 1, ini);
+  T("a página inicial e o painel dão o mesmo número de pessoas com classificação", R.P(R.ANA, { acao: "painel", minha: true }).resumo.n === ini.pessoasComClasse);
+  // Quem só teve atendimento sem odontograma não tem classe: não entra no alto risco nem na reavaliação.
+  const so = Object.assign({}, semOd, { id: "IN3", sufixo: "STSTST22", codigo: "RR-SUR-SAU-STSTST22", codigoIndividuo: "RR-SUR-SAU-STSTST22", dataExame: "2026-01-05", vinculo: null });
+  R.P(R.ANA, { acao: "enviarExame", registro: so });
+  const ini2 = R.P(R.ANA, { acao: "inicio" });
+  T("só atendimento sem odontograma: conta como pessoa atendida, sem classificação e sem reavaliação", ini2.pessoas === 2 && ini2.pessoasComClasse === 1 && ini2.totalReavaliar === 1 && ini2.alto === 1, ini2);
+  T("sem recomeço da base, a data de início vem vazia", ini2.desde === "");
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);
