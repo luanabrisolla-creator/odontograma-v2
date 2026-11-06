@@ -590,6 +590,8 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .ind-card .l3{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:.76rem;color:var(--muted)}
 .ind-barra{height:8px;border-radius:4px;background:var(--surface-2);position:relative}.ind-barra i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#C2620A}
 .ind-barra b{position:absolute;top:-4px;width:3px;height:16px;background:#13233A;border-radius:1px}
+.termo-texto{white-space:pre-wrap;font-size:.9rem;line-height:1.5;max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0 12px;background:var(--bg)}
+.termo-li{display:flex;gap:8px;align-items:center;margin:0 0 10px;font-weight:600}.termo-li input{width:22px;height:22px;min-height:0;flex:none;margin:0;padding:0;accent-color:var(--azul,#1D6FD8)}
 .serie>svg{width:100%;max-width:720px;height:auto;display:block}.serie .lg{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.78rem;color:var(--muted);margin:4px 0 8px}.serie .lg span{display:inline-flex;align-items:center;gap:6px}.serie .lg svg{flex:none}
 .ficha-ind{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;font-size:.86rem;margin:8px 0 0}.ficha-ind dt{color:var(--muted)}.ficha-ind dd{margin:0}
 .comp-l{display:grid;grid-template-columns:minmax(0,9rem) 1fr 3.5rem;gap:8px;align-items:center;font-size:.84rem;padding:3px 0}
@@ -1147,6 +1149,11 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
       <div class="tabela"><table class="conta"><tbody id="contaDados"></tbody></table></div>
       <div id="contaNomeTit"></div>
       <p class="dica" style="margin-top:10px">Nome, CRO e DSEI vêm do seu acesso aprovado. Você registra exames e busca pessoas só neste DSEI. Para mudar de DSEI, fale com a coordenação: ela desativa o acesso atual e você faz um novo pedido com o DSEI novo.</p>
+    </div>
+    <div class="bloco" id="contaTermoBox">
+      <h2 style="margin-bottom:6px">Termo de Ciência</h2>
+      <p class="dica" id="contaTermoInfo" style="margin-bottom:10px"></p>
+      <div class="acoes-l"><button class="sec" type="button" id="contaTermo">Ler o Termo de Ciência</button></div>
     </div>
     <div class="bloco" id="contaAtende">
       <h2 style="margin-bottom:6px">Onde você atende</h2>
@@ -4992,7 +4999,8 @@ async function verificarSessao(forcar) {
   try {
     const j = await api("entrar", {aparelho: tipoAparelho()});
     const mudou = (s.usuario || {}).perfil !== j.usuario.perfil;
-    store.set(K_SESSAO, comSessao(Object.assign(s, {usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0}), j));
+    store.set(K_SESSAO, comSessao(Object.assign(s, {usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0, termo: j.termo || null}), j));
+    conferirTermo();
     avisarServidor(j.versao || 0);
     carregarTerritorios(j.territoriosVersao || "");
     aplicarUsuario(j.usuario); renderAbas();
@@ -5448,11 +5456,11 @@ $("#acessoConteudo").addEventListener("click", async e => {
     b.disabled = true;
     try {
       const j = await api("entrar", {aparelho: tipoAparelho()}, {cred: {email, codigo}});
-      store.set(K_SESSAO, comSessao({email, codigo, usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0}, j));
+      store.set(K_SESSAO, comSessao({email, codigo, usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0, termo: j.termo || null}, j));
       avisarServidor(j.versao || 0);
       carregarTerritorios(j.territoriosVersao || "", true);
       aplicarUsuario(j.usuario); estAc.msg = "";
-      rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem();
+      rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem(); conferirTermo();
     } catch (err) {
       estAc.msg = err.semAcesso ? "O e-mail ou o código não conferem. Confira os dois (o código diferencia maiúsculas de minúsculas) ou peça um novo código." : err.message;
       renderAcesso(); $("#acEmail").value = email;
@@ -5463,6 +5471,44 @@ $("#acessoConteudo").addEventListener("click", async e => {
     try { await api("reenviarCodigo", {email}, {publica: true}); toast("Se o e-mail tiver acesso ativo, enviamos um link para confirmar a troca do código (vale 1 hora). Seu código atual continua valendo até você confirmar."); }
     catch (err) { toast(err.message); }
   }
+});
+
+/* ---------- Termo de Ciência (versão 47) ----------
+ * Desligado, só pode ser lido na Conta. Ligado pela titular, aparece depois de entrar e precisa ser aceito antes de usar o app;
+ * a versão e a data do aceite ficam no cadastro. Texto novo = versão nova: todos aceitam de novo. */
+function htmlTermo(texto, obrig, meu) {
+  const sub = obrig ? "Leia e aceite para continuar usando o app." : meu && meu.aceitoVersao && meu.aceitoEm ? `Você aceitou a versão ${esc(meu.aceitoVersao)} em ${fmtData(meu.aceitoEm.slice(0, 10))}.` : "Somente leitura.";
+  return `<div class="painel" role="${obrig ? "alertdialog" : "dialog"}" aria-modal="true" aria-labelledby="tmTit" style="max-width:640px" ${obrig ? "data-termo-obrig" : ""}>
+    <div class="p-topo"><div><h3 id="tmTit">Termo de Ciência</h3><p>${sub}</p></div>${obrig ? "" : `<button class="fechar" data-fecha-leitura aria-label="Fechar">×</button>`}</div>
+    <div class="termo-texto">${esc(texto)}</div>
+    ${obrig ? `<label class="termo-li"><input type="checkbox" id="tmLi"> Li o termo e estou de acordo.</label>
+      <div class="acoes-l"><button class="prim" type="button" id="tmAceitar" disabled>Aceitar e continuar</button><button class="sec" type="button" id="tmSair">Sair do app</button></div>
+      <p class="dica" id="tmStatus" aria-live="polite"></p>` : ""}</div>`;
+}
+function conferirTermo() {
+  const s = sessao(), t = s && s.termo;
+  if (!t || !t.ativo || t.aceito || !t.texto || $("#leitura [data-termo-obrig]")) return;
+  abrirModal(htmlTermo(t.texto, true));
+}
+$("#leitura").addEventListener("change", e => { if (e.target.id === "tmLi") $("#tmAceitar").disabled = !e.target.checked; });
+$("#leitura").addEventListener("click", async e => {
+  if (e.target.id === "tmSair") { $("#leitura").hidden = true; $("#leitura").innerHTML = ""; document.body.style.overflow = ""; $("#sair").click(); return; }
+  if (e.target.id !== "tmAceitar") return;
+  const s = sessao(), b = e.target; if (!s || !s.termo) return;
+  b.disabled = true; $("#tmStatus").textContent = "Registrando o aceite…";
+  try {
+    const j = await api("aceitarTermo", {versao: s.termo.versao});
+    store.set(K_SESSAO, Object.assign(sessao(), {termo: j.meu}));
+    $("#leitura").hidden = true; $("#leitura").innerHTML = ""; document.body.style.overflow = "";
+    toast("Aceite registrado. Obrigada(o)!"); if (estado.aba === "config") renderConfig();
+  } catch (err) {
+    $("#tmStatus").textContent = err.message; b.disabled = false;
+    if (err.termoMudou) { $("#leitura").hidden = true; $("#leitura").innerHTML = ""; verificarSessao(true); }
+  }
+});
+$("#contaTermo").addEventListener("click", async () => {
+  try { const j = await api("termo", {}); abrirModal(htmlTermo(j.texto, false, j.meu)); }
+  catch (err) { toast(navigator.onLine ? err.message : "Para ler o termo, conecte-se à internet."); }
 });
 
 /* ---------- minha conta ---------- */
@@ -5476,6 +5522,9 @@ function renderConfig() {
   $("#contaNomeTit").innerHTML = u.titular ? `<div class="grade" style="margin-top:12px"><label class="campo">Seu nome (aparece na página inicial e nos registros)<input id="titNome" value="${esc(/^coordena/i.test(u.nome || "") ? "" : u.nome || "")}" autocomplete="name" placeholder="Seu nome completo"></label>
     <div class="campo" style="justify-content:flex-end"><button class="sec" id="titSalvar">Salvar nome</button></div></div>` : "";
   $("#contaAtende").hidden = !fazExames();
+  const tm = (s && s.termo) || null;
+  $("#contaTermoInfo").textContent = u.titular ? "Você muda o texto e liga ou desliga o termo em Administração." : !tm || !tm.ativo ? "O termo ainda não está em uso no app, mas você já pode ler o texto."
+    : tm.aceito && tm.aceitoEm ? `Você aceitou a versão ${tm.aceitoVersao} em ${fmtData(tm.aceitoEm.slice(0, 10))}.` : "O termo está em uso e ainda falta o seu aceite.";
   $$("[data-cfg]").forEach(i => i.value = c[i.dataset.cfg] || "");
   const pend = meus().filter(e => e.envio.estado !== "enviado").length;
   $("#contaAparelho").textContent = `${c.url ? "Conectado ao servidor da coordenação" : "Sem servidor configurado"} · app versão ${VERSAO_APP}${(s || {}).versaoServidor ? ` · servidor versão ${s.versaoServidor}` : ""}.` + (pend ? ` Há ${pend} ${pend === 1 ? "exame" : "exames"} deste aparelho aguardando envio.` : " Todos os exames deste aparelho já foram enviados.");
@@ -5553,7 +5602,7 @@ async function verExameLeitura(id) {
   try { const j = await api("verExame", {id}); const m = $("#leitura"); m.innerHTML = htmlLeitura(j.exame); m.hidden = false; document.body.style.overflow = "hidden"; }
   catch (err) { toast(err.message); }
 }
-$("#leitura").addEventListener("click", e => { if (e.target.id === "leitura" || e.target.closest("[data-fecha-leitura]")) { $("#leitura").hidden = true; $("#leitura").innerHTML = ""; document.body.style.overflow = ""; } });
+$("#leitura").addEventListener("click", e => { if ((e.target.id === "leitura" && !$("#leitura [data-termo-obrig]")) || e.target.closest("[data-fecha-leitura]")) { $("#leitura").hidden = true; $("#leitura").innerHTML = ""; document.body.style.overflow = ""; } });
 
 /* ---------- equipe (referência técnica e coordenação) ---------- */
 const estEq = {dsei: "", dados: null, filtroProf: ""};
@@ -5743,6 +5792,21 @@ $("#admConteudo").addEventListener("change", e => { if (e.target.id === "admPopA
 
 /* ---------- administração (coordenação) ---------- */
 const estAdm = {dados: null, fPerfil: "", fDsei: "", fStatus: "", subst: null};
+// Termo de Ciência (só a titular vê): ligar/desligar, texto e versões.
+function blocoTermoAdm() {
+  if (!((sessao() || {}).usuario || {}).titular) return "";
+  const t = estAdm.termo;
+  if (!t) { if (!estAdm.termoPedido) { estAdm.termoPedido = true; api("termo", {}).then(j => { estAdm.termo = j; const b = $("#admTermo"); if (b) b.outerHTML = blocoTermoAdm(); }).catch(() => { estAdm.termoPedido = false; }); }
+    return `<div class="bloco" id="admTermo"><h2>Termo de Ciência</h2><p class="dica">Carregando…</p></div>`; }
+  const vers = (t.versoes || []).slice().reverse();
+  return `<div class="bloco" id="admTermo"><div class="bloco-topo"><h2>Termo de Ciência</h2><span class="estado ${t.ativo ? "enviado" : "inativo"}">${t.ativo ? "Ligado" : "Desligado"}</span></div>
+    <p class="dica" style="margin:4px 0 10px">${t.ativo ? `Cada pessoa aceita depois de entrar. ${fmtN(t.aceitaram)} de ${fmtN(t.ativos)} pessoas com acesso ativo já aceitaram a versão ${t.versao}.` : "Desligado: ninguém precisa aceitar, mas todos podem ler o texto em Conta. O texto abaixo é uma sugestão: revise antes de ligar."}</p>
+    <label class="campo">Texto do termo (versão ${t.versao})<textarea id="admTermoTexto" rows="12">${esc(t.texto)}</textarea></label>
+    <p class="dica" style="margin:6px 0 10px">Salvar um texto diferente cria a versão ${t.versao + 1}: todas as pessoas aceitam de novo. As versões antigas ficam guardadas.</p>
+    <div class="acoes-l"><button class="sec" type="button" id="admTermoSalvar">Salvar como nova versão</button><button class="${t.ativo ? "sec perigo-t" : "prim"}" type="button" id="admTermoLiga">${t.ativo ? "Desligar o termo" : "Ligar o termo"}</button></div>
+    <p class="dica" id="admTermoStatus" aria-live="polite"></p>
+    ${vers.length ? `<details style="margin-top:10px"><summary>Versões anteriores (${vers.length})</summary>${vers.map(v => `<div class="pedido"><div><b>Versão ${v.versao}</b> <span class="dica">${v.em && /^\d{4}-/.test(v.em) ? fmtData(v.em.slice(0, 10)) : esc(v.em)}${v.por ? " · " + esc(v.por) : ""}</span><div class="termo-texto" style="max-height:180px">${esc(v.texto)}</div></div></div>`).join("")}</details>` : ""}</div>`;
+}
 // Histórico do SIASI (titular envia uma vez por ano) e metas do PDSI (a coordenação digita; valem no lugar da nacional).
 function blocoHistoricoAdm() {
   const tit = !!((sessao() || {}).usuario || {}).titular, m = estAdm.meta || {dsei: DSEIS[0], indicador: "tc_pct", ano: hoje().slice(0, 4)};
@@ -5901,8 +5965,8 @@ function renderAdmin() {
       <select id="admFStatus" style="width:auto"><option value="">Ativos e desativados</option><option value="ativo" ${estAdm.fStatus === "ativo" ? "selected" : ""}>Só ativos</option><option value="desativado" ${estAdm.fStatus === "desativado" ? "selected" : ""}>Só desativados</option></select></div>
     <div class="tabela"><table class="esq"><thead><tr><th>Nome</th><th>Perfil</th><th>DSEI</th><th>E-mail</th><th>Aprovado por</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead><tbody>
     ${filtrados.map(u => `<tr><td><b>${esc(u.nome)}</b><br><span class="dica">CRO ${esc(u.cro)}</span></td><td><span class="pill-p ${u.perfil}">${NOME_PERFIL[u.perfil]}</span></td><td>${esc(u.dsei)}</td><td>${esc(u.email)}</td><td>${esc(u.aprovado_por || "–")}</td><td>${quando(u.ultimo_acesso)}</td>
-      <td><span class="estado ${u.status === "ativo" ? "enviado" : "inativo"}">${u.status === "ativo" ? "Ativo" : "Desativado"}</span>${pediuVoltar(u) ? ` <span class="estado pendente">pediu reativação ${quando(u.pedido_em)}</span>` : ""}</td>
-      <td><div class="bts">${u.status === "ativo" ? `<button class="sec mini" data-adm="novoCodigo" data-id="${u.id}" data-nome="${esc(u.nome)}">Novo código</button><button class="sec mini perigo-t" data-adm="desativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Desativar</button>` : `<button class="sec mini" data-adm="reativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Reativar</button>`}${d.titular && u.status !== "pendente" ? `<button class="sec mini" data-adm-email="${u.id}" data-nome="${esc(u.nome)}" data-email="${esc(u.email)}">Corrigir e-mail</button>` : ""}</div></td></tr>`).join("") || `<tr><td colspan="8" class="dica">Nenhum usuário neste filtro.</td></tr>`}
+      <td><span class="estado ${u.status === "ativo" ? "enviado" : "inativo"}">${u.status === "ativo" ? "Ativo" : "Desativado"}</span>${u.duplicado_de ? ` <span class="estado pendente">duplicado de ${esc((us.find(x => x.id === u.duplicado_de) || {}).nome || "outro cadastro")}</span>` : ""}${pediuVoltar(u) ? ` <span class="estado pendente">pediu reativação ${quando(u.pedido_em)}</span>` : ""}</td>
+      <td><div class="bts">${u.status === "ativo" ? `<button class="sec mini" data-adm="novoCodigo" data-id="${u.id}" data-nome="${esc(u.nome)}">Novo código</button><button class="sec mini perigo-t" data-adm="desativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Desativar</button>` : `<button class="sec mini" data-adm="reativar" data-id="${u.id}" data-nome="${esc(u.nome)}">Reativar</button>`}${d.titular && u.status !== "pendente" ? `<button class="sec mini" data-adm-email="${u.id}" data-nome="${esc(u.nome)}" data-email="${esc(u.email)}">Corrigir e-mail</button>` : ""}${d.titular && !u.duplicado_de && u.status !== "pendente" ? `<button class="sec mini" data-adm-dup="${u.id}">Marcar como duplicado</button>` : ""}</div></td></tr>`).join("") || `<tr><td colspan="8" class="dica">Nenhum usuário neste filtro.</td></tr>`}
     </tbody></table></div></div>`;
   const linhaAc = a => Array.isArray(a) ? {data: fmtDataHora(a[0]), hora: "", quem: a[2] || a[1], perfil: "", tipo: "", acao: a[3], detalhe: a[4]} : Object.assign({}, a, {data: fmtData(a.data)});
   const acessos = `<div class="bloco"><div class="bloco-topo"><h2>Registro de acessos</h2><span class="dica">Os 200 mais recentes. A lista completa fica na aba "Acessos" da planilha; as entradas no app são contadas na aba "Uso".</span></div>
@@ -5930,7 +5994,7 @@ function renderAdmin() {
   const senha = "";
   const aud = d.auditoria && d.auditoria.falhas ? `<div class="aviso-servidor" style="padding:12px 14px;border-radius:10px"><b>${d.auditoria.falhas} ${d.auditoria.falhas === 1 ? "registro" : "registros"} de acesso não ${d.auditoria.falhas === 1 ? "pôde" : "puderam"} ser gravado${d.auditoria.falhas === 1 ? "" : "s"} na aba Acessos.</b> O atendimento continuou normalmente, mas a trilha de auditoria ficou incompleta. Última falha: ${esc(textoFalha(d.auditoria.ultima))}. Isso costuma acontecer só quando duas pessoas usam o app no mesmo instante em que a aba Acessos está sendo recriada (depois de publicar o servidor ou reorganizar a planilha).${d.titular ? ` <button class="sec mini" type="button" id="limparAuditoria" style="margin-left:6px">Entendi, limpar aviso</button>` : ""}</div>` : "";
   setTimeout(mostrarDiagnostico, 0);
-  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + blocoPlanAnalise(d.analise) + blocoBackup(d.backup) + conv + ped + blocoPopulacao(d.populacao) + blocoHistoricoAdm() + blocoNiveis() + coordBloco + rtBloco + mapa + usuarios + acessos;
+  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + blocoPlanAnalise(d.analise) + blocoBackup(d.backup) + conv + ped + blocoPopulacao(d.populacao) + blocoHistoricoAdm() + blocoTermoAdm() + blocoNiveis() + coordBloco + rtBloco + mapa + usuarios + acessos;
   if ($("#admRtDsei")) preencherDsei($("#admRtDsei"), "", "");
   if ($("#admCoordDsei")) preencherDsei($("#admCoordDsei"), "", "");
 }
@@ -5951,6 +6015,31 @@ $("#admConteudo").addEventListener("click", async e => {
     const dsei = estAdm.nivDsei || DSEIS[0];
     if (!estAdm.nivEdit || estAdm.nivEdit.dsei !== dsei) estAdm.nivEdit = {dsei, aj: Object.assign({}, ajustesNivel(dsei))};
     estAdm.nivEdit.aj[nv.dataset.niv] = nv.dataset.nivel; return renderAdmin();
+  }
+  if (e.target.id === "admTermoLiga" || e.target.id === "admTermoSalvar") {
+    const liga = e.target.id === "admTermoLiga", t = estAdm.termo || {};
+    if (liga && !t.ativo && !confirm("Ligar o Termo de Ciência? Depois de entrar, cada pessoa precisa aceitar o texto antes de usar o app.")) return;
+    e.target.disabled = true;
+    try { const j = await api("salvarTermo", liga ? {ativo: !t.ativo} : {texto: $("#admTermoTexto").value});
+      estAdm.termo = j; $("#admTermo").outerHTML = blocoTermoAdm();
+      $("#admTermoStatus").textContent = liga ? (j.ativo ? "Termo ligado." : "Termo desligado.") : j.novaVersao ? `Versão ${j.novaVersao} salva.` : "O texto não mudou: nenhuma versão nova."; }
+    catch (err) { $("#admTermoStatus").textContent = err.message; e.target.disabled = false; }
+    return;
+  }
+  // Cadastro duplicado: a titular escolhe qual é o cadastro certo (mesmo nome ou mesmo CRO). Nada é apagado.
+  const bd = e.target.closest("[data-adm-dup]");
+  if (bd) {
+    const us = estAdm.dados.usuarios, a = us.find(x => x.id === bd.dataset.admDup), nn = x => normTexto(x || "").replace(/\s+/g, " ").trim();
+    const cand = us.filter(x => x.id !== a.id && x.perfil !== "coord" && !x.duplicado_de && x.status !== "pendente" && x.status !== "recusado" && (nn(x.nome) === nn(a.nome) || (x.cro && nn(x.cro) === nn(a.cro))));
+    if (!cand.length) return toast(`Nenhum outro cadastro com o mesmo nome ou CRO de ${a.nome}.`);
+    const lista = cand.map((x, i) => `${i + 1}. ${x.nome} · ${x.email} · CRO ${x.cro} · DSEI ${x.dsei} · ${x.status}`).join("\n");
+    const n = cand.length === 1 ? 1 : Number(prompt(`Qual é o cadastro certo de ${a.nome}? Digite o número:\n\n${lista}`) || 0);
+    const o = cand[n - 1]; if (!o) return;
+    if (!confirm(`Marcar o cadastro de ${a.nome} (${a.email}) como duplicado de ${o.nome} (${o.email})?\n\nO cadastro duplicado é desativado e sai de todos os aparelhos. Nada é apagado: os exames continuam no nome de quem fez.`)) return;
+    bd.disabled = true;
+    try { await api("marcarDuplicado", {id: a.id, de: o.id}); toast(`Cadastro de ${a.nome} marcado como duplicado.`); carregarAdmin(); }
+    catch (err) { toast(err.message); bd.disabled = false; }
+    return;
   }
   if (e.target.id === "admHistApp") {
     $("#admHistStatus").textContent = "Baixando o arquivo do histórico…";
@@ -6058,7 +6147,7 @@ if (CONVITE_URL) {
   if (sessao()) setTimeout(() => toast(`Este aparelho já está conectado com a conta de ${sessao().usuario.nome}. Para aceitar o convite, saia em "Minha conta" e abra o link do convite de novo.`), 900);
   else { estAc.vista = "convite"; estAc.convite = {token: CONVITE_URL}; }
 }
-rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao();
+rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao(); conferirTermo();
 if (RECUPERAR_URL) abrirRecuperacao();
 conferirVersaoServidor();
 sincronizar();

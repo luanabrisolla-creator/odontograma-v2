@@ -53,7 +53,8 @@ function chaveCfg() { return propriedade('CHAVE_COORDENACAO'); }
 // Recortes com 1 a 4 pessoas aparecem como "<5" no painel, para proteger a identidade.
 const MINIMO = 5;
 
-const CAB_USUARIOS = ['id', 'nome', 'cro', 'email', 'uf', 'dsei', 'polo', 'perfil', 'status', 'codigo_hash', 'pedido_em', 'aprovado_por', 'aprovado_em', 'ultimo_acesso'];
+const CAB_USUARIOS = ['id', 'nome', 'cro', 'email', 'uf', 'dsei', 'polo', 'perfil', 'status', 'codigo_hash', 'pedido_em', 'aprovado_por', 'aprovado_em', 'ultimo_acesso',
+  'duplicado_de', 'termo_versao', 'termo_aceito_em'];
 const CAB_ACESSOS = ['data', 'hora', 'quem', 'email', 'perfil', 'dsei', 'tipo', 'acao', 'detalhe'];
 const CAB_USO = ['usuario_id', 'nome', 'email', 'perfil', 'dsei', 'ultimo_acesso', 'entradas_no_mes', 'mes_referencia', 'entradas_total',
   'consultas_equipe', 'exames_validos', 'exames_cancelados', 'ultimo_exame'];
@@ -1281,6 +1282,10 @@ const ACOES = {
   reativar:       { perfis: ['rt', 'coord'], escreve: true, fn: function (d, u) { return mudarStatus(d, u, 'ativo'); } },
   novoCodigo:     { perfis: ['rt', 'coord'], escreve: true, fn: novoCodigoPara },
   corrigirEmail:  { perfis: ['coord'], escreve: true, fn: corrigirEmail },
+  marcarDuplicado: { perfis: ['coord'], escreve: true, fn: marcarDuplicado },
+  termo:          { fn: termo },
+  aceitarTermo:   { escreve: true, fn: aceitarTermo },
+  salvarTermo:    { perfis: ['coord'], escreve: true, fn: salvarTermo },
   admin:          { perfis: ['coord'], fn: admin },
   limparAvisoAuditoria: { perfis: ['coord'], escreve: true, fn: limparAvisoAuditoria },
   substituirRT:   { perfis: ['coord'], escreve: true, fn: substituirRT },
@@ -1389,7 +1394,8 @@ function salvarUsuario(u) {
 /** @param {any} u */
 function publico(u) {
   const o = {};
-  ['id', 'nome', 'cro', 'email', 'uf', 'dsei', 'polo', 'perfil', 'status', 'pedido_em', 'aprovado_por', 'aprovado_em', 'ultimo_acesso', 'titular'].forEach(function (k) { o[k] = u[k] || ''; });
+  ['id', 'nome', 'cro', 'email', 'uf', 'dsei', 'polo', 'perfil', 'status', 'pedido_em', 'aprovado_por', 'aprovado_em', 'ultimo_acesso', 'titular',
+    'duplicado_de', 'termo_versao', 'termo_aceito_em'].forEach(function (k) { o[k] = u[k] || ''; });
   return o;
 }
 /** @param {any} c */
@@ -1757,7 +1763,7 @@ function confirmarRecuperacao(d) {
 function entrar(d, u) {
   registrar(u, 'Entrou no app', d.aparelho || '');
   /** @type {any} */ const r = { ok: true, versao: VERSAO, usuario: publico(u), territoriosVersao: versaoTerritorios(),
-    reorganizacaoPendente: !!u._reorganizacaoPendente, diasSessao: DIAS_SESSAO };
+    reorganizacaoPendente: !!u._reorganizacaoPendente, diasSessao: DIAS_SESSAO, termo: termoDoUsuario(u) };
   // Entrou com o código: recebe uma sessão nova (o app passa a guardar a sessão, e não o código).
   if (!d.sessao) r.sessao = criarSessao(u, d.aparelho);
   return r;
@@ -3043,7 +3049,7 @@ function mudarStatus(d, u, status) {
   // (uma sessão antiga, por exemplo de um celular perdido, não volta a valer).
   const revogadas = status !== 'ativo' ? revogarSessoes(a.id) : 0;
   // Reativar é uma nova aprovação: fica registrado quem reativou e quando (e some o aviso de "pediu reativação").
-  if (status === 'ativo') Object.assign(a, { aprovado_por: u.nome, aprovado_em: new Date().toISOString() });
+  if (status === 'ativo') Object.assign(a, { aprovado_por: u.nome, aprovado_em: new Date().toISOString(), duplicado_de: '' });
   // Sem código (acessos resetados): ao reativar, a pessoa recebe um código novo por e-mail.
   const novo = status === 'ativo' && !a.codigo_hash ? gerarCodigo() : '';
   if (novo) a.codigo_hash = hashCodigo(novo);
@@ -3053,6 +3059,100 @@ function mudarStatus(d, u, status) {
   const foi = emailCodigo(a, novo, '', true);
   return { ok: true, codigoNovo: true, emailEnviado: foi, codigo: foi ? '' : novo };
 }
+/* Cadastro duplicado (a mesma pessoa pediu acesso duas vezes): a titular marca o que sobra. Ele é desativado, guarda
+ * qual é o cadastro certo ("duplicado de") e as sessões dele deixam de valer. Nada é apagado: os exames feitos por ele
+ * continuam no nome de quem fez, e o registro fica em Acessos. @param {any} d @param {any} u */
+function marcarDuplicado(d, u) {
+  if (!u.titular) return { ok: false, erro: 'Só a coordenação titular marca um cadastro como duplicado.' };
+  const a = alvoDe(d), o = lerUsuarios().filter(function (x) { return x.id === d.de; })[0];
+  if (!a || !o) return { ok: false, erro: 'Cadastro não encontrado.' };
+  if (a.id === o.id) return { ok: false, erro: 'Escolha outro cadastro como o certo.' };
+  if (o.duplicado_de) return { ok: false, erro: 'O cadastro escolhido como certo também está marcado como duplicado.' };
+  if (a.perfil === 'coord') return { ok: false, erro: 'Cadastros da coordenação são mudados no bloco Coordenação.' };
+  a.status = 'desativado'; a.duplicado_de = o.id;
+  const revogadas = revogarSessoes(a.id);
+  salvarUsuario(a);
+  registrar(u, 'Marcou cadastro como duplicado', a.nome + ' (' + a.email + ') é duplicado de ' + o.nome + ' (' + o.email + ') · desativado, nada foi apagado'
+    + (revogadas ? ' · ' + revogadas + (revogadas === 1 ? ' sessão encerrada' : ' sessões encerradas') : ''));
+  return { ok: true, usuario: publico(a) };
+}
+
+/* Termo de Ciência (versão 47): fica pronto, mas desligado, até a coordenação titular ligar. Ligado, cada pessoa lê e
+ * aceita uma vez por versão; a versão e a data ficam no cadastro dela. Mudar o texto cria uma versão nova (todos aceitam
+ * de novo) e as versões antigas ficam na aba Termo_versoes. É separado do aviso de privacidade. */
+const TERMO_PADRAO = 'Termo de Ciência e Responsabilidade de uso do Odontograma · Saúde Bucal Indígena\n\n'
+  + 'Ao usar este aplicativo, declaro estar ciente de que:\n\n'
+  + '1. O meu acesso é pessoal e intransferível. Não passo o meu código para outra pessoa e saio do app em aparelhos de uso coletivo.\n'
+  + '2. Os dados que registro são dados de saúde de pessoas indígenas, protegidos pela Lei Geral de Proteção de Dados (Lei 13.709/2018) e pelo sigilo profissional. Uso essas informações só para o cuidado e para a gestão da saúde bucal no DSEI.\n'
+  + '3. Registro as informações de acordo com o atendimento que fiz e corrijo ou cancelo o registro quando houver erro.\n'
+  + '4. Não copio, fotografo nem divulgo dados que identifiquem uma pessoa fora das finalidades do serviço.\n'
+  + '5. Os painéis mostram dados agrupados, e números pequenos ficam ocultos para proteger as pessoas.\n'
+  + '6. Os meus acessos e o que faço no app ficam registrados.\n'
+  + '7. A coordenação pode desativar o meu acesso em caso de uso indevido ou quando eu deixar o serviço.';
+const CAB_TERMO = ['versao', 'texto', 'criado_em', 'criado_por'];
+function termoAtual() {
+  return { ativo: propriedade('TERMO_ATIVO') === 'sim', versao: Number(propriedade('TERMO_VERSAO')) || 1,
+    texto: propriedade('TERMO_TEXTO') || TERMO_PADRAO, em: propriedade('TERMO_EM') || '' };
+}
+/** O que o app precisa saber sobre o termo e esta pessoa. A titular escreve o termo e não precisa aceitar. @param {any} u */
+function termoDoUsuario(u) {
+  const t = termoAtual(), aceito = !!u.titular || String(u.termo_versao || '') === String(t.versao);
+  return { ativo: t.ativo, versao: t.versao, aceito: aceito, aceitoVersao: String(u.termo_versao || ''), aceitoEm: String(u.termo_aceito_em || ''),
+    texto: t.ativo && !aceito ? t.texto : '' };
+}
+/** Ler o termo (todos, a qualquer hora, na aba Conta). A titular recebe também as versões e quantos já aceitaram. @param {any} d @param {any} u */
+function termo(d, u) {
+  const t = termoAtual();
+  /** @type {any} */ const r = { ok: true, ativo: t.ativo, versao: t.versao, texto: t.texto, em: t.em, meu: termoDoUsuario(u) };
+  if (u.titular) {
+    const us = lerUsuarios().filter(function (x) { return x.status === 'ativo' && x.perfil !== 'coord'; });
+    r.ativos = us.length; r.aceitaram = us.filter(function (x) { return String(x.termo_versao) === String(t.versao); }).length;
+    const aba = planilha().getSheetByName('Termo_versoes');
+    r.versoes = aba && aba.getLastRow() > 1 ? aba.getRange(2, 1, aba.getLastRow() - 1, CAB_TERMO.length).getValues().map(function (l) {
+      return { versao: Number(l[0]), texto: String(l[1]), em: l[2] instanceof Date ? l[2].toISOString() : String(l[2]), por: String(l[3]) }; }) : [];
+  }
+  return r;
+}
+/** @param {any} d @param {any} u */
+function aceitarTermo(d, u) {
+  const t = termoAtual();
+  if (u.titular) return { ok: true, meu: termoDoUsuario(u) };
+  if (String(d.versao) !== String(t.versao)) return { ok: false, termoMudou: true, erro: 'O termo foi atualizado. Leia a versão nova antes de aceitar.' };
+  const a = alvoDe({ id: u.id });
+  if (!a) return { ok: false, erro: 'Cadastro não encontrado.' };
+  a.termo_versao = String(t.versao); a.termo_aceito_em = new Date().toISOString();
+  salvarUsuario(a);
+  registrar(u, 'Aceitou o Termo de Ciência', 'Versão ' + t.versao);
+  return { ok: true, meu: termoDoUsuario(a) };
+}
+/** Ligar ou desligar o termo e mudar o texto (só a titular). Texto novo = versão nova. @param {any} d @param {any} u */
+function salvarTermo(d, u) {
+  if (!u.titular) return { ok: false, erro: 'Só a coordenação titular muda o Termo de Ciência.' };
+  const t = termoAtual(), pr = PropertiesService.getScriptProperties();
+  /** @type {any} */ const r = { ok: true };
+  if (d.texto != null) {
+    const txt = String(d.texto).replace(/\r/g, '').trim();
+    if (txt.length < 50) return { ok: false, erro: 'O texto do termo está curto demais.' };
+    if (txt.length > 4000) return { ok: false, erro: 'O texto do termo passa de 4000 caracteres. Encurte um pouco.' };
+    if (txt !== t.texto) {
+      const aba = obterAba(planilha(), 'Termo_versoes', CAB_TERMO);
+      // A primeira mudança guarda também o texto que estava valendo (a versão 1).
+      if (aba.getLastRow() < 2) aba.appendRow(linhaSegura([t.versao, t.texto, t.em || 'texto inicial do app', t.em ? '' : 'app']));
+      const v = t.versao + 1, em = new Date().toISOString();
+      aba.appendRow(linhaSegura([v, txt, em, u.nome]));
+      pr.setProperty('TERMO_TEXTO', txt); pr.setProperty('TERMO_VERSAO', String(v)); pr.setProperty('TERMO_EM', em);
+      registrar(u, 'Atualizou o Termo de Ciência', 'Versão ' + v + ' · todos aceitam de novo');
+      r.novaVersao = v;
+    }
+  }
+  if (d.ativo != null && (d.ativo === true || d.ativo === 'sim') !== t.ativo) {
+    const liga = d.ativo === true || d.ativo === 'sim';
+    pr.setProperty('TERMO_ATIVO', liga ? 'sim' : 'nao');
+    registrar(u, liga ? 'Ligou o Termo de Ciência' : 'Desligou o Termo de Ciência', 'Versão ' + (r.novaVersao || t.versao));
+  }
+  return Object.assign(r, termo(d, u));
+}
+
 /* Corrigir o e-mail de um cadastro (só a coordenação titular). Ex.: uma dentista aceitou o convite feito para a RT e o
  * cadastro dela ficou com o e-mail da RT. O cadastro (id, nome, CRO, DSEI, perfil e exames) continua o mesmo; muda só o e-mail.
  * O código antigo e as sessões abertas deixam de valer, e um código novo vai para o e-mail certo. O e-mail antigo fica livre

@@ -620,6 +620,35 @@ for (let i = 0; i < 8; i++) {
   T("Dicas: a titular vê o catálogo para aprovar", /prov/.test(await pg.textContent("#pDicas")), (await pg.textContent("#pDicas")).slice(0, 300));
   await foto(pg, "9_dicas_pc", "#pDicas");
   await irAba(pg, "admin"); await pg.waitForTimeout(1200);
+  // Termo de Ciência: vem desligado; a titular liga, a dentista aceita depois de entrar, e a titular desliga de novo.
+  await pg.waitForFunction(() => /Desligado|Ligado/.test((document.querySelector("#admTermo") || {}).textContent || ""), null, { timeout: 15000 });
+  T("Administração: o Termo de Ciência vem desligado, com o texto sugerido para revisar", /Desligado/.test(await pg.textContent("#admTermo")) && /13\.709/.test(await pg.inputValue("#admTermoTexto")));
+  await pg.click("#admTermoLiga"); await pg.waitForTimeout(1500);
+  T("a titular liga o termo", /Ligado/.test(await pg.textContent("#admTermo")) && /0 de \d+ pessoas/.test(await pg.textContent("#admTermo")), await pg.textContent("#admTermo"));
+  {
+    const c2 = await pagina(true), p2 = c2.pg;
+    await p2.goto(URL); await p2.waitForTimeout(500);
+    if (await p2.$('[data-ac="entrar"]')) await p2.click('[data-ac="entrar"]');
+    await p2.fill("#acEmail", S.BRUNO.email); await p2.fill("#acCodigo", S.BRUNO.codigo); await p2.click("#acEntrar"); await p2.waitForTimeout(2000);
+    T("termo ligado: depois de entrar, a dentista vê o termo e precisa aceitar", await p2.isVisible("#leitura [data-termo-obrig]") && await p2.isDisabled("#tmAceitar") && !(await p2.$("#leitura [data-termo-obrig] [data-fecha-leitura]")));
+    await p2.click("#leitura", { position: { x: 5, y: 5 } }); await p2.waitForTimeout(200);
+    T("tocar fora não fecha o termo", await p2.isVisible("#leitura [data-termo-obrig]"));
+    await foto(p2, "10_termo_cel");
+    await p2.check("#tmLi"); await p2.click("#tmAceitar"); await p2.waitForTimeout(1500);
+    T("a dentista aceita e segue usando o app", !(await p2.isVisible("#leitura")) && !p2.erros.length, p2.erros);
+    await irAba(p2, "config"); await p2.waitForTimeout(300);
+    T("na Conta, o aceite aparece com a versão e a data", /Você aceitou a versão 1 em \d{2}\/\d{2}\/\d{4}/.test(await p2.textContent("#contaTermoInfo")), await p2.textContent("#contaTermoInfo"));
+    await p2.click("#contaTermo"); await p2.waitForTimeout(1200);
+    T("na Conta, o termo pode ser lido a qualquer hora", await p2.isVisible("#leitura .termo-texto") && !!(await p2.$("#leitura [data-fecha-leitura]")));
+    await c2.ctx.close();
+  }
+  await irAba(pg, "config"); await pg.waitForTimeout(300); await irAba(pg, "admin"); await pg.waitForTimeout(1500);
+  await pg.click("#admTermoLiga"); await pg.waitForTimeout(1500);
+  T("a titular desliga o termo", /Desligado/.test(await pg.textContent("#admTermo")), await pg.textContent("#admTermo"));
+  // Cadastro duplicado: sem outro cadastro com o mesmo nome ou CRO, o app avisa e não muda nada.
+  T("a titular tem \"Marcar como duplicado\" nos usuários", !!(await pg.$("[data-adm-dup]")));
+  await pg.click("[data-adm-dup]"); await pg.waitForTimeout(400);
+  T("sem outro cadastro parecido, o app avisa", /Nenhum outro cadastro com o mesmo nome ou CRO/.test(await pg.textContent("#toast")));
   // Planilha de análise para o Looker Studio (só a titular).
   T("Administração mostra a planilha de análise, ainda por criar", /Planilha de análise \(Looker Studio\)/.test(await pg.textContent("#admConteudo")) && (await pg.textContent("#admPlanAnalise")).trim() === "Criar agora");
   await pg.click("#admPlanAnalise"); await pg.waitForTimeout(2500);

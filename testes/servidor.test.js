@@ -1217,5 +1217,51 @@ parte("histórico do SIASI, metas e dicas");
   T("a comparação entre DSEIs está em ordem alfabética", (c => c.map(x => x.dsei).join() === c.map(x => x.dsei).sort((a, b) => a.localeCompare(b, "pt-BR")).join())(R.P(R.C, { acao: "painel" }).comparacao));
 }
 
+/* ---------------------------------------------------------------- termo de ciência e cadastro duplicado (cenário separado) */
+parte("termo de ciência");
+{
+  const R = cenario();
+  const e1 = R.P(R.ANA, { acao: "entrar", aparelho: "Teste" });
+  T("o termo vem desligado: a dentista entra sem precisar aceitar", e1.ok && e1.termo && e1.termo.ativo === false && !e1.termo.texto);
+  const t1 = R.P(R.ANA, { acao: "termo" });
+  T("mesmo desligado, o termo pode ser lido na aba Conta", t1.ok && /Termo de Ciência/.test(t1.texto) && /13\.709/.test(t1.texto) && t1.versao === 1 && !t1.versoes);
+  T("só a titular liga o termo", !R.P(R.PAULA, { acao: "salvarTermo", ativo: true }).ok && !R.P(R.RT, { acao: "salvarTermo", ativo: true }).ok);
+  const lig = R.P(R.C, { acao: "salvarTermo", ativo: true });
+  T("a titular liga o termo e vê quantos aceitaram", lig.ok && lig.ativo && lig.aceitaram === 0 && lig.ativos >= 4, lig);
+  const e2 = R.P(R.ANA, { acao: "entrar", aparelho: "Teste" });
+  T("ligado: ao entrar, a dentista recebe o texto para aceitar", e2.termo.ativo && !e2.termo.aceito && /Termo de Ciência/.test(e2.termo.texto));
+  T("a titular não precisa aceitar o termo que ela escreve", R.P(R.C, { acao: "entrar", aparelho: "Teste" }).termo.aceito);
+  T("aceitar uma versão que não é a atual é recusado", R.P(R.ANA, { acao: "aceitarTermo", versao: 7 }).termoMudou === true);
+  const ac = R.P(R.ANA, { acao: "aceitarTermo", versao: 1 });
+  T("a dentista aceita: a versão e a data ficam no cadastro", ac.ok && ac.meu.aceito && ac.meu.aceitoVersao === "1" && /^\d{4}-\d{2}-\d{2}T/.test(ac.meu.aceitoEm));
+  const lu = (G => { const c = G.est.sheets.Usuarios[0]; return email => { const l = G.est.sheets.Usuarios.find(x => x[3] === email); return { v: l[c.indexOf("termo_versao")], em: l[c.indexOf("termo_aceito_em")] }; }; })(R.G);
+  T("na planilha, as colunas termo_versao e termo_aceito_em", String(lu("ana@teste.org").v) === "1" && !!lu("ana@teste.org").em);
+  T("o aceite fica no registro de acessos", (R.G.est.sheets.Acessos || []).some(l => l.join("|").includes("Aceitou o Termo de Ciência")));
+  T("na entrada seguinte, a dentista já não precisa aceitar", R.P(R.ANA, { acao: "entrar", aparelho: "Teste" }).termo.aceito === true);
+  T("texto curto demais é recusado", !R.P(R.C, { acao: "salvarTermo", texto: "curto" }).ok);
+  const novo = "Termo de Ciência, versão revisada pela coordenação. " + "Uso os dados só para o cuidado e a gestão da saúde bucal no DSEI. ".repeat(2);
+  const v2 = R.P(R.C, { acao: "salvarTermo", texto: novo });
+  T("texto novo cria a versão 2 e guarda as duas versões", v2.ok && v2.novaVersao === 2 && v2.versao === 2 && v2.versoes.length === 2 && v2.versoes[0].versao === 1 && /13\.709/.test(v2.versoes[0].texto) && v2.versoes[1].texto === novo.trim(), v2.versoes);
+  T("salvar o mesmo texto não cria versão nova", !R.P(R.C, { acao: "salvarTermo", texto: novo }).novaVersao);
+  const e3 = R.P(R.ANA, { acao: "entrar", aparelho: "Teste" });
+  T("com a versão 2, a dentista aceita de novo", !e3.termo.aceito && e3.termo.aceitoVersao === "1" && e3.termo.texto === novo.trim());
+  T("desligar o termo volta a liberar a entrada", R.P(R.C, { acao: "salvarTermo", ativo: false }).ok && R.P(R.ANA, { acao: "entrar", aparelho: "Teste" }).termo.ativo === false);
+
+  parte("cadastro duplicado");
+  const idAna = R.idDe("ana@teste.org"), idBruno = R.idDe("bruno@teste.org");
+  const exAna = R.P(R.ANA, { acao: "enviarExame", registro: Object.assign(exame({ sufixo: "DPDPDP23" }), { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [], tratamento: { aps: "concluido" } }) });
+  T("exame do cadastro que vai ser marcado como duplicado", exAna.ok, exAna);
+  T("só a titular marca um cadastro como duplicado", !R.P(R.RT, { acao: "marcarDuplicado", id: idAna, de: idBruno }).ok && !R.P(R.PAULA, { acao: "marcarDuplicado", id: idAna, de: idBruno }).ok);
+  T("não dá para marcar um cadastro como duplicado dele mesmo", !R.P(R.C, { acao: "marcarDuplicado", id: idAna, de: idAna }).ok);
+  const nEx = (R.G.est.sheets.Exames || []).length, nUs = R.G.est.sheets.Usuarios.length;
+  const md = R.P(R.C, { acao: "marcarDuplicado", id: idAna, de: idBruno });
+  T("marcar como duplicado: desativa e guarda qual é o cadastro certo", md.ok && md.usuario.status === "desativado" && md.usuario.duplicado_de === idBruno, md);
+  T("as sessões do cadastro duplicado deixam de valer", !R.P(R.ANA, { acao: "entrar", aparelho: "Teste" }).ok);
+  T("nada é apagado: os cadastros e os exames continuam", R.G.est.sheets.Usuarios.length === nUs && (R.G.est.sheets.Exames || []).length === nEx);
+  T("fica no registro de acessos, com os dois cadastros", (R.G.est.sheets.Acessos || []).some(l => /Marcou cadastro como duplicado/.test(l.join("|")) && /é duplicado de Bruno Dentista/.test(l.join("|"))));
+  T("o cadastro certo não pode estar marcado como duplicado", !R.P(R.C, { acao: "marcarDuplicado", id: idBruno, de: idAna }).ok);
+  T("reativar tira a marca de duplicado", R.P(R.C, { acao: "reativar", id: idAna }).ok && (c => String(R.G.est.sheets.Usuarios.find(l => l[0] === idAna)[c.indexOf("duplicado_de")] || "") === "")(R.G.est.sheets.Usuarios[0]));
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);
