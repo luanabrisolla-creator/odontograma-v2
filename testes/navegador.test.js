@@ -419,7 +419,14 @@ for (let i = 0; i < 8; i++) {
     ({ ctx, pg } = await pagina(cel));
     await entrar(pg, cr);
     const abas = await pg.evaluate(() => abasDoPerfil().map(a => a[0]));
-    for (const k of abas) { await irAba(pg, k); await pg.waitForTimeout(900); }
+    const largas = [];
+    for (const k of abas) { await irAba(pg, k); await pg.waitForTimeout(900);
+      const l = await pg.evaluate(() => { const W = document.documentElement.clientWidth, r = [];
+        if (document.documentElement.scrollWidth > W + 1) r.push("página " + document.documentElement.scrollWidth + "px");
+        document.querySelectorAll(".tabela").forEach(t => { if (t.offsetParent && t.scrollWidth > t.clientWidth + 2) r.push("tabela " + (t.closest(".bloco")?.querySelector("h2,h3")?.textContent || "").trim().slice(0, 40)); });
+        return r; });
+      if (l.length) largas.push(k + ": " + l.join(", ")); }
+    T(nome + ": nenhuma aba precisa de rolagem lateral", !largas.length, largas);
     T(nome + ": abre todas as abas sem erro (" + abas.join(", ") + ")", !pg.erros.length, pg.erros);
     if (abas.includes("exame")) {
       await irAba(pg, "exame"); await pg.waitForTimeout(300);
