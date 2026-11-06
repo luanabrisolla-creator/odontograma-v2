@@ -52,6 +52,71 @@ var PRESCRICOES = ["Analgésico", "Anti-inflamatório", "Antibiótico", "Outra p
 // Placa e gengivite podem ficar "não avaliadas" (nunca viram "Não" nas contas).
 /** @param {any} ex @param {string} k */
 function naoAvaliada(ex, k) { return Array.isArray(ex && ex.condNaoAvaliadas) && ex.condNaoAvaliadas.indexOf(k) >= 0; }
+// Necessidade não tratada (decisão 4). Cárie ativa, restaurada com cárie, dor e abscesso pedem tratamento; mancha branca ativa
+// e cárie crônica pedem um preventivo ou o acompanhamento. Em todos os casos o profissional pode, em vez do procedimento,
+// marcar a conduta do dente: "acompanhamento, sem tratamento agora" (com o motivo) ou o encaminhamento para a atenção especializada.
+/** @type {any} */
+var NECESSIDADE_FACE = {ca: "cárie ativa", restc: "restaurada com cárie", cc: "cárie crônica", mba: "mancha branca ativa"};
+/** O que o dente tem que pede uma conduta (vazio: nada). @param {any} d */
+function necessidadeDoDente(d) {
+  if (!d || d.status !== "presente") return [];
+  var fs = d.faces || {}, l = [];
+  Object.keys(NECESSIDADE_FACE).forEach(function (k) { if (Object.keys(fs).some(function (f) { return fs[f] === k; })) l.push(NECESSIDADE_FACE[k]); });
+  if (d.dor) l.push("dor");
+  if (d.abscesso) l.push("abscesso ou fístula");
+  return l;
+}
+/** A conduta do dente está completa (acompanhamento com o motivo, ou encaminhamento com a especialidade). @param {any} d */
+function condutaValida(d) {
+  var c = d && d.conduta;
+  return !!c && ((c.tipo === "acompanhamento" && !!String(c.motivo || "").trim()) || (c.tipo === "encaminhamento" && !!ESPECIALIDADES[c.especialidade]));
+}
+/** Dentes com necessidade e sem procedimento nem conduta: [{n, motivos}]. @param {any} ex */
+function necessidadesSemConduta(ex) {
+  if (!ex || semOdontograma(ex)) return [];
+  var ds = ex.dentes || {};
+  return dentesDaDenticao(ex.denticao).filter(function (n) {
+    var d = ds[n]; if (!necessidadeDoDente(d).length || condutaValida(d)) return false;
+    var p = (d && d.procs) || {};
+    return !Object.keys(p).some(function (k) { return p[k] === "indicado" || p[k] === "realizado"; });
+  }).map(function (n) { return {n: n, motivos: necessidadeDoDente(ds[n])}; });
+}
+// Nível de cada procedimento do dente (decisão 3). Todos os da lista são da atenção primária (APS); a coordenação pode passar
+// um procedimento para a atenção especializada num DSEI (por exemplo, onde a coroa de aço não é feita na APS).
+// "ajustes" é {procedimento: "especializada"} do DSEI do exame.
+/** @param {string} k @param {any} [ajustes] */
+function nivelDoProc(k, ajustes) { return ajustes && ajustes[k] === "especializada" ? "especializada" : "aps"; }
+/** O que ainda falta da APS no exame: procedimentos indicados (da APS) e necessidades sem tratamento nem conduta. @param {any} ex @param {any} [ajustes] */
+function pendenciasAPS(ex, ajustes) {
+  if (!ex || semOdontograma(ex)) return [];
+  var ds = ex.dentes || {}, l = [];
+  dentesDaDenticao(ex.denticao).forEach(function (n) {
+    var d = ds[n]; if (!d || d.status !== "presente") return;
+    var p = d.procs || {};
+    Object.keys(p).forEach(function (k) { if (p[k] === "indicado" && nivelDoProc(k, ajustes) === "aps") l.push(n + ": " + (NOMES_PROC[k] || k) + " (indicado)"); });
+  });
+  necessidadesSemConduta(ex).forEach(function (x) { l.push(x.n + ": " + x.motivos.join(", ") + " sem tratamento nem conduta"); });
+  return l;
+}
+// Situação do tratamento odontológico básico (APS) no exame. Só o profissional conclui: o app sugere quando não há pendência.
+/** @type {any} */
+var NOMES_TRATAMENTO = {concluido: "Concluído", nao_concluido: "Não concluído", pendente: "Não concluído: há pendências da APS",
+  a_confirmar: "Sem pendências, a confirmar", nao_avaliado: "Não avaliado (sem odontograma)"};
+/** @param {any} ex @param {any} [ajustes] */
+function situacaoTratamento(ex, ajustes) {
+  if (semOdontograma(ex)) return "nao_avaliado";
+  if (pendenciasAPS(ex, ajustes).length) return "pendente";
+  var t = (ex.tratamento || {}).aps;
+  return t === "concluido" || t === "nao_concluido" ? t : "a_confirmar";
+}
+/** Encaminhamento, à parte da APS: "sem", "pendente" (algum ainda pendente) ou "realizado". @param {any} ex */
+function situacaoEncaminhamento(ex) {
+  var e = ex.encaminhamentos || {}, ks = Object.keys(e);
+  if (!ks.length) return "sem";
+  return ks.some(function (k) { return e[k] === "pendente"; }) ? "pendente" : "realizado";
+}
+/** @type {any} */
+var NOMES_SIT_ENCAMINHAMENTO = {sem: "Sem encaminhamento", pendente: "Encaminhamento pendente", realizado: "Encaminhamento realizado"};
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
@@ -394,7 +459,7 @@ var CAB_P1 = ["codigo_individuo", "numero_exame", "data_exame", "situacao_regist
   .concat(Object.keys(COL_VIG).map(function (k) { return COL_VIG[k]; }))
   .concat(["protese_sup_necessita", "protese_inf_necessita", "protese_sup_usa", "protese_inf_usa", "placa_visivel", "gengivite", "procedimentos_coletivos", "insumos", "observacoes"])
   // Desde a versão 47 (Fichas 4 e 7 do SIASI)
-  .concat(["localidade_residencia", "gestante", "semanas_gestacao", "fluorose_dean"])
+  .concat(["localidade_residencia", "gestante", "semanas_gestacao", "fluorose_dean", "tratamento_aps", "tratamento_aps_motivo", "pendencias_aps", "situacao_encaminhamento"])
   .concat(Object.keys(ESPECIALIDADES).map(function (k) { return "encaminhamento_" + k; }))
   .concat(PRESCRICOES.map(function (_, i) { return COL_PRESCRICAO[i]; }));
 var CAB_P2 = Object.keys(COL_STATUS).map(function (k) { return "n_dentes_" + COL_STATUS[k]; })
@@ -435,7 +500,10 @@ function valoresDoExame(e, completo) {
     protese_sup_necessita: prot(pr.sup), protese_inf_necessita: prot(pr.inf), protese_sup_usa: prot(pr.usoSup), protese_inf_usa: prot(pr.usoInf),
     placa_visivel: cond("placa"), gengivite: cond("gengivite"),
     localidade_residencia: e.localidade || "", gestante: e.gestante === "sim" ? "sim" : e.gestante === "nao" ? "não" : "", semanas_gestacao: e.gestante === "sim" && e.semanasGestacao != null ? e.semanasGestacao : "",
-    fluorose_dean: e.fluoroseDean ? e.fluoroseDean + " · " + (DEAN[e.fluoroseDean] || "") : "", procedimentos_coletivos: (e.gerais || []).join("; "), insumos: (e.insumos || []).join("; "), observacoes: e.observacoes || "",
+    fluorose_dean: e.fluoroseDean ? e.fluoroseDean + " · " + (DEAN[e.fluoroseDean] || "") : "",
+    tratamento_aps: (e.tratamento || {}).aps ? (NOMES_TRATAMENTO[e.tratamento.aps] || e.tratamento.aps).toLowerCase() : "",
+    tratamento_aps_motivo: (e.tratamento || {}).motivo || "", pendencias_aps: (e.tratamento || {}).pendencias != null ? e.tratamento.pendencias : "",
+    situacao_encaminhamento: e.fezEncaminhamento == null && !Object.keys(e.encaminhamentos || {}).length ? "" : NOMES_SIT_ENCAMINHAMENTO[situacaoEncaminhamento(e)].toLowerCase(), procedimentos_coletivos: (e.gerais || []).join("; "), insumos: (e.insumos || []).join("; "), observacoes: e.observacoes || "",
     codigo_exame: e.codigo || "", aldeia_fora_da_lista: e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), codigo_confere_local: codigoConfereLocal(e),
     conferencia_vinculo: v.anteriorId ? (v.conferidos && v.conferidos.length ? "compatível, com mudança conferida" : "compatível") : "1º exame",
     alertas_vinculo: (v.conferidos || []).join(" · "), exame_anterior_id: v.anteriorId || "",

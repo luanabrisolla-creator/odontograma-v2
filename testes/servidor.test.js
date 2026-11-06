@@ -777,7 +777,7 @@ T("(o exame é enviado e corrigido duas vezes antes do backup)", r.ok && r1.ok &
 rb = G.ctx.fazerBackup("teste");
 const bky = bkEx("BKY"), versY = bkObj("Exames_versoes").filter(x => x.id_exame === "BKY");
 T("o original no backup é o primeiro envio, não a versão da hora do backup", JSON.parse(bky.dados_originais_json).dentes[36].faces.O === "" && JSON.parse(bky.dados_originais_json).dentes[46].faces.O === "", bky.versao_atual);
-T("as duas correções feitas antes do backup viram as versões 2 e 3, cada uma com o que mudou", bky.versao_atual === "3" && versY.map(x => x.versao + ":" + x.o_que_mudou).join() === "2:dentes 36,3:dentes 46", versY.map(x => x.versao + ":" + x.o_que_mudou));
+T("as duas correções feitas antes do backup viram as versões 2 e 3, cada uma com o que mudou", bky.versao_atual === "3" && versY.map(x => x.versao + ":" + x.o_que_mudou).join() === "2:dentes 36; tratamento básico,3:dentes 46", versY.map(x => x.versao + ":" + x.o_que_mudou));
 r = P(ANA, { acao: "cancelarExame", id: "BKY", motivo: "Digitado errado" });
 T("cancelar não é uma versão nova (os dados clínicos não mudam)", r.ok && aba("_versoes_exames").filter(l => l[0] === "BKY").length === 2);
 rb = G.ctx.fazerBackup("teste");
@@ -1066,6 +1066,48 @@ parte("versão 47: Fichas 4 e 7");
   T("\"Fendas ou fissuras\" de um app 46 vira \"Má formação: fenda ou fissura lábio palatal\"", env(vf).ok && l7(vf.id)[c7("vig_fendas_labio_palatais")] === "sim" && JSON.parse(l7(vf.id).at(-1)).vigilancia[0] === "Má formação: fenda ou fissura lábio palatal");
   const v46 = exame({ id: "V46", sufixo: "V46QQQQ2" });
   T("exame de um app 46 (sem os campos novos) continua aceito, com as colunas novas vazias", env(v46).ok && l7("V46")[c7("localidade_residencia")] === "" && l7("V46")[c7("prescricao_analgesico")] === "");
+}
+
+/* ---------------------------------------------------------------- tratamento básico, conduta e nível (cenário separado) */
+parte("tratamento básico (APS)");
+{
+  const R = cenario(), ab = n => R.G.est.sheets[n] || [], cE = k => ab("Exames")[0].indexOf(k), lE = id => ab("Exames").find(l => l[0] === id);
+  let n8 = 0; const ALFA = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  const ex8 = (o, extra) => { const e = exame(Object.assign({ id: "T" + (++n8), sufixo: "T8" + ALFA[n8] + "QQQQ2" }, o)); Object.assign(e, { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] }, extra || {}); return e; };
+  const env = e => R.P(R.ANA, { acao: "enviarExame", registro: e });
+  const val = (id, k) => (lE(id) || [])[cE(k)];
+  const sem = ex8({}, { tratamento: { aps: "concluido" } });
+  T("sem pendência e com a confirmação do profissional: concluído", env(sem).ok && val(sem.id, "tratamento_aps") === "concluído" && val(sem.id, "pendencias_aps") === 0, val(sem.id, "tratamento_aps"));
+  const semConf = ex8({});
+  T("sem pendência e sem resposta (app antigo): fica \"a confirmar\"", env(semConf).ok && val(semConf.id, "tratamento_aps") === "sem pendências, a confirmar");
+  const car = ex8({ mud: { 46: { faces: { O: "ca" } } } }, { tratamento: { aps: "concluido" } });
+  T("cárie ativa sem tratamento nem conduta: não concluído, mesmo que o app diga concluído", env(car).ok && val(car.id, "tratamento_aps") === "não concluído: há pendências da aps" && val(car.id, "pendencias_aps") === 1, [val(car.id, "tratamento_aps"), val(car.id, "pendencias_aps")]);
+  T("(e isso fica anotado em Acessos)", ab("Acessos").some(l => l[7] === "Tratamento não concluído" && l[8].indexOf(car.id) >= 0));
+  const ind = ex8({ mud: { 46: { faces: { O: "ca" }, procs: { art: "indicado" } } } });
+  T("ART indicado e não realizado: pendência da APS", env(ind).ok && val(ind.id, "tratamento_aps") === "não concluído: há pendências da aps");
+  const feito = ex8({ mud: { 46: { faces: { O: "ca" }, procs: { art: "realizado" } } } }, { tratamento: { aps: "concluido" } });
+  T("ART realizado: sem pendência, e o profissional conclui", env(feito).ok && val(feito.id, "tratamento_aps") === "concluído");
+  T("acompanhamento sem o motivo é recusado", /dentes 46/.test(env(ex8({ mud: { 46: { faces: { O: "cc" }, conduta: { tipo: "acompanhamento", motivo: "" } } } })).erro || ""));
+  const ac = ex8({ mud: { 75: { faces: { O: "cc" }, conduta: { tipo: "acompanhamento", motivo: "Decíduo perto da esfoliação" } } } }, { tratamento: { aps: "concluido" } });
+  T("acompanhamento com o motivo não é pendência (decisão 4) e o tratamento pode ser concluído", env(ac).ok && val(ac.id, "tratamento_aps") === "concluído" && JSON.parse(lE(ac.id).at(-1)).dentes[75].conduta.motivo === "Decíduo perto da esfoliação");
+  const enc = ex8({ mud: { 46: { faces: { O: "ca" }, dor: true, conduta: { tipo: "encaminhamento", especialidade: "endodontia" } } } }, { tratamento: { aps: "concluido" } });
+  T("encaminhamento no dente: entra nos encaminhamentos do exame, e a APS pode concluir", env(enc).ok && val(enc.id, "encaminhamento_endodontia") === "pendente" && val(enc.id, "situacao_encaminhamento") === "encaminhamento pendente" && val(enc.id, "tratamento_aps") === "concluído",
+    [val(enc.id, "encaminhamento_endodontia"), val(enc.id, "tratamento_aps")]);
+  T("\"ainda não\" sem o motivo é recusado", /por que o tratamento básico não foi concluído/.test(env(ex8({}, { tratamento: { aps: "nao_concluido", motivo: "" } })).erro || ""));
+  const nc = ex8({}, { tratamento: { aps: "nao_concluido", motivo: "Falta a orientação de dieta" } });
+  T("\"ainda não\" com o motivo fica guardado", env(nc).ok && val(nc.id, "tratamento_aps") === "não concluído" && val(nc.id, "tratamento_aps_motivo") === "Falta a orientação de dieta");
+  const MOT = require("vm").runInContext("MOTIVOS_SEM_ODONTOGRAMA", R.G.ctx), so = ex8({});
+  Object.assign(so, { odontograma: "nao", odontogramaMotivo: MOT[0], dentes: {}, vigilancia: [], placa: null, gengivite: null, protese: { sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false }, resultado: { classe: "", risco: "x", motivos: [], ceod: null, cpod: null } });
+  T("sem odontograma: tratamento não avaliado", env(so).ok && val(so.id, "tratamento_aps") === "não avaliado (sem odontograma)");
+  // Nível por DSEI: a coroa de aço passa para a atenção especializada no Yanomami.
+  T("só a coordenação muda o nível dos procedimentos", !R.P(R.ANA, { acao: "salvarNiveis", dsei: "Yanomami", ajustes: { coroa: "especializada" } }).ok);
+  const sn = R.P(R.C, { acao: "salvarNiveis", dsei: "Yanomami", ajustes: { coroa: "especializada", naoExiste: "especializada", art: "aps" } });
+  T("a coordenação passa a coroa de aço para a atenção especializada (o resto é ignorado)", sn.ok && JSON.stringify(sn.ajustes) === '{"coroa":"especializada"}', sn);
+  const t1 = R.P(R.ANA, { acao: "territorios" });
+  T("o app do DSEI recebe o nível junto com as listas", JSON.stringify(t1.niveis) === '{"Yanomami":{"coroa":"especializada"}}' && /\|/.test(t1.versao), t1.niveis);
+  const co = ex8({ mud: { 85: { faces: { O: "ca" }, procs: { coroa: "indicado" } } } }, { tratamento: { aps: "concluido" } });
+  T("coroa indicada, especializada neste DSEI: não é pendência da APS", env(co).ok && val(co.id, "tratamento_aps") === "concluído" && val(co.id, "pendencias_aps") === 0, val(co.id, "tratamento_aps"));
+  T("mudar o nível fica anotado em Acessos", ab("Acessos").some(l => l[7] === "Mudou o nível dos procedimentos" && /Coroa de aço/.test(l[8])));
 }
 
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);

@@ -573,7 +573,10 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .ini-stat .bola .ico{width:28px;height:28px}
 .ini-stat b{display:block;font-size:1.85rem;line-height:1.05;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .ini-stat span.t{display:block;margin-top:3px;font-size:.92rem;color:var(--muted)}
-.enc{display:grid;gap:6px}.enc .linha-op{margin:0}
+.dente.sem-conduta svg{outline:2px dashed #E5702A;outline-offset:1px;border-radius:4px}
+.enc{display:grid;gap:6px}
+.tc-box{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.tc-box h4{margin:0 0 6px}.tc-box ul{margin:4px 0 0;padding-left:1.1rem}.enc .linha-op{margin:0}
 .ini-stat span.s2{display:block;margin-top:2px;font-size:.8rem;color:var(--muted)}
 .ini-baixo{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
 .ini-baixo>.bloco{flex:999 1 520px;min-width:0;margin:0}
@@ -1006,6 +1009,7 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
       <div class="prev" id="prevInfo"></div>
       <div id="confBox"></div>
       <div class="odonto"><div class="odonto-in" id="odonto"></div></div>
+      <div class="aviso" id="pendOdonto" hidden></div>
       <details class="legenda-odo" id="legendaOdo" open><summary>Legenda</summary><div class="lgs" id="legendaCorpo"></div></details>
       </div>
     </div>
@@ -1021,6 +1025,7 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
 
     <div class="bloco" id="blocoProtese">
       <h2 style="margin-bottom:10px">Prótese</h2>
+      <p class="prev" id="proteseLembrete" hidden></p>
       <button class="sec largo-bt" id="proteseNenhuma" type="button">Não necessita e não usa (as duas arcadas)</button>
       <p class="dica centro" style="margin:8px 0">ou responda por arcada</p>
       <div class="arc-p"><b>Superior</b>
@@ -1047,6 +1052,7 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
       <div id="encBox" hidden><p class="dica" style="margin:6px 0 4px">Para quais especialidades, e a situação de cada uma (marque pelo menos uma)</p><div class="enc" id="encLista"></div></div>
       <div class="linha-op" style="margin-top:14px"><span><b>Houve prescrição medicamentosa?</b></span><div class="seg" role="group" aria-label="Houve prescrição medicamentosa?" data-sn="fezPrescricao"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div></div>
       <div id="prescBox" hidden><p class="dica" style="margin:6px 0 4px">Quais? (marque pelo menos uma)</p><div class="checks" id="prescricoes"></div></div>
+      <div id="tcBox" class="tc-box" style="margin-top:16px"></div>
       <label class="campo largo" style="margin-top:14px">Observações do exame<textarea data-campo="observacoes" placeholder="Sem dados que identifiquem a pessoa"></textarea></label>
     </div>
 
@@ -1511,7 +1517,7 @@ function rascunhoDaPessoa() {
 function proteseVazia() { return {sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false}; }
 // Campos da versão 47 (Fichas 4 e 7 do SIASI) e o valor de cada um num exame novo.
 function campos47Vazios() {
-  return {localidade: "", gestante: "", semanasGestacao: null, fluoroseDean: "", condNaoAvaliadas: [], fezEncaminhamento: null, encaminhamentos: {}, fezPrescricao: null, prescricoes: []};
+  return {localidade: "", gestante: "", semanasGestacao: null, fluoroseDean: "", condNaoAvaliadas: [], fezEncaminhamento: null, encaminhamentos: {}, fezPrescricao: null, prescricoes: [], tratamento: {aps: "", motivo: ""}};
 }
 // As regras de idade (gestante, índice de Dean) olham a idade no dia do exame, que o rascunho ainda não guarda.
 function comIdade(ex) { const id = idadeEm(ex.crianca.nascimento, ex.dataExame); return Object.assign({}, ex, {idadeAnos: id ? id.decimal : ""}); }
@@ -1557,8 +1563,12 @@ function svgDente(n, d, extra, faceSel) {
   if (d.status === "ausente_carie") s += X("#2F67D8");
   if (d.status === "presente" && exoCarie(d)) s += `<g class="ov"><rect x="0" y="0" width="17" height="11" rx="4" fill="#D7263D" stroke="#fff" stroke-width="1.2"/><text x="8.5" y="8.4" text-anchor="middle" font-size="7.6" font-weight="800" fill="#fff">Ex</text></g>`;
   if (d.status === "presente" && (d.dor || d.abscesso)) s += `<g class="ov"><circle cx="35" cy="5" r="5.5" fill="#E2231A" stroke="#fff" stroke-width="1.4"/><text x="35" y="8.6" text-anchor="middle" font-size="9" font-weight="800" fill="#fff">!</text></g>`;
-  const temProc = Object.values(d.procs || {}).some(v => v === "realizado");
-  if (temProc) s += `<circle class="ov" cx="4" cy="36" r="4" fill="#0E6E73" stroke="#fff" stroke-width="1.5"/>`;
+  // Selo de procedimento: amarelo com o número de indicados (embaixo, à esquerda) e verde com ✓ se algum foi realizado (embaixo, à direita).
+  if (d.status === "presente") {
+    const vs = Object.values(d.procs || {}), nInd = vs.filter(v => v === "indicado").length;
+    if (nInd) s += `<g class="ov selo-ind"><circle cx="5" cy="35" r="5.5" fill="#F2C230" stroke="#fff" stroke-width="1.4"/><text x="5" y="38.2" text-anchor="middle" font-size="8.4" font-weight="800" fill="#13233A">${nInd}</text></g>`;
+    if (vs.includes("realizado")) s += `<g class="ov selo-real"><circle cx="35" cy="35" r="5.5" fill="#1A7F3C" stroke="#fff" stroke-width="1.4"/><path d="M32.4 35.2 l1.9 1.9 l3.4 -3.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+  }
   return s + "</svg>";
 }
 // Desenho grande do painel: faces com o nome e a face escolhida em destaque.
@@ -1574,7 +1584,8 @@ function svgDenteGrande(n, d, faceSel) {
 function celula(n) {
   const ex = estado.ex, d = ex.dentes[n], sup = ehSup(n), duv = duvidaIdade(n, ex);
   const num = `<span class="num">${n}</span>`, al = (estado.alertas || {})[n];
-  return `<button type="button" class="dente ${ehDecid(n) ? "dec" : "perm"} ${estado.sel === n ? "ativo" : ""} ${duv ? "duvida" : ""} ${al ? "alerta-" + al : ""}" data-n="${n}" aria-label="Dente ${n}: ${esc(siglaDente(d))}${duv ? ", conferir pela idade" : ""}"${COM_MOUSE ? "" : ` title="${n}: ${esc(nomeDente(n))}"`}>${sup ? num : siglaHtml(d)}<span class="dente-cor">${svgDente(n, d)}</span>${sup ? siglaHtml(d) : num}</button>`;
+  const semConduta = necessidadesSemConduta({dentes: {[n]: d}, denticao: ex.denticao, odontograma: ex.odontograma}).length > 0;
+  return `<button type="button" class="dente ${ehDecid(n) ? "dec" : "perm"} ${estado.sel === n ? "ativo" : ""} ${duv ? "duvida" : ""} ${al ? "alerta-" + al : ""} ${semConduta ? "sem-conduta" : ""}" data-n="${n}" aria-label="Dente ${n}: ${esc(siglaDente(d))}${duv ? ", conferir pela idade" : ""}"${COM_MOUSE ? "" : ` title="${n}: ${esc(nomeDente(n))}"`}>${sup ? num : siglaHtml(d)}<span class="dente-cor">${svgDente(n, d)}</span>${sup ? siglaHtml(d) : num}</button>`;
 }
 function renderOdonto() {
   const ex = estado.ex; garantirDentes(ex);
@@ -1589,7 +1600,11 @@ function renderOdonto() {
   const idTxt = id ? `${id.anos} ${id.anos === 1 ? "ano" : "anos"}${id.meses ? ` e ${id.meses} ${id.meses === 1 ? "mês" : "meses"}` : ""}` : "";
   if (!id) { el.className = "prev"; el.textContent = "Informe a data de nascimento: o app monta o odontograma de acordo com a idade."; }
   else { el.className = "prev ok"; el.innerHTML = `<b>Dentição ${NOME_DEN[ex.denticao]} para ${idTxt}.</b> Toque no dente que tiver alguma alteração.`; }
-  renderLegenda();
+  renderLegenda(); renderProtese();
+  renderTratamento();
+  const pend = necessidadesSemConduta(ex), pb = $("#pendOdonto");
+  pb.hidden = !pend.length;
+  if (pend.length) pb.innerHTML = `<b>${pend.length === 1 ? "1 dente" : pend.length + " dentes"} com necessidade sem tratamento ou conduta:</b> ${esc(pend.map(x => `${x.n} (${listaE(x.motivos)})`).join("; "))}. Toque no dente para indicar o tratamento, marcar acompanhamento ou encaminhar. Sem isso, o tratamento básico não pode ser concluído.`;
   const lg = $("#legendaOdo"), pref = store.get(K_LEG, null); if (lg && pref && typeof pref.aberta === "boolean" && lg.open !== pref.aberta) lg.open = pref.aberta;
 }
 function renderLegenda() {
@@ -1601,7 +1616,8 @@ function renderLegenda() {
   // Três colunas iguais; todos os ícones na mesma caixa de 20 px.
   box.innerHTML = g("Dente", dente.map(([k, t]) => `<div><span class="ic">${mini(k)}</span><span>${t}</span></div>`)) +
     g("Faces", FACES.filter(f => f.k).map(f => `<div><span class="ic"><i class="sq" style="background:${f.k === "restc" ? "repeating-linear-gradient(45deg,var(--rest) 0 3px,var(--carie) 3px 5px)" : f.estilo.replace("fill:", "")}"></i></span><span>${f.nome}</span></div>`)) +
-    g("Marcas", [`<div><span class="ic"><i class="bd2" style="background:#D7263D">Ex</i></span><span>Exodontia devido à cárie</span></div>`, `<div><span class="ic"><i class="bd2" style="background:#E2231A">!</i></span><span>Dor ou abscesso</span></div>`, `<div><span class="ic"><i class="sq duv"></i></span><span>Conferir pela idade</span></div>`]);
+    g("Marcas", [`<div><span class="ic"><i class="bd2" style="background:#D7263D">Ex</i></span><span>Exodontia devido à cárie</span></div>`, `<div><span class="ic"><i class="bd2" style="background:#E2231A">!</i></span><span>Dor ou abscesso</span></div>`,
+      `<div><span class="ic"><i class="bd2" style="background:#F2C230;color:#13233A">1</i></span><span>Procedimentos indicados (quantos)</span></div>`, `<div><span class="ic"><i class="bd2" style="background:#1A7F3C">✓</i></span><span>Procedimento realizado</span></div>`, `<div><span class="ic"><i class="sq duv"></i></span><span>Conferir pela idade</span></div>`]);
 }
 function renderResultado() {
   if (estado.ex.odontograma === "nao") {
@@ -1646,6 +1662,7 @@ function renderFormulario() {
   $("#locais").innerHTML = LOCAIS_ATENDIMENTO.map(l => `<button class="chip" type="button" data-local="${esc(l)}" aria-pressed="${ex.localAtendimento === l}">${esc(l)}</button>`).join("");
   renderProtese();
   renderVig();
+  renderTratamento();
   $("#insumos").innerHTML = INSUMOS.map((g, i) => `<label class="check"><input type="checkbox" data-insumo="${i}" ${(ex.insumos || []).includes(g) ? "checked" : ""}>${esc(g)}</label>`).join("");
   $("#gerais").innerHTML = GERAIS.map((g, i) => geraisPossiveis(ex).includes(g) ? `<label class="check"><input type="checkbox" data-geral="${i}" ${ex.gerais.includes(g) ? "checked" : ""}>${esc(g)}</label>` : "").join("");
   $$("[data-sn]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(ex[g.dataset.sn] === b.dataset.v))));
@@ -1695,7 +1712,14 @@ function renderVig() {
   const v = ex.vigilancia || [];
   $("#vig").innerHTML = vigOutrosLista(ex).map((t, i) => `<label class="${v.includes(t) ? "on" : ""}"><input type="checkbox" data-vig="${i}" ${v.includes(t) ? "checked" : ""}>${esc(t)}</label>`).join("");
 }
+// Dentes permanentes ausentes que podem pedir prótese: sem os terceiros molares (18, 28, 38 e 48) e sem os decíduos.
+function ausentesParaProtese(ex) {
+  return dentesDe(ex.denticao).filter(n => !ehDecid(n) && n % 10 !== 8 && ex.dentes[n] && ["ausente", "ausente_carie"].includes(ex.dentes[n].status));
+}
 function renderProtese() {
+  const aus = ausentesParaProtese(estado.ex), lem = $("#proteseLembrete");
+  lem.hidden = !aus.length;
+  if (aus.length) lem.innerHTML = `<b>Avalie a necessidade de prótese:</b> ${aus.length === 1 ? "o dente" : "os dentes"} ${esc(listaE(aus.map(String)))} ${aus.length === 1 ? "está ausente" : "estão ausentes"}. A decisão é sua; o app não encaminha sozinho.`;
   const pr = estado.ex.protese = Object.assign(proteseVazia(), estado.ex.protese || {});
   $$("[data-protese]").forEach(g => g.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", !pr.naoAvaliado && b.dataset.v === pr[g.dataset.protese])));
   const nenhuma = !pr.naoAvaliado && ["sup", "inf", "usoSup", "usoInf"].every(k => pr[k] === "nao");
@@ -1770,6 +1794,9 @@ function faltasEtapa(i, ex) {
     else if (ex.fezEncaminhamento === "sim" && !Object.keys(ex.encaminhamentos || {}).length) f.push(["para qual especialidade foi o encaminhamento", "#encLista"]);
     if (ex.fezPrescricao !== "sim" && ex.fezPrescricao !== "nao") f.push(["se houve prescrição medicamentosa (Sim ou Não)", '[data-sn="fezPrescricao"]']);
     else if (ex.fezPrescricao === "sim" && !(ex.prescricoes || []).length) f.push(["qual prescrição foi feita", "#prescricoes"]);
+    const sitTc = situacaoTratamento(ex, ajustesNivel(ex.dsei));
+    if (sitTc === "a_confirmar") f.push(["se o tratamento básico foi concluído", "#segTc"]);
+    else if (sitTc === "nao_concluido" && !String((ex.tratamento || {}).motivo || "").trim()) f.push(["por que o tratamento básico ainda não foi concluído", "#tcMotivo"]);
   }
   return f;
 }
@@ -1900,7 +1927,8 @@ function renderRevisao() {
   const encTxt = Object.entries(ex.encaminhamentos || {}).map(([k, st]) => `${ESPECIALIDADES[k]} (${SITUACAO_ENCAMINHAMENTO[st].toLowerCase()})`);
   const condTxt = [!sem && `Placa: ${condV("placa")}`, !sem && `Gengivite: ${condV("gengivite")}`,
     `Coletivos: ${simNaoTxt(ex.fezColetivos, geraisDoExame(ex))}`, `Insumos: ${simNaoTxt(ex.deuInsumos, ex.insumos || [])}`,
-    `Encaminhamentos: ${simNaoTxt(ex.fezEncaminhamento, encTxt)}`, `Prescrições: ${simNaoTxt(ex.fezPrescricao, ex.prescricoes || [])}`].filter(Boolean).join(" · ");
+    `Encaminhamentos: ${simNaoTxt(ex.fezEncaminhamento, encTxt)}`, `Prescrições: ${simNaoTxt(ex.fezPrescricao, ex.prescricoes || [])}`,
+    `Tratamento básico: ${NOMES_TRATAMENTO[situacaoTratamento(ex, ajustesNivel(ex.dsei))].toLowerCase()}`].filter(Boolean).join(" · ");
   const gestTxt = perguntaGestante(comIdade(ex)) ? (ex.gestante === "sim" ? `gestante, ${ex.semanasGestacao || "?"} semanas` : ex.gestante === "nao" ? "não gestante" : "") : "";
   const deanTxt = perguntaDean(comIdade(ex)) && ex.fluoroseDean ? `índice de Dean ${ex.fluoroseDean} (${DEAN[ex.fluoroseDean].toLowerCase()})` : "";
   if (sem) $("#revResultado").innerHTML = `<div class="rev-res"><span class="classe">–</span><div><b>Sem odontograma</b><small>${esc(ex.odontogramaMotivo === MOTIVO_OUTRO ? "Outro motivo: " + (ex.odontogramaMotivoOutro || "") : ex.odontogramaMotivo || "motivo não informado")}</small></div></div>`;
@@ -1914,7 +1942,8 @@ function renderRevisao() {
   ];
   $("#revLista").innerHTML = linhasR.map(([i, t, txt]) => { const ok = !faltasEtapa(i, ex).length;
     return `<div class="rev"><span class="ok ${ok ? "" : "falta"}">${ok ? "✓" : "!"}</span><div><b>${t}</b><small>${esc(txt)}</small></div><button class="link" type="button" data-etapa="${i}">Editar</button></div>`; }).join("");
-  $("#revDentes").innerHTML = sem ? `<p class="dica">Sem odontograma.</p>` : resumoDentesHtml(ex);
+  const pend = necessidadesSemConduta(ex);
+  $("#revDentes").innerHTML = sem ? `<p class="dica">Sem odontograma.</p>` : (pend.length ? `<p class="aviso">Necessidade sem tratamento ou conduta: ${esc(pend.map(x => `${x.n} (${listaE(x.motivos)})`).join("; "))}.</p>` : "") + resumoDentesHtml(ex);
 }
 function renderExame() { renderFormulario(); renderOdonto(); renderResultado(); renderPessoa(); mostrarEtapa(); renderEtapas(); renderSugLocal(); }
 
@@ -1985,6 +2014,7 @@ function renderPainel(focoSel) {
       <label class="check"><input type="checkbox" data-sinal="abscesso" ${d.abscesso ? "checked" : ""}>Abscesso ou fístula</label>
       <h4>Tratamento</h4><div>${visiveis.map(linhaProc).join("")}</div>
       ${ocultos > 0 ? `<button class="link" type="button" data-acao="todos-proc" style="margin-top:8px">Outros procedimentos (${ocultos})</button>` : ""}
+      ${condutaHtml(n, d)}
       <label class="campo" style="margin-top:14px">Observação sobre o dente<textarea data-obs placeholder="Sem dados que identifiquem a pessoa">${esc(d.obs)}</textarea></label>`;
   }
   $("#fundo").innerHTML = `<div class="painel" role="dialog" aria-modal="true" aria-labelledby="pTit">
@@ -1997,6 +2027,33 @@ function renderPainel(focoSel) {
   </div>`;
   const p = $(".painel"); p.scrollTop = rolagem;
   if (focoSel) p.querySelector(focoSel)?.focus();
+}
+// Tratamento odontológico básico (APS): o app mostra as pendências; sem pendência, o profissional confirma se concluiu.
+function renderTratamento() {
+  const ex = estado.ex, box = $("#tcBox"); if (!box) return;
+  const aj = ajustesNivel(ex.dsei), sit = situacaoTratamento(ex, aj), pend = pendenciasAPS(ex, aj), t = ex.tratamento || {};
+  const enc = situacaoEncaminhamento(ex);
+  const encTxt = enc === "sem" ? "" : `<p class="dica" style="margin:8px 0 0"><b>Atenção especializada:</b> ${esc(NOMES_SIT_ENCAMINHAMENTO[enc].toLowerCase())} (à parte do tratamento básico).</p>`;
+  if (sit === "nao_avaliado") { box.innerHTML = `<h4>Tratamento básico (APS)</h4><p class="dica" style="margin:0">Não avaliado: sem odontograma.</p>${encTxt}`; return; }
+  if (sit === "pendente") {
+    box.innerHTML = `<h4>Tratamento básico (APS): não concluído</h4><p class="dica" style="margin:0">Ainda falta, na atenção primária:</p><ul>${pend.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      <p class="dica" style="margin:6px 0 0">Quando tudo for realizado (aqui ou numa consulta de retorno), o app pergunta se o tratamento foi concluído.</p>${encTxt}`;
+    return;
+  }
+  box.innerHTML = `<h4>Tratamento básico (APS)</h4><p class="dica" style="margin:0 0 8px">Não há pendência da APS neste exame. O tratamento básico foi concluído?</p>
+    <div class="seg" role="group" aria-label="O tratamento básico foi concluído?" id="segTc"><button type="button" data-tc="concluido" aria-pressed="${t.aps === "concluido"}">Sim, concluído</button><button type="button" data-tc="nao_concluido" aria-pressed="${t.aps === "nao_concluido"}">Ainda não</button></div>
+    ${t.aps === "nao_concluido" ? `<label class="campo" style="margin-top:8px">Por que ainda não? (obrigatório)<textarea id="tcMotivo" maxlength="300" placeholder="Ex.: falta a orientação de dieta na próxima visita">${esc(t.motivo || "")}</textarea></label>` : ""}${encTxt}`;
+}
+// Conduta do dente, quando ele tem uma necessidade: em vez do procedimento, acompanhamento (com o motivo) ou encaminhamento.
+function condutaHtml(n, d) {
+  const nec = necessidadeDoDente(d); if (!nec.length) return "";
+  const c = d.conduta || {}, temProc = Object.values(d.procs || {}).some(v => v === "indicado" || v === "realizado");
+  const aviso = temProc || condutaValida(d) ? "" : `<p class="aviso" style="margin:6px 0">Este dente tem ${esc(listaE(nec))} e ainda não tem tratamento indicado nem conduta.</p>`;
+  return `<h4>Conduta ${temProc ? "(opcional, além do tratamento)" : "sem tratamento neste dente"}</h4>${aviso}
+    <div class="chips"><button class="chip" type="button" data-conduta="acompanhamento" aria-pressed="${c.tipo === "acompanhamento"}">Acompanhamento, sem tratamento agora</button>
+    <button class="chip" type="button" data-conduta="encaminhamento" aria-pressed="${c.tipo === "encaminhamento"}">Encaminhar para a atenção especializada</button></div>
+    ${c.tipo === "acompanhamento" ? `<label class="campo" style="margin-top:8px">Por que acompanhar? (obrigatório)<textarea data-conduta-motivo maxlength="300" placeholder="Ex.: decíduo perto da esfoliação; lesão inativa em controle">${esc(c.motivo || "")}</textarea></label>` : ""}
+    ${c.tipo === "encaminhamento" ? `<div class="chips" style="margin-top:8px">${Object.keys(ESPECIALIDADES).map(k => `<button class="chip" type="button" data-conduta-esp="${k}" aria-pressed="${c.especialidade === k}">${esc(ESPECIALIDADES[k])}</button>`).join("")}</div>` : ""}`;
 }
 // Odontograma do início, para a idade nova: dentição e dentes esperados pela idade, nada marcado.
 function reiniciarOdonto(ex) {
@@ -2062,7 +2119,8 @@ function registro47(ex, idade) {
     fluoroseDean: perguntaDean(x) ? ex.fluoroseDean || "" : "", condNaoAvaliadas: na,
     ...Object.fromEntries(na.map(k => [k, null])),
     fezEncaminhamento: ex.fezEncaminhamento, encaminhamentos: ex.fezEncaminhamento === "sim" ? clone(ex.encaminhamentos || {}) : {},
-    fezPrescricao: ex.fezPrescricao, prescricoes: ex.fezPrescricao === "sim" ? (ex.prescricoes || []).slice() : []};
+    fezPrescricao: ex.fezPrescricao, prescricoes: ex.fezPrescricao === "sim" ? (ex.prescricoes || []).slice() : [],
+    tratamento: (() => { const sit = situacaoTratamento(ex, ajustesNivel(ex.dsei)); return {aps: sit, motivo: sit === "nao_concluido" ? String((ex.tratamento || {}).motivo || "").trim() : ""}; })()};
 }
 function salvarExame() {
   const c = cfg(), ex = estado.ex;
@@ -2767,6 +2825,12 @@ $$("[data-bool]").forEach(grp => grp.addEventListener("click", e => {
   ex.condNaoAvaliadas = b.dataset.v === "na" ? na.concat([k]) : na;
   ex[k] = b.dataset.v === "na" ? null : b.dataset.v === "1"; alterado(); renderFormulario(); renderResultado(); renderEtapas();
 }));
+$("#tcBox").addEventListener("click", e => {
+  const b = e.target.closest("[data-tc]"); if (!b) return;
+  const t = estado.ex.tratamento || {}; estado.ex.tratamento = {aps: t.aps === b.dataset.tc ? "" : b.dataset.tc, motivo: t.motivo || ""};
+  alterado(); renderTratamento(); renderEtapas();
+});
+$("#tcBox").addEventListener("input", e => { if (e.target.id !== "tcMotivo") return; estado.ex.tratamento = Object.assign({}, estado.ex.tratamento, {motivo: e.target.value}); alterado(); renderEtapas(); });
 $("#localidades").addEventListener("click", e => { const b = e.target.closest("[data-localidade]"); if (!b) return; estado.ex.localidade = b.dataset.localidade; alterado(); renderFormulario(); renderEtapas(); });
 $("#inSemanas").addEventListener("input", e => { const v = e.target.value.trim(); estado.ex.semanasGestacao = v === "" ? null : Number(v); alterado(); renderEtapas(); });
 $("#dean").addEventListener("change", e => { if (e.target.name !== "dean") return; estado.ex.fluoroseDean = e.target.value; atualizarVigilancia(estado.ex); alterado(); renderVig(); renderResultado(); renderEtapas(); });
@@ -2825,7 +2889,7 @@ $("#fundo").addEventListener("click", e => {
     // Só o dente presente tem faces, sinais e tratamento: mudar para outra situação apaga o que estava marcado.
     if (novo !== "presente" && temRegistro(d) && !confirm(`As faces, os sinais e o tratamento marcados no dente ${n} serão apagados, porque o dente fica ${ST_ROT[novo].replace(/ \(.*\)$/, "").toLowerCase()}. Continuar?`)) return;
     d.status = novo;
-    if (novo !== "presente") { d.faces = facesVazias(); d.dor = false; d.abscesso = false; d.procs = {}; }
+    if (novo !== "presente") { d.faces = facesVazias(); d.dor = false; d.abscesso = false; d.procs = {}; delete d.conduta; }
     ex._conf = Object.assign(ex._conf || {}, {[n]: true}); if (ex._duvAnt) delete ex._duvAnt[n]; estado.faceSel = null;
     mudouDente(); return renderPainel(`[data-status="${novo}"]`);
   }
@@ -2833,6 +2897,15 @@ $("#fundo").addEventListener("click", e => {
   if (fe && t.closest(".faces-desenho")) { estado.faceSel = fe.dataset.face; return renderPainel(); }
   const fc = t.closest("[data-facecond]");
   if (fc && estado.faceSel) { d.faces[estado.faceSel] = fc.dataset.facecond; mudouDente(); return renderPainel(`[data-facecond="${fc.dataset.facecond}"]`); }
+  const cd = t.closest("[data-conduta]");
+  if (cd) { const tipo = cd.dataset.conduta; if ((d.conduta || {}).tipo === tipo) delete d.conduta; else d.conduta = {tipo}; mudouDente(); return renderPainel(`[data-conduta="${tipo}"]`); }
+  const ce = t.closest("[data-conduta-esp]");
+  if (ce) {
+    const k = ce.dataset.condutaEsp; d.conduta = {tipo: "encaminhamento", especialidade: k};
+    // O encaminhamento do dente também entra nos encaminhamentos do exame (pendente, se ainda não estava lá).
+    ex.encaminhamentos = Object.assign({}, ex.encaminhamentos || {}); if (!ex.encaminhamentos[k]) ex.encaminhamentos[k] = "pendente"; ex.fezEncaminhamento = "sim";
+    mudouDente(); return renderPainel(`[data-conduta-esp="${k}"]`);
+  }
   const pr = t.closest("[data-proc]");
   if (pr) {
     const k = pr.dataset.proc, v = pr.dataset.val; d.procs = d.procs || {};
@@ -2845,7 +2918,10 @@ $("#fundo").addEventListener("change", e => {
   const n = estado.sel, d = estado.ex.dentes[n], t = e.target;
   if (t.dataset.sinal) { d[t.dataset.sinal] = t.checked; mudouDente(); renderPainel(`[data-sinal="${t.dataset.sinal}"]`); }
 });
-$("#fundo").addEventListener("input", e => { if ("obs" in e.target.dataset) { estado.ex.dentes[estado.sel].obs = e.target.value; alterado(); } });
+$("#fundo").addEventListener("input", e => {
+  if ("obs" in e.target.dataset) { estado.ex.dentes[estado.sel].obs = e.target.value; alterado(); }
+  if ("condutaMotivo" in e.target.dataset) { const d = estado.ex.dentes[estado.sel]; d.conduta = {tipo: "acompanhamento", motivo: e.target.value}; alterado(); renderOdonto(); }
+});
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#fundo").hidden) fecharPainel(); });
 
 // lista
@@ -2925,6 +3001,71 @@ var PRESCRICOES = ["Analgésico", "Anti-inflamatório", "Antibiótico", "Outra p
 // Placa e gengivite podem ficar "não avaliadas" (nunca viram "Não" nas contas).
 /** @param {any} ex @param {string} k */
 function naoAvaliada(ex, k) { return Array.isArray(ex && ex.condNaoAvaliadas) && ex.condNaoAvaliadas.indexOf(k) >= 0; }
+// Necessidade não tratada (decisão 4). Cárie ativa, restaurada com cárie, dor e abscesso pedem tratamento; mancha branca ativa
+// e cárie crônica pedem um preventivo ou o acompanhamento. Em todos os casos o profissional pode, em vez do procedimento,
+// marcar a conduta do dente: "acompanhamento, sem tratamento agora" (com o motivo) ou o encaminhamento para a atenção especializada.
+/** @type {any} */
+var NECESSIDADE_FACE = {ca: "cárie ativa", restc: "restaurada com cárie", cc: "cárie crônica", mba: "mancha branca ativa"};
+/** O que o dente tem que pede uma conduta (vazio: nada). @param {any} d */
+function necessidadeDoDente(d) {
+  if (!d || d.status !== "presente") return [];
+  var fs = d.faces || {}, l = [];
+  Object.keys(NECESSIDADE_FACE).forEach(function (k) { if (Object.keys(fs).some(function (f) { return fs[f] === k; })) l.push(NECESSIDADE_FACE[k]); });
+  if (d.dor) l.push("dor");
+  if (d.abscesso) l.push("abscesso ou fístula");
+  return l;
+}
+/** A conduta do dente está completa (acompanhamento com o motivo, ou encaminhamento com a especialidade). @param {any} d */
+function condutaValida(d) {
+  var c = d && d.conduta;
+  return !!c && ((c.tipo === "acompanhamento" && !!String(c.motivo || "").trim()) || (c.tipo === "encaminhamento" && !!ESPECIALIDADES[c.especialidade]));
+}
+/** Dentes com necessidade e sem procedimento nem conduta: [{n, motivos}]. @param {any} ex */
+function necessidadesSemConduta(ex) {
+  if (!ex || semOdontograma(ex)) return [];
+  var ds = ex.dentes || {};
+  return dentesDaDenticao(ex.denticao).filter(function (n) {
+    var d = ds[n]; if (!necessidadeDoDente(d).length || condutaValida(d)) return false;
+    var p = (d && d.procs) || {};
+    return !Object.keys(p).some(function (k) { return p[k] === "indicado" || p[k] === "realizado"; });
+  }).map(function (n) { return {n: n, motivos: necessidadeDoDente(ds[n])}; });
+}
+// Nível de cada procedimento do dente (decisão 3). Todos os da lista são da atenção primária (APS); a coordenação pode passar
+// um procedimento para a atenção especializada num DSEI (por exemplo, onde a coroa de aço não é feita na APS).
+// "ajustes" é {procedimento: "especializada"} do DSEI do exame.
+/** @param {string} k @param {any} [ajustes] */
+function nivelDoProc(k, ajustes) { return ajustes && ajustes[k] === "especializada" ? "especializada" : "aps"; }
+/** O que ainda falta da APS no exame: procedimentos indicados (da APS) e necessidades sem tratamento nem conduta. @param {any} ex @param {any} [ajustes] */
+function pendenciasAPS(ex, ajustes) {
+  if (!ex || semOdontograma(ex)) return [];
+  var ds = ex.dentes || {}, l = [];
+  dentesDaDenticao(ex.denticao).forEach(function (n) {
+    var d = ds[n]; if (!d || d.status !== "presente") return;
+    var p = d.procs || {};
+    Object.keys(p).forEach(function (k) { if (p[k] === "indicado" && nivelDoProc(k, ajustes) === "aps") l.push(n + ": " + (NOMES_PROC[k] || k) + " (indicado)"); });
+  });
+  necessidadesSemConduta(ex).forEach(function (x) { l.push(x.n + ": " + x.motivos.join(", ") + " sem tratamento nem conduta"); });
+  return l;
+}
+// Situação do tratamento odontológico básico (APS) no exame. Só o profissional conclui: o app sugere quando não há pendência.
+/** @type {any} */
+var NOMES_TRATAMENTO = {concluido: "Concluído", nao_concluido: "Não concluído", pendente: "Não concluído: há pendências da APS",
+  a_confirmar: "Sem pendências, a confirmar", nao_avaliado: "Não avaliado (sem odontograma)"};
+/** @param {any} ex @param {any} [ajustes] */
+function situacaoTratamento(ex, ajustes) {
+  if (semOdontograma(ex)) return "nao_avaliado";
+  if (pendenciasAPS(ex, ajustes).length) return "pendente";
+  var t = (ex.tratamento || {}).aps;
+  return t === "concluido" || t === "nao_concluido" ? t : "a_confirmar";
+}
+/** Encaminhamento, à parte da APS: "sem", "pendente" (algum ainda pendente) ou "realizado". @param {any} ex */
+function situacaoEncaminhamento(ex) {
+  var e = ex.encaminhamentos || {}, ks = Object.keys(e);
+  if (!ks.length) return "sem";
+  return ks.some(function (k) { return e[k] === "pendente"; }) ? "pendente" : "realizado";
+}
+/** @type {any} */
+var NOMES_SIT_ENCAMINHAMENTO = {sem: "Sem encaminhamento", pendente: "Encaminhamento pendente", realizado: "Encaminhamento realizado"};
 /** Troca os nomes de antes da versão 47 pelos novos (exames que chegam de um app 45 ou 46). Muda o próprio exame. @param {any} e */
 function atualizarNomesAntigos(e) {
   if (!e) return e;
@@ -3267,7 +3408,7 @@ var CAB_P1 = ["codigo_individuo", "numero_exame", "data_exame", "situacao_regist
   .concat(Object.keys(COL_VIG).map(function (k) { return COL_VIG[k]; }))
   .concat(["protese_sup_necessita", "protese_inf_necessita", "protese_sup_usa", "protese_inf_usa", "placa_visivel", "gengivite", "procedimentos_coletivos", "insumos", "observacoes"])
   // Desde a versão 47 (Fichas 4 e 7 do SIASI)
-  .concat(["localidade_residencia", "gestante", "semanas_gestacao", "fluorose_dean"])
+  .concat(["localidade_residencia", "gestante", "semanas_gestacao", "fluorose_dean", "tratamento_aps", "tratamento_aps_motivo", "pendencias_aps", "situacao_encaminhamento"])
   .concat(Object.keys(ESPECIALIDADES).map(function (k) { return "encaminhamento_" + k; }))
   .concat(PRESCRICOES.map(function (_, i) { return COL_PRESCRICAO[i]; }));
 var CAB_P2 = Object.keys(COL_STATUS).map(function (k) { return "n_dentes_" + COL_STATUS[k]; })
@@ -3308,7 +3449,10 @@ function valoresDoExame(e, completo) {
     protese_sup_necessita: prot(pr.sup), protese_inf_necessita: prot(pr.inf), protese_sup_usa: prot(pr.usoSup), protese_inf_usa: prot(pr.usoInf),
     placa_visivel: cond("placa"), gengivite: cond("gengivite"),
     localidade_residencia: e.localidade || "", gestante: e.gestante === "sim" ? "sim" : e.gestante === "nao" ? "não" : "", semanas_gestacao: e.gestante === "sim" && e.semanasGestacao != null ? e.semanasGestacao : "",
-    fluorose_dean: e.fluoroseDean ? e.fluoroseDean + " · " + (DEAN[e.fluoroseDean] || "") : "", procedimentos_coletivos: (e.gerais || []).join("; "), insumos: (e.insumos || []).join("; "), observacoes: e.observacoes || "",
+    fluorose_dean: e.fluoroseDean ? e.fluoroseDean + " · " + (DEAN[e.fluoroseDean] || "") : "",
+    tratamento_aps: (e.tratamento || {}).aps ? (NOMES_TRATAMENTO[e.tratamento.aps] || e.tratamento.aps).toLowerCase() : "",
+    tratamento_aps_motivo: (e.tratamento || {}).motivo || "", pendencias_aps: (e.tratamento || {}).pendencias != null ? e.tratamento.pendencias : "",
+    situacao_encaminhamento: e.fezEncaminhamento == null && !Object.keys(e.encaminhamentos || {}).length ? "" : NOMES_SIT_ENCAMINHAMENTO[situacaoEncaminhamento(e)].toLowerCase(), procedimentos_coletivos: (e.gerais || []).join("; "), insumos: (e.insumos || []).join("; "), observacoes: e.observacoes || "",
     codigo_exame: e.codigo || "", aldeia_fora_da_lista: e.codAldeia ? "não" : (e.aldeia ? "sim" : ""), codigo_confere_local: codigoConfereLocal(e),
     conferencia_vinculo: v.anteriorId ? (v.conferidos && v.conferidos.length ? "compatível, com mudança conferida" : "compatível") : "1º exame",
     alertas_vinculo: (v.conferidos || []).join(" · "), exame_anterior_id: v.anteriorId || "",
@@ -4305,7 +4449,9 @@ async function verificarSessao(forcar) {
 /* ---------- DSEIs, polos e aldeias da SESAI (lista enviada pela coordenação) ---------- */
 // O servidor manda a lista do DSEI da pessoa (a coordenação recebe todos). Fica guardada no aparelho
 // para funcionar sem internet; é trocada quando a coordenação envia uma planilha nova.
-const K_TERR = "odonto.territorios.v1";
+const K_TERR = "odonto.territorios.v1", K_NIVEIS = "odonto.niveis.v1";
+// Nível dos procedimentos no DSEI do exame ({proc: "especializada"}), como a coordenação definiu.
+const ajustesNivel = dsei => (store.get(K_NIVEIS, {}) || {})[dsei] || {};
 const terr = () => store.get(K_TERR, null);
 async function carregarTerritorios(versao, forcar) {
   if (!sessao() || !navigator.onLine || !cfg().url) return;
@@ -4314,6 +4460,7 @@ async function carregarTerritorios(versao, forcar) {
   if (!forcar && !t && versao === "") return;
   try {
     const j = await api("territorios");
+    store.set(K_NIVEIS, j.niveis || {});
     if (j.vazio) store.set(K_TERR, null);
     else store.set(K_TERR, {versao: j.versao, ano: j.ano, email: sessao().email, dseis: j.dseis, polos: j.polos, aldeias: j.aldeias, tis: j.tis, muns: j.muns});
     if (estado.aba === "exame") renderFormulario();
@@ -4841,6 +4988,7 @@ function htmlLeitura(r) {
       <tr><th>Procedimentos coletivos</th><td>${esc((r.gerais || []).join(", ") || "nenhum")}</td></tr>
       <tr><th>Procedimentos por dente</th><td style="white-space:normal">${esc(procs.join("; ") || "nenhum")}</td></tr>
       ${r.fezEncaminhamento ? `<tr><th>Encaminhamentos</th><td style="white-space:normal">${esc(Object.entries(r.encaminhamentos || {}).map(([k, st]) => `${ESPECIALIDADES[k] || k} (${(SITUACAO_ENCAMINHAMENTO[st] || st).toLowerCase()})`).join(", ") || "nenhum")}</td></tr>` : ""}
+      ${(r.tratamento || {}).aps ? `<tr><th>Tratamento básico (APS)</th><td style="white-space:normal">${esc(NOMES_TRATAMENTO[r.tratamento.aps] || r.tratamento.aps)}${r.tratamento.motivo ? " · " + esc(r.tratamento.motivo) : ""}</td></tr>` : ""}
       ${r.fezPrescricao ? `<tr><th>Prescrições</th><td style="white-space:normal">${esc((r.prescricoes || []).join(", ") || "nenhuma")}</td></tr>` : ""}
       ${r.observacoes ? `<tr><th>Observações</th><td style="white-space:normal">${esc(r.observacoes)}</td></tr>` : ""}
     </tbody></table></div>
@@ -5041,6 +5189,19 @@ $("#admConteudo").addEventListener("change", e => { if (e.target.id === "admPopA
 
 /* ---------- administração (coordenação) ---------- */
 const estAdm = {dados: null, fPerfil: "", fDsei: "", fStatus: "", subst: null};
+// Nível dos procedimentos por DSEI (decisão 3): todos são da APS; a coordenação passa algum para a atenção especializada.
+function blocoNiveis() {
+  const dsei = estAdm.nivDsei || DSEIS[0], aj = Object.assign({}, ajustesNivel(dsei), estAdm.nivEdit && estAdm.nivEdit.dsei === dsei ? estAdm.nivEdit.aj : {});
+  const linhas = Object.keys(NOMES_PROC).map(k => { const v = aj[k] === "especializada" ? "especializada" : "aps";
+    return `<div class="linha-op"><span>${esc(NOMES_PROC[k])}</span><div class="seg pequeno" role="group" aria-label="Nível: ${esc(NOMES_PROC[k])}">${
+      [["aps", "APS"], ["especializada", "Especializada"]].map(([n, t]) => `<button type="button" data-niv="${k}" data-nivel="${n}" aria-pressed="${v === n}">${t}</button>`).join("")}</div></div>`; }).join("");
+  return `<div class="bloco"><h2>Nível dos procedimentos</h2>
+    <p class="dica" style="margin:4px 0 10px">Todos os procedimentos do dente são da atenção primária (APS). Passe para a atenção especializada o que um DSEI não faz na APS: o procedimento indicado deixa de ser pendência do tratamento básico e vira necessidade de encaminhamento.</p>
+    <label class="campo" style="max-width:360px">DSEI<select id="admNivDsei">${DSEIS.map(x => `<option ${x === dsei ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></label>
+    <div class="enc" style="margin-top:10px">${linhas}</div>
+    <div class="acoes-l" style="margin-top:10px"><button class="prim" type="button" id="admNivSalvar">Salvar o nível dos procedimentos</button></div>
+    <p class="dica" id="admNivStatus" aria-live="polite"></p></div>`;
+}
 async function carregarAdmin() {
   const st = $("#admStatus"); st.textContent = "Carregando…";
   try { estAdm.dados = await api("admin"); st.textContent = "Atualizado agora."; renderAdmin(); }
@@ -5196,7 +5357,7 @@ function renderAdmin() {
   const senha = "";
   const aud = d.auditoria && d.auditoria.falhas ? `<div class="aviso-servidor" style="padding:12px 14px;border-radius:10px"><b>${d.auditoria.falhas} ${d.auditoria.falhas === 1 ? "registro" : "registros"} de acesso não ${d.auditoria.falhas === 1 ? "pôde" : "puderam"} ser gravado${d.auditoria.falhas === 1 ? "" : "s"} na aba Acessos.</b> O atendimento continuou normalmente, mas a trilha de auditoria ficou incompleta. Última falha: ${esc(textoFalha(d.auditoria.ultima))}. Isso costuma acontecer só quando duas pessoas usam o app no mesmo instante em que a aba Acessos está sendo recriada (depois de publicar o servidor ou reorganizar a planilha).${d.titular ? ` <button class="sec mini" type="button" id="limparAuditoria" style="margin-left:6px">Entendi, limpar aviso</button>` : ""}</div>` : "";
   setTimeout(mostrarDiagnostico, 0);
-  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + blocoPlanAnalise(d.analise) + blocoBackup(d.backup) + conv + ped + blocoPopulacao(d.populacao) + coordBloco + rtBloco + mapa + usuarios + acessos;
+  $("#admConteudo").innerHTML = reorg + senha + aud + blocoEspaco(d.espaco) + blocoErros(d.erros) + kpis + blocoAnalise() + blocoPlanAnalise(d.analise) + blocoBackup(d.backup) + conv + ped + blocoPopulacao(d.populacao) + blocoNiveis() + coordBloco + rtBloco + mapa + usuarios + acessos;
   if ($("#admRtDsei")) preencherDsei($("#admRtDsei"), "", "");
   if ($("#admCoordDsei")) preencherDsei($("#admCoordDsei"), "", "");
 }
@@ -5208,7 +5369,24 @@ $("#admConteudo").addEventListener("change", e => {
   if (e.target.id === "admRtUf") preencherDsei($("#admRtDsei"), e.target.value, "");
   const m = {admFPerfil: "fPerfil", admFDsei: "fDsei", admFStatus: "fStatus"}[e.target.id]; if (m) { estAdm[m] = e.target.value; renderAdmin(); }
 });
+$("#admConteudo").addEventListener("change", e => { if (e.target.id !== "admNivDsei") return; estAdm.nivDsei = e.target.value; estAdm.nivEdit = null; renderAdmin(); });
 $("#admConteudo").addEventListener("click", async e => {
+  const nv = e.target.closest("[data-niv]");
+  if (nv) {
+    const dsei = estAdm.nivDsei || DSEIS[0];
+    if (!estAdm.nivEdit || estAdm.nivEdit.dsei !== dsei) estAdm.nivEdit = {dsei, aj: Object.assign({}, ajustesNivel(dsei))};
+    estAdm.nivEdit.aj[nv.dataset.niv] = nv.dataset.nivel; return renderAdmin();
+  }
+  if (e.target.id === "admNivSalvar") {
+    const dsei = estAdm.nivDsei || DSEIS[0], aj = (estAdm.nivEdit && estAdm.nivEdit.dsei === dsei ? estAdm.nivEdit.aj : ajustesNivel(dsei));
+    try {
+      const j = await api("salvarNiveis", {dsei, ajustes: aj});
+      const todos = store.get(K_NIVEIS, {}) || {}; if (Object.keys(j.ajustes).length) todos[dsei] = j.ajustes; else delete todos[dsei];
+      store.set(K_NIVEIS, todos); estAdm.nivEdit = null; renderAdmin();
+      $("#admNivStatus").textContent = `Salvo para o DSEI ${dsei}. Os aparelhos recebem a mudança na próxima vez que entrarem com internet.`;
+    } catch (err) { $("#admNivStatus").textContent = err.message; }
+    return;
+  }
   if (await cliqueConvite(e, "adm", {render: renderAdmin, carregar: carregarAdmin})) return;
   if (e.target.id === "admCoordAdd") {
     const b = e.target, nome = $("#admCoordNome").value.trim(), email = $("#admCoordEmail").value.trim(), ehRT = $("#admCoordEhRT").checked;

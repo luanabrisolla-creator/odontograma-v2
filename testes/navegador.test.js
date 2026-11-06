@@ -79,7 +79,9 @@ for (let i = 0; i < 8; i++) {
     if (o.odontograma !== false) { await pg.click('#segOdonto [data-od="sim"]'); await pg.waitForTimeout(200); }   // "O odontograma foi preenchido?" Sim
   }
   const semColetivosNemInsumos = async pg => { await pg.click('[data-sn="fezColetivos"] [data-v="nao"]'); await pg.click('[data-sn="deuInsumos"] [data-v="nao"]');
-    await pg.click('[data-sn="fezEncaminhamento"] [data-v="nao"]'); await pg.click('[data-sn="fezPrescricao"] [data-v="nao"]'); await pg.waitForTimeout(1300); };
+    await pg.click('[data-sn="fezEncaminhamento"] [data-v="nao"]'); await pg.click('[data-sn="fezPrescricao"] [data-v="nao"]'); await pg.waitForTimeout(150);
+    if (await pg.isVisible("#segTc")) await pg.click('#segTc [data-tc="concluido"]');
+    await pg.waitForTimeout(1300); };
   // Depois do Indivíduo, responde o mínimo (sem alterações) até o Resumo.
   async function completar(pg) {
     if (await pg.isVisible("#deanBox")) await pg.check('#dean input[value="0"]');
@@ -217,6 +219,8 @@ for (let i = 0; i < 8; i++) {
   await pg.click('.painel [data-proc="exo_carie"][data-val="indicado"]'); await pg.waitForTimeout(100);
   await foto(pg, "4_painel_dente_cel");
   await pg.click('.painel .p-acoes [data-acao="fechar"]'); await pg.waitForTimeout(100);
+  T("selo amarelo no dente com o número de procedimentos indicados", await pg.$eval('.dente[data-n="46"] .selo-ind text', el => el.textContent) === "1" && !await pg.$('.dente[data-n="46"] .selo-real'));
+  T("o 46 tem tratamento indicado: não aparece como necessidade sem conduta", !await pg.$('.dente[data-n="46"].sem-conduta') && await pg.isHidden("#pendOdonto"));
   T("permanente com exodontia devido à cárie conta como C no CPO-D (não P)", await pg.evaluate(() => { const r = avaliarExame(estado.ex); return r.cpod.c === 1 && r.cpod.p === 0; }));
   await pg.click('.dente[data-n="36"]'); await pg.waitForTimeout(100);
   await pg.click('.faces-desenho [data-face="O"]'); await pg.click('.painel [data-facecond="cc"]'); await pg.waitForTimeout(80);
@@ -263,14 +267,15 @@ for (let i = 0; i < 8; i++) {
   await pg.click('[data-sn="fezPrescricao"] [data-v="sim"]'); await pg.check('#prescricoes [data-presc="0"]'); await pg.waitForTimeout(1300);
   await foto(pg, "6a_condicoes_cel", "#blocoGerais");
   T("encaminhamento e prescrição guardados (tocar de novo tira a especialidade)", await pg.evaluate(() => JSON.stringify(estado.ex.encaminhamentos) === '{"endodontia":"pendente"}' && estado.ex.prescricoes.join() === "Analgésico"));
+  T("o tratamento básico mostra as pendências da APS (a exodontia do 46 indicada)", /não concluído/.test(await pg.textContent("#tcBox")) && /46: Exodontia devido à cárie \(indicado\)/.test(await pg.textContent("#tcBox")), await pg.textContent("#tcBox"));
   T("Condições completas: o Resumo é liberado, com o resultado e as 5 partes, cada uma com Editar", !await bloq(pg, "#blocoRevisao") && await pg.$$eval("#revLista .rev", l => l.length) === 5 && await pg.textContent("#revResultado .classe") === "F");
   T("Condições completas: a página não desce sozinha até o Resumo (dá para marcar mais itens com calma)", await pg.evaluate(() => document.getElementById("blocoRevisao").getBoundingClientRect().top > 260),
     await pg.evaluate(() => document.getElementById("blocoRevisao").getBoundingClientRect().top));
   const rd = await pg.textContent("#revDentes");
   T("resumo de cada dente: os marcados um por um, os hígidos juntos", /46.*Cárie ativa \(O\).*dor.*Exodontia devido à cárie \(indicado\)/.test(rd) && /36.*Extraído por cárie/.test(rd) && /Hígidos \(\d+\)/.test(rd) && new RegExp("Esfoliados \\(\\d+\\).*\\b" + dd + "\\b").test(rd), rd);
   await foto(pg, "6_resumo_cel", "#blocoRevisao");
-  await pg.click('#revLista [data-etapa="2"]'); await pg.waitForTimeout(900);
-  T("\"Editar\" leva até a parte", await pg.evaluate(() => { const t = document.getElementById("blocoOdonto").getBoundingClientRect().top; return t > -5 && t < 260; }));
+  await pg.click('#revLista [data-etapa="2"]'); await pg.waitForTimeout(1800);
+  T("\"Editar\" leva até a parte", await pg.evaluate(() => { const t = document.getElementById("blocoOdonto").getBoundingClientRect().top; return t > -5 && t < 260; }), await pg.evaluate(() => [document.getElementById("blocoOdonto").getBoundingClientRect().top, scrollY]));
   // No odontograma, a página não desce sozinha.
   await pg.click('.dente[data-n="26"]'); await pg.waitForTimeout(100); await pg.click('.painel .p-acoes [data-acao="fechar"]'); await pg.waitForTimeout(900);
   T("mexer no odontograma não faz a página descer sozinha", await pg.evaluate(() => { const t = document.getElementById("blocoOdonto").getBoundingClientRect().top; return t > -5 && t < 260; }));
@@ -304,6 +309,15 @@ for (let i = 0; i < 8; i++) {
   await pg.click('#vigOutros [data-v="nao"]'); await pg.click("#proteseNenhuma"); await pg.waitForTimeout(1300);
   await pg.click('.dente[data-n="46"]'); await pg.waitForTimeout(150);
   await pg.click('.faces-desenho [data-face="O"]'); await pg.click('.painel [data-facecond="ca"]'); await pg.check('.painel [data-sinal="dor"]');
+  await pg.click('.painel .p-acoes [data-acao="fechar"]'); await pg.waitForTimeout(150);
+  T("cárie ativa com dor e sem tratamento: o dente fica marcado e o aviso aparece embaixo do odontograma", !!await pg.$('.dente[data-n="46"].sem-conduta') && /46 \(cárie ativa e dor\)/.test(await pg.textContent("#pendOdonto")), await pg.textContent("#pendOdonto"));
+  await pg.click('.dente[data-n="46"]'); await pg.waitForTimeout(150);
+  await pg.click('.painel [data-conduta="acompanhamento"]'); await pg.waitForTimeout(80);
+  T("\"Acompanhamento\" sem o motivo ainda não resolve", await pg.evaluate(() => necessidadesSemConduta(estado.ex).length === 1));
+  await pg.fill(".painel [data-conduta-motivo]", "Aguardando avaliação na próxima visita"); await pg.waitForTimeout(80);
+  T("com o motivo, o dente deixa de ser pendência", await pg.evaluate(() => !necessidadesSemConduta(estado.ex).length));
+  await pg.click('.painel [data-conduta="encaminhamento"]'); await pg.click('.painel [data-conduta-esp="endodontia"]'); await pg.waitForTimeout(80);
+  T("encaminhar o dente para endodontia também marca o encaminhamento do exame", await pg.evaluate(() => estado.ex.fezEncaminhamento === "sim" && estado.ex.encaminhamentos.endodontia === "pendente" && estado.ex.dentes[46].conduta.especialidade === "endodontia"));
   await pg.click('.painel .p-acoes [data-acao="fechar"]'); await pg.waitForTimeout(150);
   const den0 = await pg.evaluate(() => estado.ex.denticao);
   pg.removeAllListeners("dialog"); pg.on("dialog", d => { pergunta = d.message(); d.accept(); });
