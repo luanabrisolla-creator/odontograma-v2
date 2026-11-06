@@ -446,6 +446,19 @@ for (let i = 0; i < 8; i++) {
   }
 
   /* ------------------------------------------------ e-mails com o endereço oficial (a partir do app) */
+  parte("abrir com um exame começado");
+  for (const cr of [S.RT, S.BRUNO]) {
+    ({ ctx, pg } = await pagina(false));
+    await entrar(pg, cr);
+    await pg.evaluate(() => { irAba("exame"); const ex = estado.ex; ex.crianca.nascimento = "1996-01-15"; ex.crianca.sexo = "F"; ex.localidade = "Aldeia"; ex.gestante = "nao";
+      ex.vigilancia = ["Não identificado"]; ex.gerais = [Object.keys(GERAIS_ANTIGOS)[0]]; ex.dataExame = hoje(); alterado(); renderExame(); });
+    await pg.waitForTimeout(1500); pg.erros.length = 0;
+    await pg.reload(); await pg.waitForTimeout(2000);
+    T(cr.email + ": o app abre sem erro com um exame começado (e com nome antigo) guardado no aparelho", !pg.erros.length && (await pg.$$("#abas [data-aba]")).length > 3 && (await pg.$$("#exDsei option")).length > 0 && (await pg.$$("#localidades [data-localidade]")).length === 3, pg.erros);
+    T(cr.email + ": o exame começado continua lá, com o nome novo", await pg.evaluate(() => estado.ex.crianca.nascimento === "1996-01-15" && !estado.ex.gerais.some(g => g in GERAIS_ANTIGOS && GERAIS_ANTIGOS[g])), await pg.evaluate(() => estado.ex.gerais));
+    await ctx.close();
+  }
+
   parte("recuperação");
   ({ ctx, pg } = await pagina(true));
   await pg.goto(URL); await pg.waitForTimeout(500);
