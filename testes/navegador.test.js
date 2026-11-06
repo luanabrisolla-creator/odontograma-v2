@@ -238,6 +238,8 @@ for (let i = 0; i < 8; i++) {
   T("\"Sim\" nos coletivos abre a lista, e o Resumo espera marcar pelo menos um", await pg.isVisible("#gerais") && await bloq(pg, "#blocoRevisao"));
   await pg.check('#gerais [data-geral="0"]'); await pg.click('[data-sn="deuInsumos"] [data-v="nao"]'); await pg.waitForTimeout(1300);
   T("Condições completas: o Resumo é liberado, com o resultado e as 5 partes, cada uma com Editar", !await bloq(pg, "#blocoRevisao") && await pg.$$eval("#revLista .rev", l => l.length) === 5 && await pg.textContent("#revResultado .classe") === "F");
+  T("Condições completas: a página não desce sozinha até o Resumo (dá para marcar mais itens com calma)", await pg.evaluate(() => document.getElementById("blocoRevisao").getBoundingClientRect().top > 260),
+    await pg.evaluate(() => document.getElementById("blocoRevisao").getBoundingClientRect().top));
   const rd = await pg.textContent("#revDentes");
   T("resumo de cada dente: os marcados um por um, os hígidos juntos", /46.*Cárie ativa \(O\).*dor.*Exodontia devido à cárie \(indicado\)/.test(rd) && /36.*Extraído por cárie/.test(rd) && /Hígidos \(\d+\)/.test(rd) && new RegExp("Esfoliados \\(\\d+\\).*\\b" + dd + "\\b").test(rd), rd);
   await foto(pg, "6_resumo_cel", "#blocoRevisao");

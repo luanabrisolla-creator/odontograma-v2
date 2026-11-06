@@ -1757,7 +1757,8 @@ function atualizarBloqueios(rolar) {
   if (rolar !== false && ex._max > antes && estado.aba === "exame" && estado.ultimoBloco !== "blocoOdonto" && $("#fundo").hidden) {
     // A próxima parte que aparece na tela (sem odontograma, vigilância e prótese ficam escondidas).
     const prox = ETAPAS.slice(antes + 1).map(e => $(e.blocos[0])).find(el => el && !el.hidden);
-    clearTimeout(tRolar); tRolar = setTimeout(() => rolarQuandoLivre(prox, 0), 450);
+    // O Resumo só libera: a página não desce até ele, para o profissional marcar com calma todos os coletivos e insumos.
+    if (prox && prox.id !== "blocoRevisao") { clearTimeout(tRolar); tRolar = setTimeout(() => rolarQuandoLivre(prox, 0), 450); }
   }
 }
 let tRolar = 0;
