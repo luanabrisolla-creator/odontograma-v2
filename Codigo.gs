@@ -1283,6 +1283,7 @@ const ACOES = {
   reativar:       { perfis: ['rt', 'coord'], escreve: true, fn: function (d, u) { return mudarStatus(d, u, 'ativo'); } },
   novoCodigo:     { perfis: ['rt', 'coord'], escreve: true, fn: novoCodigoPara },
   corrigirEmail:  { perfis: ['coord'], escreve: true, fn: corrigirEmail },
+  corrigirCro:    { escreve: true, fn: corrigirCro },
   marcarDuplicado: { perfis: ['coord'], escreve: true, fn: marcarDuplicado },
   termo:          { fn: termo },
   aceitarTermo:   { escreve: true, fn: aceitarTermo },
@@ -1358,6 +1359,8 @@ function lerDaMemoria(nome) {
 function esquecerDaMemoria(nome) { try { CacheService.getScriptCache().remove(nome); } catch (x) {} }
 
 // Cadastros: lidos da memória rápida (cada pedido confere o acesso); a planilha só é lida quando a memória está vazia.
+/** Nome no padrão, mantendo uma nota no fim entre parênteses. Ex.: "LUCIANA AOUN (convite)" → "Luciana Aoun (convite)". @param {any} t */
+function nomeComNota(t) { const m = /^(.*?)(\s*\([^)]*\))$/.exec(String(t || '')); return m ? nomeProprio(m[1]) + m[2] : nomeProprio(t); }
 function lerUsuarios() {
   const m = memo(); if (m.usuarios) return m.usuarios;
   let l = lerDaMemoria('usuarios');
@@ -1367,6 +1370,8 @@ function lerUsuarios() {
       /** @type {any} */ const u = { _linha: i + 2 };
       CAB_USUARIOS.forEach(function (k, j) { u[k] = v[j] instanceof Date ? v[j].toISOString() : String(v[j]); });
       if (u.nome) u.nome = nomeProprio(u.nome); // cadastros antigos com tudo maiúsculo ou minúsculo aparecem no padrão
+      if (u.aprovado_por) u.aprovado_por = nomeComNota(u.aprovado_por);
+      if (u.cro) u.cro = croPadrao(u.cro); // CRO antigo aparece no padrão; sem a UF, a pessoa é avisada para completar
       return u;
     }).filter(function (u) { return u.id; });
     guardarNaMemoria('usuarios', l, 600);
@@ -1398,6 +1403,7 @@ function publico(u) {
   const o = {};
   ['id', 'nome', 'cro', 'email', 'uf', 'dsei', 'polo', 'perfil', 'status', 'pedido_em', 'aprovado_por', 'aprovado_em', 'ultimo_acesso', 'titular',
     'duplicado_de', 'termo_versao', 'termo_aceito_em'].forEach(function (k) { o[k] = u[k] || ''; });
+  /** @type {any} */ (o).croIncompleto = !u.titular && u.perfil !== 'coord' ? !croCompleto(u.cro) : (!!u.cro && !croCompleto(u.cro));
   return o;
 }
 /** @param {any} c */
@@ -1653,8 +1659,9 @@ function emailCodigo(u, codigo, link, novo) {
 /* ---------- 7. pedido de acesso e recuperação do código ---------- */
 function pedirAcesso(d) {
   const email = normEmail(d.email), perfil = d.perfil === 'rt' ? 'rt' : 'dentista';
-  const nome = nomeProprio(d.nome), cro = String(d.cro || '').trim(), dsei = String(d.dsei || '').trim();
+  const nome = nomeProprio(d.nome), cro = croPadrao(d.cro), dsei = String(d.dsei || '').trim();
   if (!nome || !cro || !dsei || !d.uf) return { ok: false, erro: 'Preencha nome, CRO, UF e DSEI.' };
+  if (!croCompleto(cro)) return { ok: false, erro: 'Informe o CRO com a UF do conselho e o número (ex.: PE 9100).' };
   if (!dseiValido(dsei) || !ufDoDsei(d.uf, dsei)) return { ok: false, erro: 'Escolha um DSEI da lista e uma UF desse DSEI.' };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, erro: 'E-mail inválido.' };
   if (email === emailCoord()) return { ok: false, erro: 'Este é o e-mail da coordenação: entre com a chave da coordenação.' };
@@ -3143,6 +3150,16 @@ function salvarTermo(d, u) {
   return Object.assign(r, termo(d, u));
 }
 
+/** A própria pessoa completa o CRO (UF e número). O cadastro, o acesso e os exames continuam os mesmos. @param {any} d @param {any} u */
+function corrigirCro(d, u) {
+  if (u.titular) return { ok: false, erro: 'A coordenação titular não tem CRO no cadastro.' };
+  const cro = croPadrao(d.cro);
+  if (!croCompleto(cro)) return { ok: false, erro: 'Informe o CRO com a UF do conselho e o número (ex.: PE 9100).' };
+  const a = alvoDe({ id: u.id }); if (!a) return { ok: false, erro: 'Cadastro não encontrado.' };
+  const antes = a.cro; a.cro = cro; salvarUsuario(a);
+  registrar(u, 'Corrigiu o CRO', (antes || 'vazio') + ' → ' + cro);
+  return { ok: true, usuario: publico(a) };
+}
 /* Corrigir o e-mail de um cadastro (só a coordenação titular). Ex.: uma dentista aceitou o convite feito para a RT e o
  * cadastro dela ficou com o e-mail da RT. O cadastro (id, nome, CRO, DSEI, perfil e exames) continua o mesmo; muda só o e-mail.
  * O código antigo e as sessões abertas deixam de valer, e um código novo vai para o e-mail certo. O e-mail antigo fica livre
@@ -3184,7 +3201,7 @@ function admin(d, u) {
   const aba = obterAba(planilha(), 'Acessos', CAB_ACESSOS);
   const n = aba.getLastRow() - 1;
   const acessos = n > 0 ? aba.getRange(2, 1, Math.min(n, 200), CAB_ACESSOS.length).getValues()
-    .map(function (l) { return { data: l[0] instanceof Date ? fmtDia(l[0]) : String(l[0]), hora: l[1] instanceof Date ? fmtHora(l[1]) : String(l[1]), quem: String(l[2] || l[3] || ''),
+    .map(function (l) { return { data: l[0] instanceof Date ? fmtDia(l[0]) : String(l[0]), hora: l[1] instanceof Date ? fmtHora(l[1]) : String(l[1]), quem: nomeProprio(String(l[2] || l[3] || '')),
       perfil: String(l[4] || ''), dsei: String(l[5] || ''), tipo: String(l[6] || ''), acao: String(l[7] || ''), detalhe: String(l[8] || '') }; }) : [];
   const dseisRT = {};
   us.forEach(function (x) { if (ehRT(x) && x.status === 'ativo') (dseisRT[x.dsei] = dseisRT[x.dsei] || []).push(x.nome); });
@@ -3209,9 +3226,10 @@ function limparAvisoAuditoria(d, u) {
 // Com UF, DSEI e CRO, a pessoa é também RT daquele DSEI (recebe os pedidos e registra exames).
 /** @param {any} d */
 function dadosRT(d) {
-  const dsei = String(d.dsei || '').trim(), cro = String(d.cro || '').trim(), uf = String(d.uf || '').trim();
+  const dsei = String(d.dsei || '').trim(), cro = croPadrao(d.cro), uf = String(d.uf || '').trim();
   if (!dsei) return { ok: true, dsei: '', cro: cro, uf: '' };
   if (!uf || !cro) return { ok: false, erro: 'Para ser também RT, informe UF, DSEI e CRO.' };
+  if (!croCompleto(cro)) return { ok: false, erro: 'Informe o CRO com a UF do conselho e o número (ex.: PE 9100).' };
   if (!dseiValido(dsei) || !ufDoDsei(uf, dsei)) return { ok: false, erro: 'Escolha um DSEI da lista e uma UF desse DSEI.' };
   return { ok: true, dsei: dsei, cro: cro, uf: uf };
 }
@@ -3338,7 +3356,7 @@ function emailConvite(c, link, u) {
 }
 /** @param {any} c */
 function convitePublico(c) {
-  return { id: c.id, email: c.email, perfil: c.perfil, dsei: c.dsei, situacao: situacaoConvite(c), convidado_por: c.convidado_por, criado_em: c.criado_em, valido_ate: c.valido_ate, aceito_em: c.aceito_em };
+  return { id: c.id, email: c.email, perfil: c.perfil, dsei: c.dsei, situacao: situacaoConvite(c), convidado_por: nomeProprio(c.convidado_por), criado_em: c.criado_em, valido_ate: c.valido_ate, aceito_em: c.aceito_em };
 }
 // Convites que a pessoa pode ver: a coordenação vê todos (ou os de um DSEI); a RT vê os do seu DSEI.
 /** @param {any} u @param {any} dsei */
@@ -3428,20 +3446,21 @@ function conviteDoToken(d) {
 function verConvite(d) {
   const g = conviteDoToken(d); if (g.erro) return { ok: false, erro: g.erro, usado: !!g.usado };
   const c = g.c;
-  return { ok: true, convite: { email: c.email, perfil: c.perfil, dsei: c.dsei, convidado_por: c.convidado_por, valido_ate: c.valido_ate } };
+  return { ok: true, convite: { email: c.email, perfil: c.perfil, dsei: c.dsei, convidado_por: nomeProprio(c.convidado_por), valido_ate: c.valido_ate } };
 }
 /** @param {any} d */
 function aceitarConvite(d) {
   const g = conviteDoToken(d); if (g.erro) return { ok: false, erro: g.erro, usado: !!g.usado };
-  const c = g.c, nome = String(d.nome || '').trim(), cro = String(d.cro || '').trim(), uf = String(d.uf || '').trim();
+  const c = g.c, nome = nomeProprio(d.nome), cro = croPadrao(d.cro), uf = String(d.uf || '').trim();
   if (!nome || !cro || !uf) return { ok: false, erro: 'Preencha nome, CRO e UF.' };
+  if (!croCompleto(cro)) return { ok: false, erro: 'Informe o CRO com a UF do conselho e o número (ex.: PE 9100).' };
   if (!ufDoDsei(uf, c.dsei)) return { ok: false, erro: 'Escolha uma UF do DSEI ' + c.dsei + '.' };
   const us = lerUsuarios(), ex = us.filter(function (x) { return normEmail(x.email) === c.email; })[0];
   if (ex && ex.status === 'ativo') return { ok: false, erro: 'Este e-mail já tem acesso. Entre com seu código ou use "Esqueci meu código".', usado: true };
   const novo = ex || { id: Utilities.getUuid() };
   const cod = gerarCodigo(), agora = new Date().toISOString();
   Object.assign(novo, { nome: nome, cro: cro, email: c.email, uf: uf, dsei: c.dsei, polo: String(d.polo || '').trim(), perfil: c.perfil, status: 'ativo',
-    codigo_hash: hashCodigo(cod), pedido_em: agora, aprovado_por: c.convidado_por + ' (convite)', aprovado_em: agora, ultimo_acesso: agora });
+    codigo_hash: hashCodigo(cod), pedido_em: agora, aprovado_por: nomeProprio(c.convidado_por) + ' (convite)', aprovado_em: agora, ultimo_acesso: agora });
   salvarUsuario(novo);
   Object.assign(c, { situacao: 'aceito', aceito_em: agora, usuario_id: novo.id }); salvarConvite(c);
   emailCodigo(novo, cod, '', false);
@@ -4350,6 +4369,18 @@ function nomeProprio(t) {
     return w.toLowerCase().replace(/(^|[-'])([^-'])/g, function (_, a, b) { return a + b.toUpperCase(); });
   }).join(" ");
 }
+// CRO num padrão só: "UF número" (ex.: "PE 9100"). A UF é a do conselho regional (pode ser de outro estado que o DSEI).
+var UFS_CRO = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
+/** Escreve o CRO no padrão. Ex.: "cro-pe 9100" → "PE 9100"; "RR 01623" → "RR 1623". Sem UF, devolve só o número. @param {any} t */
+function croPadrao(t) {
+  var s = String(t || "").toUpperCase().replace(/CRO/g, " ").replace(/([A-Z])(\d)/g, "$1 $2").replace(/(\d)([A-Z])/g, "$1 $2").replace(/[^A-Z0-9]+/g, " ").trim();
+  var uf = (s.match(/(?:^| )([A-Z]{2})(?= |$)/) || [])[1], num = (s.match(/\d+/) || [])[0];
+  if (num) num = String(Number(num));
+  if (num && uf && UFS_CRO.indexOf(uf) >= 0) return uf + " " + num;
+  return num || String(t || "").trim();
+}
+/** O CRO tem a UF e o número (de 1 a 6 dígitos). @param {any} t */
+function croCompleto(t) { var p = croPadrao(t); return /^[A-Z]{2} [1-9]\d{0,5}$/.test(p) && UFS_CRO.indexOf(p.slice(0, 2)) >= 0; }
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
 /** @param {any} iso */
