@@ -223,7 +223,8 @@ table.cruz tr.total td{border-top:2px solid var(--line)}
 .barra span{display:block;height:100%;border-radius:3px}
 .tabela{overflow-x:visible;max-width:100%}
 .tabela table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
-.tabela th,.tabela td{padding:7px 8px;border-bottom:1px solid var(--surface-2);text-align:right;white-space:normal;overflow-wrap:break-word;hyphens:none}
+.tabela th,.tabela td{padding:7px 8px;border-bottom:1px solid var(--surface-2);text-align:right;white-space:normal;overflow-wrap:anywhere;hyphens:none}
+/* Cabeçalho: a palavra nunca se parte no meio ("Indicados", não "Indicado/s"). No corpo, um e-mail longo pode quebrar para caber na tela. */
 .tabela th{word-break:keep-all;overflow-wrap:normal}
 .tabela td .bts{display:flex;flex-wrap:wrap;gap:6px}
 @media (max-width:760px){
