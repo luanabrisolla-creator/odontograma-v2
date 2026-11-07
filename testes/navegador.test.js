@@ -501,6 +501,42 @@ for (let i = 0; i < 8; i++) {
     lin[cab.indexOf("cro")] = antes; G.ctx.cadastrosMudaram();
   }
 
+  parte("Biblioteca clínica");
+  {
+    ({ ctx, pg } = await pagina(false));
+    await entrar(pg, S.BRUNO); await pg.waitForTimeout(400);
+    T("Biblioteca fechada: a dentista não vê a aba", !(await pg.evaluate(() => abasDoPerfil().some(a => a[0] === "biblio"))));
+    await ctx.close();
+    ({ ctx, pg } = await pagina(false));
+    await entrar(pg, S.C); await irAba(pg, "biblio"); await pg.waitForTimeout(1500);
+    T("a titular vê a aba com as 4 fichas em rascunho e o botão de abrir para as equipes", (await pg.$$("#bibLista [data-bib-ver]")).length === 4 && /Rascunho/.test(await pg.textContent("#bibLista")) && await pg.isVisible("#bibAbrir"));
+    await pg.click('[data-bib-ver="ficha-art"]'); await pg.waitForTimeout(300);
+    T("a ficha do ART mostra quando não fazer, as etapas, a evidência e as referências com DOI", /Quando NÃO fazer/.test(await pg.textContent("#leitura")) && (await pg.$$("#leitura .bib-ficha ol li")).length >= 12 && !!(await pg.$('#leitura a[href^="https://doi.org/10."]')));
+    await foto(pg, "12_ficha_art_pc", "#leitura .painel");
+    await pg.click('#leitura [data-bib-publicar="ficha-art"]'); await pg.waitForTimeout(1500);
+    T("a titular publica a ficha", /Publicada · versão 1/.test(await pg.textContent("#leitura")));
+    await fecharJanela(pg); await pg.click("#bibAbrir"); await pg.waitForTimeout(1500);
+    T("a titular abre a Biblioteca para as equipes", /Aberta para as equipes/.test(await pg.textContent("#bibTitular")));
+    await pg.click("[data-bib-nova]"); await pg.waitForTimeout(200);
+    await pg.fill("#feTitulo", "Manipulação do ionômero de vidro"); await pg.fill("#feResumo", "Siga a proporção pó/líquido do fabricante.");
+    await pg.fill("#feRefs", "Frencken JE et al. Twenty-five-year ART approach. Clin Oral Investig. 2012 | 10.1007/s00784-012-0783-4 | Revisão"); await pg.click("#feSalvar"); await pg.waitForTimeout(1500);
+    T("a titular cria uma ficha nova (fica em rascunho)", /Manipulação do ionômero/.test(await pg.textContent("#leitura")) && /Rascunho/.test(await pg.textContent("#leitura")));
+    await ctx.close();
+    ({ ctx, pg } = await pagina(true));
+    await entrar(pg, S.BRUNO); await pg.evaluate(() => verificarSessao(true)); await pg.waitForTimeout(1200);
+    await pg.evaluate(() => carregarBiblioteca()); await pg.waitForTimeout(1200);
+    T("aberta: a dentista vê a aba e só a ficha publicada", await pg.evaluate(() => abasDoPerfil().some(a => a[0] === "biblio")) && await pg.evaluate(() => bibDados().fichas.map(f => f.id).join()) === "ficha-art");
+    await novaPessoa(pg, { nasc: "2018-04-04", sexo: "F" });
+    await pg.click('.dente[data-n="84"]'); await pg.waitForTimeout(200);
+    await pg.click('.faces-desenho [data-face="O"]'); await pg.click('.painel [data-facecond="ca"]'); await pg.waitForTimeout(200);
+    await pg.click(".op-evid > summary"); await pg.waitForTimeout(150);
+    const op = await pg.textContent(".op-evid");
+    T("no dente com cárie, \"Opções com evidência\" mostra o ART para decíduo de uma face (≈94% em 2 anos), com o aviso de não ser ranking", /Tratamento restaurador atraumático/.test(op) && /≈94%/.test(op) && /2 anos/.test(op) && /não são um ranking/.test(op) && !/Cariostático/.test(op), op.slice(0, 300));
+    await foto(pg, "12_opcoes_evidencia_cel", ".painel");
+    await pg.click('.painel .p-acoes [data-acao="fechar"]'); await pg.waitForTimeout(100);
+    await ctx.close();
+  }
+
   parte("recuperação");
   ({ ctx, pg } = await pagina(true));
   await pg.goto(URL); await pg.waitForTimeout(500);
