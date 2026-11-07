@@ -4,7 +4,7 @@ O que mudou em cada versão, da mais nova para a mais antiga. O guia do app como
 
 ## Versões 47.1 a 47.6 (correções depois da instalação)
 
-- **47.6:** Biblioteca clínica (fase 1): aba só da titular até ela abrir para as equipes; fichas em rascunho e publicadas, com versão, revisão anual e referências com DOI; quatro fichas iniciais em rascunho (ART, cariostático, técnica de Hall e remoção seletiva); "Opções com evidência" no painel do dente com cárie.
+- **47.6:** Biblioteca clínica (fase 1): aba só da titular até ela abrir para as equipes; fichas em rascunho e publicadas, com versão, revisão anual e referências com DOI; seis fichas iniciais em rascunho (ART, cariostático, técnica de Hall, remoção seletiva, verniz fluoretado e controle não restaurador da cavidade), no padrão de evidência da coordenação (documentos oficiais e revisões sistemáticas/metanálises do PubMed ou da Cochrane; certeza pelo GRADE dos autores ou pela revisora); "Opções com evidência" no painel do dente com cárie ou mancha branca ativa.
 
 - **47.5:** nomes das pessoas num padrão só (Maria das Dores e Silva), também em "aprovado por", convites e acessos; CRO no padrão "UF número" (no cadastro, UF numa lista e número só com dígitos; quem tem o CRO sem a UF é avisado e completa em Minha conta, sem perder o cadastro); barra da classificação de risco em degradê do verde ao vinho; gráfico do indicador no tamanho real, com os valores do Brasil e da meta; "Como este número é calculado" em forma de conta; palavras dos cabeçalhos das tabelas sem quebrar no meio; texto da meta do PDSI com os 8 indicadores.
 

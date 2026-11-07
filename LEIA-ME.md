@@ -128,6 +128,8 @@ Cada pessoa tem um código pessoal, recebido por e-mail, e entra com o mesmo e-m
 
 Fichas de condições e procedimentos com a evidência científica (resposta curta, quando indicar, quando não fazer, materiais, etapas, números dos estudos e referências com DOI). Só a coordenação titular escreve, revisa e publica: o rascunho só ela vê, e as equipes veem as fichas publicadas quando ela abre a Biblioteca. Cada publicação vale por 12 meses e depois aparece como "revisar". No exame, um dente com cárie mostra **"Opções com evidência"**, com os números das fichas para aquele caso (decíduo ou permanente, uma face ou várias). É apoio à decisão: quem decide é o cirurgião-dentista.
 
+**Padrão de evidência** (definido pela coordenação): só documentos oficiais do governo e revisões sistemáticas ou metanálises do PubMed ou da Cochrane (sem revisão de revisões, revisão narrativa ou consenso). A certeza é o GRADE informado pelos autores; quando não houver, aparece "a avaliar pela revisora". As etapas de cada técnica mostram a fonte; sem documento oficial, ficam "a validar pela revisora".
+
 ## Classe de risco e índices
 
 A classe é calculada pelo odontograma e pelas condições. Vale sempre a mais grave. O servidor refaz o cálculo a cada exame gravado.
@@ -184,9 +186,9 @@ As abas que começam com `_` são de uso interno do servidor: não mexa nelas.
 
 A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
-- **537 verificações do servidor**, num simulador do Apps Script e sem dados reais;
+- **539 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
-- **247 verificações no navegador**, com os fluxos principais, no horário de Brasília.
+- **249 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
 Para rodar no seu computador: `node ferramentas/verificar.js`, `node testes/servidor.test.js`, `node ferramentas/abrir-app.js` e `node testes/navegador.test.js`. O [mapa do código](docs/MAPA-DO-CODIGO.md) explica cada um.
 

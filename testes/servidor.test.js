@@ -1371,7 +1371,9 @@ parte("Biblioteca clínica");
 {
   const R = cenario();
   const bt = R.P(R.C, { acao: "biblioteca" });
-  T("a titular vê as 4 fichas iniciais, todas em rascunho, com referências (DOI)", bt.ok && bt.fichas.length === 4 && bt.fichas.every(f => f.situacao === "rascunho" && f.referencias.length && f.referencias.every(r => /^10\./.test(r.doi))), bt.fichas && bt.fichas.map(f => f.id));
+  T("a titular vê as 6 fichas iniciais, todas em rascunho", bt.ok && bt.fichas.length === 6 && bt.fichas.every(f => f.situacao === "rascunho" && f.referencias.length), bt.fichas && bt.fichas.map(f => f.id));
+  T("padrão de evidência: só documento oficial ou revisão sistemática/metanálise (PubMed ou Cochrane), com DOI nas revisões", bt.fichas.every(f => f.referencias.every(r => r.tipo === "Documento oficial do governo" || (/Revisão sistemática|Metanálise/.test(r.tipo) && /^10\./.test(r.doi)))), bt.fichas.flatMap(f => f.referencias.map(r => r.tipo)));
+  T("certeza: GRADE dos autores ou \"a avaliar pela revisora\"; etapas com a fonte", bt.fichas.every(f => f.evidencias.every(e => /GRADE|Cochrane|informada pelos autores|A avaliar pela revisora/.test(e.certeza)) && !!f.fonteEtapas));
   const bd = R.P(R.ANA, { acao: "biblioteca" });
   T("fechada: a dentista não vê nenhuma ficha", bd.ok && bd.aberta === false && bd.fichas.length === 0);
   T("ao entrar, o app sabe se a Biblioteca está aberta", R.P(R.ANA, { acao: "entrar", aparelho: "Teste" }).biblioteca.aberta === false);
@@ -1386,7 +1388,7 @@ parte("Biblioteca clínica");
   T("aberta: a dentista vê só a ficha publicada (os rascunhos continuam só da titular)", bd2.fichas.length === 1 && bd2.fichas[0].id === "ficha-art", bd2.fichas.map(f => f.id));
   const f0 = bd2.fichas[0], ed = R.P(R.C, { acao: "salvarFicha", ficha: Object.assign({}, f0, { resumo: f0.resumo + " Texto revisado." }) });
   T("corrigir uma ficha publicada cria a versão 2 e ela continua publicada", ed.ok && ed.ficha.versao === 2 && ed.ficha.situacao === "publicada" && /Texto revisado/.test(R.P(R.ANA, { acao: "biblioteca" }).fichas[0].resumo));
-  T("as evidências do painel do dente ficam guardadas na ficha", ed.ficha.evidencias.length === 4 && ed.ficha.evidencias[0].resultado === "≈94%");
+  T("as evidências do painel do dente ficam guardadas na ficha", ed.ficha.evidencias.length === 4 && ed.ficha.evidencias[0].resultado === "94,3%");
   T("a publicação fica em Acessos", R.G.est.sheets.Acessos.some(l => /Publicou ficha da Biblioteca/.test(l.join("|"))));
 }
 

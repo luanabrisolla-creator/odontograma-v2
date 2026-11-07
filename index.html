@@ -5729,7 +5729,8 @@ function renderBiblioteca() {
   $("#bibStatus").textContent = !d.em ? (navigator.onLine ? "Carregando…" : "Abra com internet uma vez para guardar as fichas.") : `Atualizada em ${fmtDataHora(d.em)}`;
   const pub = d.fichas.filter(f => f.situacao === "publicada").length;
   $("#bibTitular").innerHTML = tit ? `<div class="bloco bib-tit"><div class="bloco-topo"><h3>Só para você (coordenação titular)</h3><span class="estado ${d.aberta ? "enviado" : "inativo"}">${d.aberta ? "Aberta para as equipes" : "Fechada para as equipes"}</span></div>
-    <p class="dica" style="margin:4px 0 10px">${pub} de ${d.fichas.length} fichas publicadas. Leia cada rascunho, corrija o que precisar e toque em <b>Publicar</b>. ${d.aberta ? "As equipes veem só as publicadas." : "Enquanto estiver fechada, ninguém além de você vê a aba."}</p>
+    <p class="dica" style="margin:4px 0 6px"><b>Padrão de evidência:</b> só documentos oficiais do governo e revisões sistemáticas ou metanálises do PubMed ou da Cochrane. A certeza é o GRADE informado pelos autores; quando não houver, a avaliação é sua.</p>
+    <p class="dica" style="margin:0 0 10px">${pub} de ${d.fichas.length} fichas publicadas. Leia cada rascunho, corrija o que precisar e toque em <b>Publicar</b>. ${d.aberta ? "As equipes veem só as publicadas." : "Enquanto estiver fechada, ninguém além de você vê a aba."}</p>
     <div class="acoes-l"><button class="${d.aberta ? "sec" : "prim"}" type="button" id="bibAbrir">${d.aberta ? "Fechar para as equipes" : "Abrir para as equipes"}</button><button class="sec" type="button" data-bib-nova>Nova ficha</button></div></div>` : "";
   const fs = d.fichas.filter(f => !q || normTexto([f.titulo, f.pergunta, f.resumo, f.categoria].join(" ")).includes(q));
   const cats = [...new Set(fs.map(f => f.categoria))];
@@ -5744,7 +5745,7 @@ function htmlFicha(f) {
     ${tit ? `<p class="dica"><span class="estado ${st[0]}">${st[1]}</span>${f.publicadoEm ? ` · publicada em ${fmtData(f.publicadoEm.slice(0, 10))} por ${esc(f.revisadoPor || "")}, revisar até ${fmtData(String(f.revisarEm).slice(0, 10))}` : ""}</p>` : `<p class="dica">Revisada pela coordenação em ${fmtData(String(f.publicadoEm || "").slice(0, 10))}. Apoio à decisão: o julgamento clínico prevalece.</p>`}
     ${f.pergunta ? `<p class="ficha-perg">${esc(f.pergunta)}</p>` : ""}<p>${esc(f.resumo)}</p>
     ${listaFicha("Quando indicar", f.indicar)}${f.naoFazer && f.naoFazer.length ? `<div class="aviso aviso-alarme"><h4 style="margin:0 0 4px">Quando NÃO fazer</h4><ul>${f.naoFazer.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
-    ${listaFicha("Materiais", f.materiais)}${listaFicha("Etapas", f.etapas, true)}${listaFicha("Atenção", f.avisos)}
+    ${listaFicha("Materiais", f.materiais)}${listaFicha("Etapas", f.etapas, true)}${f.fonteEtapas ? `<p class="dica"><b>Fonte das etapas:</b> ${esc(f.fonteEtapas)}</p>` : ""}${listaFicha("Atenção", f.avisos)}
     ${evs || f.evidenciaTexto ? `<h4>O que a evidência mostra</h4>${f.evidenciaTexto ? `<p>${esc(f.evidenciaTexto)}</p>` : ""}${evs ? `<div class="tabela"><table class="esq"><thead><tr><th>Situação</th><th>O que foi medido</th><th>Resultado</th><th>Tempo</th><th>Certeza</th><th>Fonte</th></tr></thead><tbody>${evs}</tbody></table></div><p class="dica">Os números medem coisas diferentes e não são um ranking.</p>` : ""}` : ""}
     ${(f.referencias || []).length ? `<h4>Referências</h4><ol class="refs">${f.referencias.map(r => `<li>${esc(r.texto)}${r.tipo ? ` <small class="dica">(${esc(r.tipo)})</small>` : ""}${doiLink(r)}</li>`).join("")}</ol>` : ""}
     ${tit ? `<div class="acoes-l" style="margin-top:12px"><button class="sec" type="button" data-bib-editar="${esc(f.id)}">Editar</button><button class="${f.situacao === "publicada" ? "sec" : "prim"}" type="button" data-bib-publicar="${esc(f.id)}" data-v="${f.situacao === "publicada" ? "" : "1"}">${f.situacao === "publicada" ? "Voltar para rascunho" : f.vencida ? "Confirmar a revisão" : "Publicar"}</button></div><p class="dica" id="fiStatus2" aria-live="polite"></p>` : ""}</div>`;
@@ -5764,9 +5765,11 @@ function htmlEditorFicha(f) {
     <label class="campo">Pergunta que a ficha responde<input id="fePerg" value="${esc(f.pergunta || "")}"></label>
     ${ta("feResumo", "Resposta curta", f.resumo, "", 3)}${ta("feIndicar", "Quando indicar", um(f.indicar))}${ta("feNao", "Quando NÃO fazer", um(f.naoFazer))}
     ${ta("feMat", "Materiais", um(f.materiais))}${ta("feEtapas", "Etapas", um(f.etapas), "uma etapa por linha, na ordem", 8)}${ta("feAvisos", "Atenção", um(f.avisos), "", 2)}
+    <label class="campo largo">Fonte das etapas<input id="feFonteEt" value="${esc(f.fonteEtapas || "")}" placeholder="Documento oficial ou &quot;a validar pela revisora&quot;"></label>
+    <div class="campo">Aparece no exame quando o dente tem<div class="chips"><label class="check"><input type="checkbox" data-fe-cond="carie" ${(f.condicoes || ["carie"]).includes("carie") ? "checked" : ""}>cárie (ativa, crônica ou restaurada com cárie)</label><label class="check"><input type="checkbox" data-fe-cond="mancha" ${(f.condicoes || []).includes("mancha") ? "checked" : ""}>mancha branca ativa</label></div></div>
     ${ta("feEvTexto", "O que a evidência mostra (texto)", f.evidenciaTexto, "", 3)}
-    ${ta("feRefs", "Referências", refs, "uma por linha: texto | DOI | tipo de estudo", 5)}
-    ${ta("feEvs", "Números para o painel do dente", evs, "uma por linha: dentição (decidua, permanente ou ambas) | faces (uma, varias ou qualquer) | o que foi medido | resultado | tempo | certeza | nº da referência", 4)}
+    ${ta("feRefs", "Referências", refs, "uma por linha: texto | DOI | tipo de estudo. Padrão: só documentos oficiais do governo e revisões sistemáticas ou metanálises do PubMed ou da Cochrane", 5)}
+    ${ta("feEvs", "Números para o painel do dente", evs, "uma por linha: dentição (decidua, permanente ou ambas) | faces (uma, varias ou qualquer) | o que foi medido | resultado | tempo | certeza (o GRADE dos autores ou a sua avaliação) | nº da referência", 4)}
     <div class="acoes-l" style="margin-top:10px"><button class="prim" type="button" id="feSalvar">Salvar</button><button class="sec" type="button" data-fecha-leitura>Cancelar</button></div><p class="dica" id="feStatus" aria-live="polite"></p></div>`;
 }
 function fichaDoEditor() {
@@ -5775,7 +5778,7 @@ function fichaDoEditor() {
   const evs = ls("feEvs").map(l => { const [den, faces, medida, resultado, tempo, certeza, ref] = l.split("|").map(x => (x || "").trim()); return {den, faces, medida, resultado, tempo, certeza, ref: Math.max(0, (Number(ref) || 1) - 1)}; });
   return {id: $("#feId").value, titulo: $("#feTitulo").value, categoria: $("#feCat").value, procs: $$("[data-fe-proc]").filter(c => c.checked).map(c => c.dataset.feProc),
     pergunta: $("#fePerg").value, resumo: $("#feResumo").value, indicar: ls("feIndicar"), naoFazer: ls("feNao"), materiais: ls("feMat"), etapas: ls("feEtapas"), avisos: ls("feAvisos"),
-    evidenciaTexto: $("#feEvTexto").value, referencias: refs, evidencias: evs};
+    evidenciaTexto: $("#feEvTexto").value, fonteEtapas: $("#feFonteEt").value, condicoes: $$("[data-fe-cond]").filter(c => c.checked).map(c => c.dataset.feCond), referencias: refs, evidencias: evs};
 }
 const fichaPorId = id => bibDados().fichas.find(f => f.id === id);
 $("#bibBusca").addEventListener("input", e => { estBib.busca = e.target.value; renderBiblioteca(); });
@@ -5798,13 +5801,15 @@ document.addEventListener("click", async e => {
 });
 // Opções com evidência no painel do dente: só quando o dente tem cárie (ativa, crônica ou restaurada com cárie).
 function opcoesEvidencia(n, d) {
-  const fs = (d.faces || {}), comCarie = Object.values(fs).filter(v => ["ca", "cc", "restc"].includes(v)).length; if (!comCarie) return "";
-  const den = ehDecid(n) ? "decidua" : "permanente", faces = comCarie > 1 ? "varias" : "uma", tit = ehTitular();
-  const fichas = bibDados().fichas.filter(f => (f.situacao === "publicada" || tit) && (f.procs || []).some(k => ehDecid(n) || !SO_DECIDUO.includes(k)));
+  const fs = (d.faces || {}), comCarie = Object.values(fs).filter(v => ["ca", "cc", "restc"].includes(v)).length, comMancha = Object.values(fs).filter(v => v === "mba").length;
+  if (!comCarie && !comMancha) return "";
+  const den = ehDecid(n) ? "decidua" : "permanente", nf = comCarie || comMancha, faces = nf > 1 ? "varias" : "uma", tit = ehTitular();
+  const condOk = f => (f.condicoes || ["carie"]).some(c => (c === "carie" && comCarie) || (c === "mancha" && comMancha));
+  const fichas = bibDados().fichas.filter(f => (f.situacao === "publicada" || tit) && condOk(f) && (!(f.procs || []).length || f.procs.some(k => ehDecid(n) || !SO_DECIDUO.includes(k))));
   const itens = fichas.map(f => ({f, evs: (f.evidencias || []).filter(e => (e.den === "ambas" || e.den === den) && (e.faces === "qualquer" || e.faces === faces))}))
     .filter(x => x.evs.length || !(x.f.evidencias || []).length);
   if (!itens.length) return "";
-  return `<details class="op-evid"><summary>Opções com evidência <small>(${den === "decidua" ? "decíduo" : "permanente"}, cárie em ${faces === "uma" ? "uma face" : "várias faces"})</small></summary>
+  return `<details class="op-evid"><summary>Opções com evidência <small>(${den === "decidua" ? "decíduo" : "permanente"}, ${comCarie ? "cárie" : "mancha branca ativa"} em ${faces === "uma" ? "uma face" : "várias faces"})</small></summary>
     ${d.dor || d.abscesso ? `<p class="aviso aviso-alarme">Com dor ou abscesso, confira os sinais de envolvimento pulpar antes de escolher: pode ser caso de encaminhamento ou exodontia.</p>` : ""}
     <p class="dica">Apoio à decisão: os números medem coisas diferentes e não são um ranking. Quem decide é o cirurgião-dentista.</p>
     ${itens.map(({f, evs}) => `<div class="op-item"><b>${esc(f.titulo)}</b>${f.situacao !== "publicada" ? ` <span class="estado inativo">rascunho (só você vê)</span>` : ""}
