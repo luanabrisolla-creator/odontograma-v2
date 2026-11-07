@@ -189,8 +189,14 @@ function atualizarNomesAntigos(e) {
 }
 // Odontograma opcional: quando não é preenchido, o profissional escolhe o principal motivo (um só).
 var MOTIVOS_SEM_ODONTOGRAMA = ["Tempo insuficiente para realizar o odontograma", "A pessoa recusou o exame odontológico", "Não foi possível realizar o exame por dificuldade de colaboração",
-  "Falta de condições adequadas (iluminação, espaço ou materiais)", "Condição clínica impediu a realização do exame", "Atendimento direcionado exclusivamente a ações coletivas", "Outro motivo"];
+  "Falta de condições adequadas (iluminação, espaço ou materiais)", "Condição clínica impediu a realização do exame", "Atendimento direcionado exclusivamente a ações coletivas",
+  "Atendimento de urgência, sem tempo para o odontograma completo", "Outro motivo"];
 var MOTIVO_SO_COLETIVO = "Atendimento direcionado exclusivamente a ações coletivas", MOTIVO_OUTRO = "Outro motivo";
+// Urgência sem odontograma (47.4): o CD registra o dente e o que fez nele, sem o odontograma completo (sem classe de risco).
+var MOTIVO_URGENCIA = "Atendimento de urgência, sem tempo para o odontograma completo";
+/** @type {any} */
+var PROCS_URGENCIA = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia por outros motivos", pulpotomia: "Pulpotomia",
+  selprov: "Selamento provisório / adequação do meio", drenagem: "Drenagem de abscesso"};
 // Sem exame clínico, estes procedimentos não aparecem (precisam do odontograma).
 var GERAIS_CLINICOS = ["Profilaxia / remoção de placa", "Raspagem (RAP) supragengival", "Raspagem (RAP) subgengival", "Evidenciação de placa bacteriana", "Sutura", "Outro procedimento cirúrgico"];
 /** Exame registrado sem odontograma (os exames de antes do odontograma opcional sempre têm). @param {any} e */
@@ -393,6 +399,8 @@ function agregarExames(regs, agrup, ult) {
     var mes = String(e.dataExame || "").slice(0, 7);
     if (mes) r.meses[mes] = (r.meses[mes] || 0) + 1;
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
+    // Urgência sem odontograma: o que foi feito em cada dente conta como realizado.
+    (e.urgencia || []).forEach(function (/** @type {any} */ x) { if (!PROCS_URGENCIA[x.proc]) return; if (!r.procs[x.proc]) r.procs[x.proc] = {indicado: 0, realizado: 0}; r.procs[x.proc].realizado++; r.procsRealizados++; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
     if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
     Object.keys(e.encaminhamentos || {}).forEach(function (k) { var o = r.encaminhamentos[k] = r.encaminhamentos[k] || {pendente: 0, realizado: 0}; o[e.encaminhamentos[k]] = (o[e.encaminhamentos[k]] || 0) + 1; });

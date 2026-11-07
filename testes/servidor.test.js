@@ -1272,5 +1272,70 @@ parte("termo de ciência");
   T("reativar tira a marca de duplicado", R.P(R.C, { acao: "reativar", id: idAna }).ok && (c => String(R.G.est.sheets.Usuarios.find(l => l[0] === idAna)[c.indexOf("duplicado_de")] || "") === "")(R.G.est.sheets.Usuarios[0]));
 }
 
+/* ---------------------------------------------------------------- auditoria 47.3 e pedidos da coordenação (47.4) */
+parte("auditoria: retornos, Ficha 7, cache, termo, busca, urgência e números pequenos");
+{
+  const R = cenario(), ab = n => R.G.est.sheets[n] || [];
+  const extra = { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] };
+  const dente = (id, n) => JSON.parse(ab("Exames").find(l => l[0] === id).at(-1)).dentes[n];
+  const plano = (id, suf, n, proc) => { const e = Object.assign(exame({ id, sufixo: suf, data: "2026-10-01", mud: { [n]: { faces: { O: "ca" }, procs: { [proc]: "indicado" } } } }), extra); return R.P(R.ANA, { acao: "enviarExame", registro: e }).ok; };
+  const ret = (id, pid, data, dentes, aps) => R.P(R.ANA, { acao: "enviarRetorno", retorno: { id, planoId: pid, dataExame: data, localAtendimento: "UBSI", dentes, encaminhamentos: {}, tratamento: { aps } } });
+  T("(planos A, B, C e D)", plano("PA", "PAPAPAP2", 16, "art") && plano("PB", "PBPBPBP2", 26, "art") && plano("PC", "PCPCPCP2", 36, "resina") && plano("PD", "PDPDPDP2", 46, "art"));
+  // AUD-01: o mesmo registro de retorno nunca vai para outro plano.
+  T("retorno do plano A gravado", ret("RX", "PA", "2026-10-05", { 16: Object.assign({}, dente("PA", 16), { procs: { art: "realizado" } }) }, "concluido").ok);
+  const r2 = ret("RX", "PB", "2026-10-06", { 26: Object.assign({}, dente("PB", 26), { procs: { art: "realizado" } }) }, "concluido");
+  T("o mesmo registro de retorno em outro plano é recusado e o retorno A fica", !r2.ok && /outro plano/.test(r2.erro) && ab("Retornos").slice(1).length === 1 && ab("Retornos")[1][1] === "PA", r2);
+  // AUD-05: conclusão contada uma vez por plano.
+  ret("RC1", "PC", "2026-10-07", { 36: Object.assign({}, dente("PC", 36), { procs: { resina: "realizado" } }) }, "concluido");
+  const rv = ret("RC2", "PC", "2026-10-09", {}, "");
+  const tc = R.P(R.RT, { acao: "fichasSiasi", mes: "2026-10" }).ficha7.reduce((t, l) => t + (Number(l.tratamento_odontologico_basico_concluido) || 0), 0);
+  T("retorno de revisão num plano já concluído não conta a conclusão de novo na Ficha 7", rv.ok && tc === 2, tc);
+  // Plano travado: o ART indicado "não será feito" e a resina foi feita no lugar.
+  const d1 = ret("RD1", "PD", "2026-10-08", { 46: Object.assign({}, dente("PD", 46), { procs: { resina: "realizado" } }) }, "concluido");
+  T("ART indicado trocado por resina: o plano pode ser concluído", d1.ok && d1.retorno.tratamento.aps === "concluido", d1.retorno && d1.retorno.tratamento);
+  // Cancelar retorno.
+  T("só quem registrou cancela o retorno, e com o motivo", !R.P(R.BRUNO, { acao: "cancelarRetorno", id: "RD1", motivo: "x" }).ok && !R.P(R.ANA, { acao: "cancelarRetorno", id: "RD1", motivo: "" }).ok);
+  const cx = R.P(R.ANA, { acao: "cancelarRetorno", id: "RD1", motivo: "Lançado na pessoa errada" });
+  const pd = R.P(R.ANA, { acao: "pessoa", codigoIndividuo: "RR-SUR-SAU-PDPDPDP2" });
+  T("retorno cancelado sai do plano e o registro dele não volta", cx.ok && !pd.retornos.some(r => r.id === "RD1") && !ret("RD1", "PD", "2026-10-08", {}, "").ok);
+  T("o cancelamento fica em Acessos", ab("Acessos").some(l => l.join("|").includes("Cancelou consulta de retorno")));
+  // Painel: procedimentos dos retornos entram na produção.
+  const pn = R.P(R.ANA, { acao: "painel", minha: true, de: "2026-10-01", ate: "2026-10-31" }).resumo;
+  T("painel: procedimentos feitos nos retornos entram na produção (e saem dos indicados)", pn.retornos && pn.retornos.consultas === 3 && pn.retornos.procedimentos === 2 && pn.procs.art.realizado === 1 && pn.procs.art.indicado === 2 && pn.procs.resina.realizado === 1, pn.retornos);
+  // AUD-03: cache do painel separado por perfil.
+  R.P(R.C, { acao: "painel", dsei: "Yanomami", de: "2026-01-01", ate: "2026-12-31" });
+  T("o painel calculado para a coordenação não é servido a outro perfil", !R.P(R.CARLA, { acao: "painel", dsei: "Yanomami", de: "2026-01-01", ate: "2026-12-31" }).doCache);
+  // Números pequenos aparecem (decisão da coordenação).
+  T("números de 1 a 4 aparecem no painel (sem \"<5\")", !JSON.stringify(R.P(R.C, { acao: "painel", dsei: "Yanomami" })).includes('"<5"'));
+  // AUD-07: termo ligado e não aceito: o servidor recusa gravar.
+  R.P(R.C, { acao: "salvarTermo", ativo: true });
+  const g = R.P(R.BRUNO, { acao: "enviarExame", registro: Object.assign(exame({ id: "PE", sufixo: "PEPEPEP2", data: "2026-10-04" }), extra) });
+  T("termo ligado e não aceito: o servidor recusa gravar (e o exame espera no aparelho)", !g.ok && g.termoPendente && g.passageiro, g);
+  T("mesmo sem o aceite, dá para entrar e ler o termo", R.P(R.BRUNO, { acao: "entrar", aparelho: "Teste" }).ok && R.P(R.BRUNO, { acao: "termo" }).ok);
+  T("depois do aceite, grava", R.P(R.BRUNO, { acao: "aceitarTermo", versao: 1 }).ok && R.P(R.BRUNO, { acao: "enviarExame", registro: Object.assign(exame({ id: "PE", sufixo: "PEPEPEP2", data: "2026-10-04" }), extra) }).ok);
+  R.P(R.C, { acao: "salvarTermo", ativo: false });
+  // Busca de exames anteriores: só no mesmo polo base.
+  const outroPolo = Object.assign(exame({ id: "BP1", sufixo: "BPBPBPB2", data: "2026-10-02", polo: "Auaris", aldeia: "Kolulu", nasc: "2017-03-03" }), extra);
+  R.P(R.ANA, { acao: "enviarExame", registro: outroPolo });
+  const b1 = R.P(R.ANA, { acao: "buscarPessoa", dsei: "Yanomami", polo: "Surucucu", aldeia: "Saúba", nascimento: "2017-03-03", sexo: "F" });
+  const b2 = R.P(R.ANA, { acao: "buscarPessoa", dsei: "Yanomami", polo: "Auaris", aldeia: "Outra", nascimento: "2017-03-03", sexo: "F" });
+  T("busca: pessoa de outro polo base não é sugerida; no mesmo polo, outra aldeia vem marcada", b1.candidatos.length === 0 && b2.candidatos.length === 1 && b2.candidatos[0].outraAldeia === "Kolulu", [b1, b2.candidatos.map(c => c.outraAldeia)]);
+  // Urgência sem odontograma.
+  const MOTU = require("vm").runInContext("MOTIVO_URGENCIA", R.G.ctx);
+  const urg = (id, suf, u, motivo) => Object.assign(exame({ id, sufixo: suf, data: "2026-10-03" }), extra, { odontograma: "nao", odontogramaMotivo: motivo || MOTU, odontogramaMotivoOutro: "", dentes: {}, vigilancia: [],
+    protese: { sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false }, placa: null, gengivite: null, fezColetivos: "nao", deuInsumos: "nao", gerais: [], insumos: [], urgencia: u,
+    resultado: { classe: "", risco: "Sem odontograma", motivos: [], ceod: null, cpod: null } });
+  T("urgência sem dente nem procedimento é recusada", !R.P(R.ANA, { acao: "enviarExame", registro: urg("U0", "UUUUUU02", []) }).ok);
+  T("urgência com dente que não existe é recusada", !R.P(R.ANA, { acao: "enviarExame", registro: urg("U1", "UUUUUU22", [{ dente: "99", proc: "exo_carie" }]) }).ok);
+  T("procedimento de urgência com outro motivo é recusado", !R.P(R.ANA, { acao: "enviarExame", registro: urg("U2", "UUUUUU32", [{ dente: "46", proc: "exo_carie" }], "Outro motivo") }).ok);
+  const uok = R.P(R.ANA, { acao: "enviarExame", registro: urg("U3", "UUUUUU42", [{ dente: "46", proc: "exo_carie" }, { dente: "85", proc: "exodontia" }, { dente: "36", proc: "drenagem" }]) });
+  T("urgência sem odontograma é gravada, sem classe de risco", uok.ok && uok.resultado.classe === "", uok);
+  const f7 = R.P(R.RT, { acao: "fichasSiasi", mes: "2026-10" }).ficha7.reduce((t, l) => { ["exodontia_permanente", "exodontia_deciduo", "outro_procedimento_urgencia"].forEach(k => { t[k] = (t[k] || 0) + (Number(l[k]) || 0); }); return t; }, {});
+  T("Ficha 7: exodontias da urgência (permanente e decíduo) e drenagem como outro procedimento de urgência", f7.exodontia_permanente === 1 && f7.exodontia_deciduo === 1 && f7.outro_procedimento_urgencia === 1, f7);
+  // Confirmação "todos hígidos" fica guardada no exame.
+  const hig = Object.assign(exame({ id: "H1", sufixo: "HHHHHH22", data: "2026-10-03" }), extra, { todosHigidos: true });
+  T("a confirmação \"examinei todos os dentes e estão todos hígidos\" fica guardada no exame", R.P(R.ANA, { acao: "enviarExame", registro: hig }).ok && JSON.parse(ab("Exames").find(l => l[0] === "H1").at(-1)).todosHigidos === true);
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);
