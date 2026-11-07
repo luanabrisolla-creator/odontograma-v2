@@ -604,6 +604,16 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .acao-sintese{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}.acao-sintese summary{cursor:pointer;font-weight:700;color:var(--accent,#1D4F9E)}
 .sintese-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px 18px;margin-top:8px}.sintese-grade h4{margin:6px 0 4px;font-size:.8rem;color:var(--muted)}
 .sintese-grade ul{list-style:none;margin:0;padding:0}.sintese-grade li{display:flex;justify-content:space-between;gap:10px;font-size:.86rem;padding:2px 0;border-bottom:1px dashed var(--surface-2)}
+/* Campo só de leitura (ex.: idade no exame) com a mesma altura e o mesmo alinhamento das caixas ao lado. */
+.campo-saida{display:flex;align-items:center;min-height:48px;padding:0 14px;border:1px dashed var(--line);border-radius:12px;background:var(--surface-2);font-size:1rem;color:var(--ink)}
+.face-atual{display:inline-flex;gap:6px;align-items:center;background:#0A66CC;color:#fff;padding:6px 14px;border-radius:999px;font-size:1rem;margin:10px 0 8px}
+.face-atual b{text-transform:uppercase;letter-spacing:.03em}.face-atual.mudou{animation:faceMuda .7s ease}
+@keyframes faceMuda{0%{box-shadow:0 0 0 7px #F2C230;transform:scale(1.07)}100%{box-shadow:0 0 0 0 rgba(242,194,48,0);transform:none}}
+@media (prefers-reduced-motion:reduce){.face-atual.mudou{animation:none}}
+.lista-ret{margin:2px 0 0;padding-left:1.1rem}.lista-ret li{margin:2px 0}
+.urg-l{display:grid;grid-template-columns:110px 1fr auto;gap:8px;align-items:center;margin:6px 0}
+@media (max-width:520px){.urg-l{grid-template-columns:90px 1fr}.urg-l button{grid-column:1/-1;justify-self:start}}
+.guia details{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 8px;background:var(--surface)}.guia summary{cursor:pointer;font-weight:700}.guia p,.guia li{font-size:.92rem;line-height:1.5}
 .termo-texto{white-space:pre-wrap;font-size:.9rem;line-height:1.5;max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0 12px;background:var(--bg)}
 .termo-li{display:flex;gap:8px;align-items:center;margin:0 0 10px;font-weight:600}.termo-li input{width:22px;height:22px;min-height:0;flex:none;margin:0;padding:0;accent-color:var(--azul,#1D6FD8)}
 .serie>svg{width:100%;max-width:720px;height:auto;display:block}.serie .lg{display:flex;flex-wrap:wrap;gap:6px 18px;line-height:1.3;font-size:.78rem;color:var(--muted);margin:4px 0 8px}.serie .lg span{display:inline-flex;align-items:center;gap:6px}.serie .lg svg{flex:none}
@@ -619,7 +629,9 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .rt-nec{display:grid;gap:6px;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);align-items:center}.rt-nec input{grid-column:1/-1}
 .rt-novo{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 @media (max-width:560px){.rt-nec{grid-template-columns:1fr}}
-.tc-box{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.tc-box{border:2px solid #1D4F9E;border-left-width:6px;border-radius:12px;padding:14px 16px;background:#EEF4FF}
+.tc-box h4{color:#13336B;font-size:1rem}.tc-box .seg{background:#fff;border:1px solid #B9C9E6}.tc-box .seg button{font-weight:600}
+.tc-box .seg button[aria-pressed="true"]{background:#1D4F9E;color:#fff}
 .tc-box h4{margin:0 0 6px}.tc-box ul{margin:4px 0 0;padding-left:1.1rem}.enc .linha-op{margin:0}
 .ini-stat span.s2{display:block;margin-top:2px;font-size:.8rem;color:var(--muted)}
 .ini-baixo{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
@@ -890,7 +902,13 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .etapa[disabled]{opacity:.45;cursor:default}
 button.dente{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:inherit}
 button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
-.dente.duvida .dente-cor svg{outline:2px dotted #F7B500;outline-offset:1px;border-radius:3px}
+.dente.duvida .dente-cor svg{outline:3px solid #E5702A;outline-offset:2px;border-radius:4px;animation:duvPulso 1.4s ease-in-out infinite}
+.dente.duvida .dente-cor::after{content:"?";position:absolute;top:-6px;right:-3px;width:16px;height:16px;border-radius:50%;background:#E5702A;color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;line-height:1}
+@keyframes duvPulso{50%{outline-color:#F2C230}}
+@media (prefers-reduced-motion:reduce){.dente.duvida .dente-cor svg{animation:none}}
+.aviso-duv{background:#FFF1E6;border:2px solid #E5702A;color:#5A2A08}
+.confirma-hig{display:flex;gap:10px;align-items:flex-start;margin:10px 0 0;padding:12px 14px;border:2px solid #1D4F9E;border-radius:12px;background:#EEF4FF;font-weight:600}
+.confirma-hig input{width:22px;height:22px;flex:none;margin:0}
 .st-esfoliado .face{fill:var(--surface-2)!important;opacity:.5;stroke-dasharray:2 1.5}
 .st-ausente .face,.st-ausente_carie .face,.st-nao_erupc .face{fill:var(--surface-2)!important}
 .legenda-odo{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
@@ -902,7 +920,7 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
 .lg .ic svg.mini{width:20px;height:20px;flex:none;padding:0;min-height:0;display:block}
 .sq{width:14px;height:14px;border-radius:3px;border:1px solid #9AA7B6;flex:none;display:inline-block}
 .lg .ic .sq{width:18px;height:18px}
-.sq.duv{background:#fff;outline:2px dotted #F7B500;outline-offset:1px;border-color:transparent}
+.sq.duv{background:#fff;outline:3px solid #E5702A;outline-offset:1px;border-color:transparent;position:relative}.sq.duv::after{content:"?";position:absolute;top:-8px;right:-9px;width:13px;height:13px;border-radius:50%;background:#E5702A;color:#fff;font-size:9px;font-weight:800;display:grid;place-items:center;font-style:normal}
 .lg .ic .sq.duv{width:15px;height:15px}
 .bd2{color:#fff;font-style:normal;font-size:.62rem;font-weight:800;border-radius:5px;padding:1px 3px;flex:none;min-width:18px;text-align:center}
 .lg .ic .bd2{width:20px;height:18px;min-width:0;padding:0;display:grid;place-items:center;font-size:.6rem}
@@ -1023,10 +1041,10 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
       <div class="grade" id="indGrade">
         <label class="campo">Data de nascimento<input type="date" data-campo="crianca.nascimento" id="inNasc"></label>
         <label class="campo">Sexo<select data-campo="crianca.sexo" id="inSexo" required><option value="">Escolha</option><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
-        <div class="campo">Idade no exame<output id="idade" style="font-size:1rem;color:var(--ink);padding:10px 0">Informe a data de nascimento</output></div>
+        <div class="campo">Idade no exame<output id="idade" class="campo-saida">Informe a data de nascimento</output></div>
       </div>
       <div class="campo" style="margin-top:12px">Onde a pessoa mora (localidade de residência, Ficha 4)<div class="locais" id="localidades" role="group" aria-label="Onde a pessoa mora"></div>
-        <span class="dica" style="font-weight:400">Aldeia: mora na aldeia. Acampamento: mora em acampamento (por exemplo, retomada ou beira de estrada). Logradouro: mora na cidade, com endereço de rua.</span></div>
+        <span class="dica" style="font-weight:400;margin-top:8px;display:block">Aldeia: mora na aldeia. Acampamento: mora em acampamento (por exemplo, retomada ou beira de estrada). Logradouro: mora na cidade, com endereço de rua.</span></div>
       <div id="gestBox" hidden style="margin-top:12px">
         <div class="linha-op"><span><b>Está gestante?</b></span><div class="seg" role="group" aria-label="Está gestante?" data-sn="gestante"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div></div>
         <label class="campo" id="semanasCampo" hidden style="margin-top:8px;max-width:220px">Semanas de gestação<input type="number" inputmode="numeric" min="1" max="42" step="1" id="inSemanas" placeholder="1 a 42"></label>
@@ -1041,8 +1059,9 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
         <div class="prev" id="odIncentivo" role="note"><b>Registro odontológico.</b> O preenchimento do odontograma contribui para o acompanhamento das condições de saúde bucal e o planejamento do cuidado. Sempre que possível, realize esse registro.</div>
         <p class="q-vig" style="margin-top:12px">Qual foi o principal motivo?</p>
         <div class="radios" id="odMotivos"></div>
+        <div id="urgBox" hidden></div>
         <label class="campo" id="odOutroCampo" hidden style="margin-top:10px">Especifique o motivo<textarea data-campo="odontogramaMotivoOutro" maxlength="300" placeholder="Sem dados que identifiquem a pessoa"></textarea></label>
-        <p class="dica" style="margin-top:10px">Sem o odontograma, vigilância, prótese, placa visível, gengivite, profilaxia e raspagem não são registradas (precisam do exame clínico). Os procedimentos coletivos e os insumos continuam.</p>
+        <p class="dica" style="margin-top:10px">Sem o odontograma, vigilância, prótese, placa visível, gengivite, profilaxia e raspagem não são registradas (precisam do exame clínico). Os procedimentos coletivos e os insumos continuam. Na urgência, escolha "Atendimento de urgência" e informe o dente e o que foi feito.</p>
       </div>
       <div id="odCorpo">
       <div class="bloco-topo">
@@ -1054,6 +1073,8 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
       <div class="prev" id="prevInfo"></div>
       <div id="confBox"></div>
       <div class="odonto"><div class="odonto-in" id="odonto"></div></div>
+      <div class="aviso aviso-duv" id="duvOdonto" hidden></div>
+      <label class="confirma-hig" id="higBox" hidden><input type="checkbox" id="inHig"><span>Examinei todos os dentes e estão todos hígidos (nenhuma alteração para marcar).</span></label>
       <div class="aviso" id="pendOdonto" hidden></div>
       <details class="legenda-odo" id="legendaOdo" open><summary>Legenda</summary><div class="lgs" id="legendaCorpo"></div></details>
       </div>
@@ -1086,8 +1107,8 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     <div class="bloco" id="blocoGerais">
       <h2 style="margin-bottom:12px">Condições gerais e procedimentos</h2>
       <div class="linha-opcoes" id="condClinicas">
-        <div class="opcao"><span>Placa visível</span><div class="seg" role="group" aria-label="Placa visível" data-bool="placa"><button data-v="0">Não</button><button data-v="1">Sim</button><button data-v="na">Não avaliado</button></div></div>
-        <div class="opcao"><span>Gengivite (sangramento gengival)</span><div class="seg" role="group" aria-label="Gengivite" data-bool="gengivite"><button data-v="0">Não</button><button data-v="1">Sim</button><button data-v="na">Não avaliado</button></div></div>
+        <div class="opcao"><span>Placa visível</span><div class="seg" role="group" aria-label="Placa visível" data-bool="placa"><button data-v="0">Não</button><button data-v="1">Sim</button></div></div>
+        <div class="opcao"><span>Gengivite (sangramento gengival)</span><div class="seg" role="group" aria-label="Gengivite" data-bool="gengivite"><button data-v="0">Não</button><button data-v="1">Sim</button></div></div>
       </div>
       <div class="linha-op" style="margin-top:18px"><span><b>Foram realizados procedimentos coletivos ou de boca toda?</b></span><div class="seg" role="group" aria-label="Foram realizados procedimentos coletivos ou de boca toda?" data-sn="fezColetivos"><button type="button" data-v="nao">Não</button><button type="button" data-v="sim">Sim</button></div></div>
       <div id="geraisBox" hidden><p class="dica" style="margin:6px 0 4px">Quais? (marque pelo menos um)</p><div class="checks" id="gerais"></div></div>
@@ -1164,6 +1185,11 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
       <div class="tabela"><table class="conta"><tbody id="contaDados"></tbody></table></div>
       <div id="contaNomeTit"></div>
       <p class="dica" style="margin-top:10px">Nome, CRO e DSEI vêm do seu acesso aprovado. Você registra exames e busca pessoas só neste DSEI. Para mudar de DSEI, fale com a coordenação: ela desativa o acesso atual e você faz um novo pedido com o DSEI novo.</p>
+    </div>
+    <div class="bloco" id="contaGuiaBox">
+      <h2 style="margin-bottom:6px">Guia do app</h2>
+      <p class="dica" style="margin-bottom:10px">Como registrar, o que cada número do painel quer dizer e o que vai para as Fichas 3 e 7 do SIASI.</p>
+      <div class="acoes-l"><button class="sec" type="button" data-guia="">Abrir o guia</button></div>
     </div>
     <div class="bloco" id="contaTermoBox">
       <h2 style="margin-bottom:6px">Termo de Ciência</h2>
@@ -1444,6 +1470,10 @@ function denticaoPorIdade(idade) {
 const denteNovo = (n, den, idade) => ({status: idade != null ? previsao(n, idade).status : (den === "mista" && !ehDecid(n)) ? "nao_erupc" : "presente", faces: facesVazias(), dor:false, abscesso:false, procs:{}, obs:""});
 const denteHigido = () => ({status: "presente", faces: facesVazias(), dor: false, abscesso: false, procs: {}, obs: ""});
 // O dente tem algo registrado além da situação (faces, sinais, tratamento ou observação)?
+// Dentes que a idade deixa em dúvida e ainda não foram confirmados pelo profissional.
+const dentesEmDuvida = ex => ex.odontograma === "sim" && ex.crianca && ex.crianca.nascimento ? dentesDe(ex.denticao).filter(n => duvidaIdade(n, ex)) : [];
+// Alguma alteração marcada no odontograma (faces, sinais, procedimentos ou dente ausente).
+const temAchado = ex => dentesDe(ex.denticao).some(n => { const d = (ex.dentes || {})[n]; return !!d && (temRegistro(d) || d.status === "ausente" || d.status === "ausente_carie"); });
 const temRegistro = d => !!d && (Object.values(d.faces || {}).some(Boolean) || d.dor || d.abscesso || Object.values(d.procs || {}).some(Boolean) || !!(d.obs || "").trim());
 // Dente sem nenhum registro clínico: a previsão pode mudar a situação dele sem perder informação.
 const denteLivre = d => !d || (["presente","nao_erupc","esfoliado"].includes(d.status) && !temRegistro(d));
@@ -1573,7 +1603,7 @@ function rascunhoDaPessoa() {
 function proteseVazia() { return {sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false}; }
 // Campos da versão 47 (Fichas 4 e 7 do SIASI) e o valor de cada um num exame novo.
 function campos47Vazios() {
-  return {localidade: "", gestante: "", semanasGestacao: null, fluoroseDean: "", condNaoAvaliadas: [], fezEncaminhamento: null, encaminhamentos: {}, fezPrescricao: null, prescricoes: [], tratamento: {aps: "", motivo: ""}};
+  return {urgencia: [], todosHigidos: false, localidade: "", gestante: "", semanasGestacao: null, fluoroseDean: "", condNaoAvaliadas: [], fezEncaminhamento: null, encaminhamentos: {}, fezPrescricao: null, prescricoes: [], tratamento: {aps: "", motivo: ""}};
 }
 // As regras de idade (gestante, índice de Dean) olham a idade no dia do exame, que o rascunho ainda não guarda.
 function comIdade(ex) { const id = idadeEm(ex.crianca.nascimento, ex.dataExame); return Object.assign({}, ex, {idadeAnos: id ? id.decimal : ""}); }
@@ -1625,6 +1655,10 @@ function svgDente(n, d, extra, faceSel) {
     if (nInd) s += `<g class="ov selo-ind"><circle cx="5" cy="35" r="5.5" fill="#F2C230" stroke="#fff" stroke-width="1.4"/><text x="5" y="38.2" text-anchor="middle" font-size="8.4" font-weight="800" fill="#13233A">${nInd}</text></g>`;
     if (vs.includes("realizado")) s += `<g class="ov selo-real"><circle cx="35" cy="35" r="5.5" fill="#1A7F3C" stroke="#fff" stroke-width="1.4"/><path d="M32.4 35.2 l1.9 1.9 l3.4 -3.8" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></g>`;
   }
+  // Face escolhida: um contorno azul grosso por cima de tudo (não atrapalha o toque).
+  if (faceSel) { const pos = ["top", "bottom", "left", "right"].find(x => m[x] === faceSel);
+    s += pos ? `<polygon class="face-sel" points="${POL[pos]}" fill="rgba(10,102,204,.18)" stroke="#0A66CC" stroke-width="3.4" stroke-linejoin="round" pointer-events="none"/>`
+      : `<rect class="face-sel" x="13" y="13" width="14" height="14" fill="rgba(10,102,204,.18)" stroke="#0A66CC" stroke-width="3.4" pointer-events="none"/>`; }
   return s + "</svg>";
 }
 // Desenho grande do painel: faces com o nome e a face escolhida em destaque.
@@ -1658,6 +1692,11 @@ function renderOdonto() {
   else { el.className = "prev ok"; el.innerHTML = `<b>Dentição ${NOME_DEN[ex.denticao]} para ${idTxt}.</b> Toque no dente que tiver alguma alteração.`; }
   renderLegenda(); renderProtese();
   renderTratamento();
+  const duv = dentesEmDuvida(ex), db = $("#duvOdonto");
+  db.hidden = !duv.length;
+  if (duv.length) db.innerHTML = `<b>Confirme primeiro, pela idade, ${duv.length === 1 ? "o dente" : "os dentes"} ${esc(listaE(duv.map(String)))}</b> (contorno laranja com <b>?</b>): toque em cada um e escolha a situação. Depois o app libera os outros dentes.`;
+  const hb = $("#higBox"), semAchado = ex.odontograma === "sim" && !duv.length && !temAchado(ex);
+  hb.hidden = !semAchado; $("#inHig").checked = !!ex.todosHigidos;
   const pend = necessidadesSemConduta(ex), pb = $("#pendOdonto");
   pb.hidden = !pend.length;
   if (pend.length) pb.innerHTML = `<b>${pend.length === 1 ? "1 dente" : pend.length + " dentes"} com necessidade sem tratamento ou conduta:</b> ${esc(pend.map(x => `${x.n} (${listaE(x.motivos)})`).join("; "))}. Toque no dente para indicar o tratamento, marcar acompanhamento ou encaminhar. Sem isso, o tratamento básico não pode ser concluído.`;
@@ -1673,7 +1712,7 @@ function renderLegenda() {
   box.innerHTML = g("Dente", dente.map(([k, t]) => `<div><span class="ic">${mini(k)}</span><span>${t}</span></div>`)) +
     g("Faces", FACES.filter(f => f.k).map(f => `<div><span class="ic"><i class="sq" style="background:${f.k === "restc" ? "repeating-linear-gradient(45deg,var(--rest) 0 3px,var(--carie) 3px 5px)" : f.estilo.replace("fill:", "")}"></i></span><span>${f.nome}</span></div>`)) +
     g("Marcas", [`<div><span class="ic"><i class="bd2" style="background:#D7263D">Ex</i></span><span>Exodontia devido à cárie</span></div>`, `<div><span class="ic"><i class="bd2" style="background:#E2231A">!</i></span><span>Dor ou abscesso</span></div>`,
-      `<div><span class="ic"><i class="bd2" style="background:#F2C230;color:#13233A">1</i></span><span>Procedimentos indicados (quantos)</span></div>`, `<div><span class="ic"><i class="bd2" style="background:#1A7F3C">✓</i></span><span>Procedimento realizado</span></div>`, `<div><span class="ic"><i class="sq duv"></i></span><span>Conferir pela idade</span></div>`]);
+      `<div><span class="ic"><i class="bd2" style="background:#F2C230;color:#13233A">1</i></span><span>Procedimentos indicados (quantos)</span></div>`, `<div><span class="ic"><i class="bd2" style="background:#1A7F3C">✓</i></span><span>Procedimento realizado</span></div>`, `<div><span class="ic"><i class="sq duv"></i></span><span>Confirmar pela idade (antes dos outros)</span></div>`]);
 }
 function renderResultado() {
   if (estado.ex.odontograma === "nao") {
@@ -1822,8 +1861,15 @@ function faltasEtapa(i, ex) {
     if (ex.odontograma === "nao") {
       if (!MOTIVOS_SEM_ODONTOGRAMA.includes(ex.odontogramaMotivo)) f.push(["o principal motivo de não preencher o odontograma", "#odMotivos"]);
       else if (ex.odontogramaMotivo === MOTIVO_OUTRO && !String(ex.odontogramaMotivoOutro || "").trim()) f.push(["qual foi o outro motivo", '[data-campo="odontogramaMotivoOutro"]']);
+      else if (ex.odontogramaMotivo === MOTIVO_URGENCIA) {
+        const u = ex.urgencia || [];
+        if (!u.length || u.some(x => !DENTES_FDI.includes(String(x.dente)) || !PROCS_URGENCIA[x.proc])) f.push(["o dente (número válido, ex.: 46) e o que foi feito em cada linha da urgência", "#urgBox"]);
+      }
       return f;
     }
+    const duvs = dentesEmDuvida(ex);
+    if (duvs.length) f.push([`confirmar pela idade ${duvs.length === 1 ? "o dente" : "os dentes"} ${duvs.join(", ")} (toque em cada um e escolha a situação)`, "#duvOdonto"]);
+    else if (!temAchado(ex) && !ex.todosHigidos) f.push(["confirmar que examinou todos os dentes e estão todos hígidos", "#higBox"]);
     const al = ex.vinculo && ex._anterior ? conferirVinculo(ex._anterior, {dataExame: ex.dataExame, dentes: ex.dentes}) : [];
     const imp = al.filter(a => a.nivel === "impossivel"), conf = al.filter(a => a.nivel === "confira" && !((ex.vinculo || {}).chaves || []).includes(a.chave));
     if (imp.length) f.push([`corrigir ${imp.length === 1 ? "o dente" : "os dentes"} ${imp.map(a => a.dente).join(", ")}, que não combina${imp.length === 1 ? "" : "m"} com o exame anterior (ou marcar que não é a mesma pessoa)`, "#confBox"]);
@@ -1839,8 +1885,8 @@ function faltasEtapa(i, ex) {
   }
   if (i === 4) {
     if (ex.odontograma !== "nao") {
-      if (ex.placa == null && !naoAvaliada(ex, "placa")) f.push(["placa visível (Sim, Não ou Não avaliado)", '[data-bool="placa"]']);
-      if (ex.gengivite == null && !naoAvaliada(ex, "gengivite")) f.push(["gengivite (Sim, Não ou Não avaliado)", '[data-bool="gengivite"]']);
+      if (ex.placa == null && !naoAvaliada(ex, "placa")) f.push(["placa visível (Sim ou Não)", '[data-bool="placa"]']);
+      if (ex.gengivite == null && !naoAvaliada(ex, "gengivite")) f.push(["gengivite (Sim ou Não)", '[data-bool="gengivite"]']);
     }
     if (ex.fezColetivos !== "sim" && ex.fezColetivos !== "nao") f.push(["se foram realizados procedimentos coletivos (Sim ou Não)", '[data-sn="fezColetivos"]']);
     else if (ex.fezColetivos === "sim" && !geraisDoExame(ex).length) f.push(["quais procedimentos coletivos foram realizados", "#gerais"]);
@@ -1920,7 +1966,21 @@ function aplicarOdontograma() {
   $$("#segOdonto button").forEach(b => b.setAttribute("aria-pressed", String(ex.odontograma === b.dataset.od)));
   $("#odMotivos").innerHTML = MOTIVOS_SEM_ODONTOGRAMA.map(m => `<label class="radio"><input type="radio" name="odMot" value="${esc(m)}" ${ex.odontogramaMotivo === m ? "checked" : ""}><span><b>${esc(m === MOTIVO_OUTRO ? "Outro motivo (especifique)" : m)}</b></span></label>`).join("");
   $("#odOutroCampo").hidden = ex.odontogramaMotivo !== MOTIVO_OUTRO;
+  renderUrgencia();
 }
+// Urgência sem odontograma: o dente e o que foi feito nele (a medicação vai na pergunta da prescrição).
+function renderUrgencia() {
+  const ex = estado.ex, box = $("#urgBox"), on = ex.odontograma === "nao" && ex.odontogramaMotivo === MOTIVO_URGENCIA;
+  box.hidden = !on; if (!on) return;
+  if (!Array.isArray(ex.urgencia) || !ex.urgencia.length) ex.urgencia = [{dente: "", proc: ""}];
+  box.innerHTML = `<div class="bloco-int" style="margin-top:12px"><h4 style="margin:0 0 4px">O que foi feito na urgência</h4>
+    <p class="dica" style="margin:0 0 6px">Um dente por linha. Sem odontograma, não há classe de risco. A medicação vai em "Houve prescrição medicamentosa?", mais abaixo.</p>
+    ${ex.urgencia.map((x, i) => `<div class="urg-l"><input data-urg-dente="${i}" inputmode="numeric" maxlength="2" placeholder="Dente (ex.: 46)" value="${esc(x.dente || "")}" aria-label="Dente da linha ${i + 1}">
+      <select data-urg-proc="${i}" aria-label="Procedimento da linha ${i + 1}"><option value="">O que foi feito?</option>${Object.entries(PROCS_URGENCIA).map(([k, t]) => `<option value="${k}" ${x.proc === k ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>
+      ${ex.urgencia.length > 1 ? `<button class="link" type="button" data-urg-tira="${i}">Tirar</button>` : "<span></span>"}</div>`).join("")}
+    <button class="sec mini" type="button" data-urg-mais>+ Outro dente</button></div>`;
+}
+const DENTES_FDI = [...dentesDe("permanente"), ...dentesDe("decidua")].map(String);
 // Parte que está na tela agora (para a barra do topo marcar).
 function etapaNaTela() {
   let at = 0;
@@ -1983,6 +2043,7 @@ function renderRevisao() {
   const encTxt = Object.entries(ex.encaminhamentos || {}).map(([k, st]) => `${ESPECIALIDADES[k]} (${SITUACAO_ENCAMINHAMENTO[st].toLowerCase()})`);
   const condTxt = [!sem && `Placa: ${condV("placa")}`, !sem && `Gengivite: ${condV("gengivite")}`,
     `Coletivos: ${simNaoTxt(ex.fezColetivos, geraisDoExame(ex))}`, `Insumos: ${simNaoTxt(ex.deuInsumos, ex.insumos || [])}`,
+    ...(ex.odontograma === "nao" && ex.odontogramaMotivo === MOTIVO_URGENCIA ? [`Urgência: ${(ex.urgencia || []).filter(x => x.dente && x.proc).map(x => `${x.dente} · ${PROCS_URGENCIA[x.proc]}`).join("; ") || "nada informado"}`] : []),
     `Encaminhamentos: ${simNaoTxt(ex.fezEncaminhamento, encTxt)}`, `Prescrições: ${simNaoTxt(ex.fezPrescricao, ex.prescricoes || [])}`,
     `Tratamento básico: ${NOMES_TRATAMENTO[situacaoTratamento(ex, ajustesNivel(ex.dsei))].toLowerCase()}`].filter(Boolean).join(" · ");
   const gestTxt = perguntaGestante(comIdade(ex)) ? (ex.gestante === "sim" ? `gestante, ${ex.semanasGestacao || "?"} semanas` : ex.gestante === "nao" ? "não gestante" : "") : "";
@@ -2011,7 +2072,7 @@ function dicaHtml(n) {
   const d = estado.ex.dentes[n]; if (!d) return "";
   const it = [], st = d.status;
   if (st !== "presente") it.push(["#6D7B90", STATUS_NOME[st] || st]);
-  else if (duvidaIdade(n, estado.ex)) it.push(["#F7B500", "Conferir pela idade"]);
+  else if (duvidaIdade(n, estado.ex)) it.push(["#E5702A", "Confirmar pela idade (obrigatório antes dos outros dentes)"]);
   const grupos = {};
   ["O", "V", "L", "M", "D"].forEach(f => { const c = (d.faces || {})[f]; if (c) (grupos[c] = grupos[c] || []).push(SIGLA_FACE(n, f)); });
   FACES.forEach(f => { if (grupos[f.k]) it.push([COR_FACE[f.k], `${f.nome}: ${grupos[f.k].join(", ")}`]); });
@@ -2042,7 +2103,10 @@ function mostrarDica(cel) {
 function esconderDica(logo) { clearTimeout(tDica); tDica = setTimeout(() => { const b = $("#dicaDente"); if (b) { b.hidden = true; b.dataset.n = ""; } }, logo ? 0 : 160); }
 
 /* ---------- painel do dente ---------- */
-function abrirPainel(n) { estado.sel = n; estado.faceSel = null; estado.todosProc = false; renderPainel(); $("#fundo").hidden = false; renderOdonto(); document.body.style.overflow = "hidden"; setTimeout(() => $(".painel .fechar")?.focus(), 30); }
+function abrirPainel(n) {
+  const duv = dentesEmDuvida(estado.ex);
+  if (duv.length && !duv.includes(n)) { toast(`Antes, confirme pela idade ${duv.length === 1 ? "o dente" : "os dentes"} ${listaE(duv.map(String))}.`); n = duv[0]; }
+  estado.sel = n; estado.faceSel = null; estado.todosProc = false; renderPainel(); $("#fundo").hidden = false; renderOdonto(); document.body.style.overflow = "hidden"; setTimeout(() => $(".painel .fechar")?.focus(), 30); }
 function fecharPainel() { const n = estado.sel; estado.sel = null; estado.faceSel = null; $("#fundo").hidden = true; $("#fundo").innerHTML = ""; document.body.style.overflow = ""; renderOdonto(); renderResultado(); document.querySelector(`.dente[data-n="${n}"]`)?.focus(); }
 // Painel do dente: situação → desenho das faces → condição da face → sinais → tratamento.
 function renderPainel(focoSel) {
@@ -2064,8 +2128,8 @@ function renderPainel(focoSel) {
       [["indicado", "Indicado"], ["realizado", "Realizado"]].map(([v, r]) => `<button type="button" data-proc="${k}" data-val="${v}" aria-pressed="${(d.procs || {})[k] === v}">${r}</button>`).join("")}</div></div>`;
     corpo = `<div class="faces-box"><div class="faces-desenho">${svgDenteGrande(n, d, fsel)}</div><div class="faces-resumo"><b>Faces</b>${resumo.map(t => `<span>${t}</span>`).join("")}</div></div>
       <p class="dica-face"><span aria-hidden="true">👆</span>${fsel ? "Toque em outra face para continuar." : "Toque em uma face do desenho para registrar o que ela tem."}</p>
-      ${fsel ? `<h4>Face ${esc(rotuloFace(n, fsel).toLowerCase())}</h4><div class="chips">${FACES.map(f => `<button class="chip" type="button" data-facecond="${f.k}" aria-pressed="${(fs[fsel] || "") === f.k}">${esc(f.nome)}</button>`).join("")}</div>` : ""}
-      <h4>Sinais</h4>
+      ${fsel ? `<h4 class="face-atual ${estado._faceAnt !== fsel ? "mudou" : ""}">Face <b>${esc(rotuloFace(n, fsel).toLowerCase())}</b></h4><div class="chips">${FACES.map(f => `<button class="chip" type="button" data-facecond="${f.k}" aria-pressed="${(fs[fsel] || "") === f.k}">${esc(f.nome)}</button>`).join("")}</div>` : ""}
+      <h4>Sinais</h4>${(() => { estado._faceAnt = fsel; return ""; })()}
       <label class="check"><input type="checkbox" data-sinal="dor" ${d.dor ? "checked" : ""}>Dor</label>
       <label class="check"><input type="checkbox" data-sinal="abscesso" ${d.abscesso ? "checked" : ""}>Abscesso ou fístula</label>
       <h4>Tratamento</h4><div>${visiveis.map(linhaProc).join("")}</div>
@@ -2171,7 +2235,9 @@ function montarRegistro(ex) {
 function registro47(ex, idade) {
   const x = Object.assign({}, ex, {idadeAnos: idade ? idade.decimal : ""}), gest = perguntaGestante(x) ? ex.gestante : "";
   const na = ["placa", "gengivite"].filter(k => naoAvaliada(ex, k));
-  return {localidade: ex.localidade || "", gestante: gest, semanasGestacao: gest === "sim" ? ex.semanasGestacao : null,
+  return {urgencia: ex.odontograma === "nao" && ex.odontogramaMotivo === MOTIVO_URGENCIA ? (ex.urgencia || []).filter(x => x.dente && x.proc).map(x => ({dente: String(x.dente), proc: x.proc})) : [],
+    todosHigidos: ex.odontograma === "sim" && !temAchado(ex) ? !!ex.todosHigidos : false,
+    localidade: ex.localidade || "", gestante: gest, semanasGestacao: gest === "sim" ? ex.semanasGestacao : null,
     fluoroseDean: perguntaDean(x) ? ex.fluoroseDean || "" : "", condNaoAvaliadas: na,
     ...Object.fromEntries(na.map(k => [k, null])),
     fezEncaminhamento: ex.fezEncaminhamento, encaminhamentos: ex.fezEncaminhamento === "sim" ? clone(ex.encaminhamentos || {}) : {},
@@ -2425,14 +2491,14 @@ async function buscarPorDados() {
   st.buscando = true; renderPessoa();
   let cands = null, offline = false;
   if (navigator.onLine && sessao()) {
-    try { const r = await api("buscarPessoa", {dsei: ex.dsei, aldeia: ex.aldeia, nascimento: ex.crianca.nascimento, sexo: sx, excetoId: ex.id}); cands = r.foraDoDsei ? {foraDoDsei: avisoForaDoDsei(r.foraDoDsei)} : r.candidatos; } catch (err) { cands = null; }
+    try { const r = await api("buscarPessoa", {dsei: ex.dsei, polo: ex.polo, aldeia: ex.aldeia, nascimento: ex.crianca.nascimento, sexo: sx, excetoId: ex.id}); cands = r.foraDoDsei ? {foraDoDsei: avisoForaDoDsei(r.foraDoDsei)} : r.candidatos; } catch (err) { cands = null; }
   }
   if (cands && cands.foraDoDsei) { toast(cands.foraDoDsei); cands = []; }
   if (!cands) {
     offline = true;
-    const mesmos = e => e.dsei === ex.dsei && e.crianca.nascimento === ex.crianca.nascimento && e.crianca.sexo === sx;
+    const mesmos = e => e.dsei === ex.dsei && normTexto(e.polo) === normTexto(ex.polo) && e.crianca.nascimento === ex.crianca.nascimento && e.crianca.sexo === sx;
     cands = candidatosLocais(e => mesmos(e) && normTexto(e.aldeia) === normTexto(ex.aldeia));
-    // Sem ninguém na aldeia: procura nas outras aldeias do DSEI (a pessoa pode ter mudado de aldeia).
+    // Sem ninguém na aldeia: procura nas outras aldeias do mesmo polo base (a pessoa pode ter mudado de aldeia).
     if (!cands.length) cands = candidatosLocais(e => mesmos(e) && normTexto(e.aldeia) !== normTexto(ex.aldeia)).map(c => Object.assign(c, {outraAldeia: (c.ultimo || {}).aldeia || "outra aldeia"}));
   }
   if (estado.ex !== ex) return;
@@ -2601,7 +2667,7 @@ function renderPessoa() {
         cs.map((c, i) => cartaoPessoa(c, `<button class="sec mini" data-id-acao="historico-cand" data-i="${i}">Ver histórico</button><button class="prim mini" data-id-acao="usar-cand" data-i="${i}">É esta pessoa →</button>`)).join("") : `<p class="dica" style="margin-top:12px">Nenhum exame anterior encontrado no DSEI ${esc(ex.dsei)} com esta aldeia, data de nascimento e sexo${ex._candOffline ? " (sem internet: busquei só neste aparelho)" : ""}.</p>`) +
       `<div class="nenhuma"><b>${cs.length ? "Nenhuma dessas opções corresponde" : "É o primeiro atendimento desta pessoa"}</b><p>${cs.length ? "Na dúvida, use esta opção para evitar vincular a pessoa errada." : "O app gera o código de acompanhamento dela."}</p>
         <button class="prim" data-id-acao="nova-pessoa">+ Continuar como nova pessoa</button></div>`;
-    box.innerHTML = `<p class="info-id">O app usa o DSEI e a aldeia ou comunidade informados acima, com a data de nascimento e o sexo, para buscar possíveis exames anteriores.</p>
+    box.innerHTML = `<p class="info-id"><b>Como o app procura exames anteriores:</b> mesmo polo base e mesma aldeia (do Local do atendimento), com a mesma data de nascimento e o mesmo sexo. Se não achar, olha as outras aldeias do mesmo polo. Outros polos e a gestação não entram na busca.</p>
       ${!st.buscou ? `<div class="acoes-l"><button class="prim" data-id-acao="buscar-dados">Buscar possíveis exames anteriores</button></div>` : ""}${res}`;
     return;
   }
@@ -2883,6 +2949,14 @@ $("#segOdonto").addEventListener("click", e => {
   if (v === "nao") ex.gerais = ex.gerais.filter(g => !GERAIS_CLINICOS.includes(g));
   alterado(); renderFormulario(); renderOdonto(); renderResultado(); renderEtapas();
 });
+$("#urgBox").addEventListener("input", e => { const i = e.target.dataset.urgDente; if (i == null) return; estado.ex.urgencia[i].dente = e.target.value.replace(/\D/g, "").slice(0, 2); alterado(); renderEtapas(); });
+$("#urgBox").addEventListener("change", e => { const i = e.target.dataset.urgProc; if (i == null) return; estado.ex.urgencia[i].proc = e.target.value; alterado(); renderEtapas(); });
+$("#urgBox").addEventListener("click", e => {
+  const ex = estado.ex;
+  if (e.target.closest("[data-urg-mais]")) { ex.urgencia.push({dente: "", proc: ""}); alterado(); renderUrgencia(); return renderEtapas(); }
+  const t = e.target.closest("[data-urg-tira]"); if (t) { ex.urgencia.splice(Number(t.dataset.urgTira), 1); alterado(); renderUrgencia(); renderEtapas(); }
+});
+$("#inHig").addEventListener("change", e => { estado.ex.todosHigidos = e.target.checked; alterado(); renderEtapas(); });
 $("#odMotivos").addEventListener("change", e => {
   if (e.target.name !== "odMot") return;
   estado.ex.odontogramaMotivo = e.target.value; alterado(); aplicarOdontograma(); renderEtapas();
@@ -3214,8 +3288,14 @@ function atualizarNomesAntigos(e) {
 }
 // Odontograma opcional: quando não é preenchido, o profissional escolhe o principal motivo (um só).
 var MOTIVOS_SEM_ODONTOGRAMA = ["Tempo insuficiente para realizar o odontograma", "A pessoa recusou o exame odontológico", "Não foi possível realizar o exame por dificuldade de colaboração",
-  "Falta de condições adequadas (iluminação, espaço ou materiais)", "Condição clínica impediu a realização do exame", "Atendimento direcionado exclusivamente a ações coletivas", "Outro motivo"];
+  "Falta de condições adequadas (iluminação, espaço ou materiais)", "Condição clínica impediu a realização do exame", "Atendimento direcionado exclusivamente a ações coletivas",
+  "Atendimento de urgência, sem tempo para o odontograma completo", "Outro motivo"];
 var MOTIVO_SO_COLETIVO = "Atendimento direcionado exclusivamente a ações coletivas", MOTIVO_OUTRO = "Outro motivo";
+// Urgência sem odontograma (47.4): o CD registra o dente e o que fez nele, sem o odontograma completo (sem classe de risco).
+var MOTIVO_URGENCIA = "Atendimento de urgência, sem tempo para o odontograma completo";
+/** @type {any} */
+var PROCS_URGENCIA = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia por outros motivos", pulpotomia: "Pulpotomia",
+  selprov: "Selamento provisório / adequação do meio", drenagem: "Drenagem de abscesso"};
 // Sem exame clínico, estes procedimentos não aparecem (precisam do odontograma).
 var GERAIS_CLINICOS = ["Profilaxia / remoção de placa", "Raspagem (RAP) supragengival", "Raspagem (RAP) subgengival", "Evidenciação de placa bacteriana", "Sutura", "Outro procedimento cirúrgico"];
 /** Exame registrado sem odontograma (os exames de antes do odontograma opcional sempre têm). @param {any} e */
@@ -3418,6 +3498,8 @@ function agregarExames(regs, agrup, ult) {
     var mes = String(e.dataExame || "").slice(0, 7);
     if (mes) r.meses[mes] = (r.meses[mes] || 0) + 1;
     (e.gerais || []).forEach(function (/** @type {any} */ g) { r.gerais[g] = (r.gerais[g] || 0) + 1; });
+    // Urgência sem odontograma: o que foi feito em cada dente conta como realizado.
+    (e.urgencia || []).forEach(function (/** @type {any} */ x) { if (!PROCS_URGENCIA[x.proc]) return; if (!r.procs[x.proc]) r.procs[x.proc] = {indicado: 0, realizado: 0}; r.procs[x.proc].realizado++; r.procsRealizados++; });
     (e.insumos || []).forEach(function (/** @type {any} */ g) { r.insumos[g] = (r.insumos[g] || 0) + 1; });
     if (e.localAtendimento) r.local[e.localAtendimento] = (r.local[e.localAtendimento] || 0) + 1;
     Object.keys(e.encaminhamentos || {}).forEach(function (k) { var o = r.encaminhamentos[k] = r.encaminhamentos[k] || {pendente: 0, realizado: 0}; o[e.encaminhamentos[k]] = (o[e.encaminhamentos[k]] || 0) + 1; });
@@ -3985,7 +4067,7 @@ function tabelaIndicesFaixa(fx) {
     <thead><tr><th rowspan="2">Faixa etária</th><th colspan="3">ceo-d (decíduos)</th><th colspan="3">CPO-D (permanentes)</th></tr>
     <tr><th class="num">Médio</th><th class="num">c · e · o</th><th class="num">Pessoas</th><th class="num">Médio</th><th class="num">C · P · O</th><th class="num">Pessoas</th></tr></thead>
     <tbody>${fx.map(([f, v]) => `<tr><td>${esc(f)}</td>${cel(v.ceod, ["c", "e", "o"])}${cel(v.cpod, ["c", "p", "o"])}</tr>`).join("")}</tbody></table></div>
-    <p class="nota">Cada pessoa conta uma vez, pelo exame mais recente do período. No ceo-d entram só as pessoas com dentes decíduos no exame; no CPO-D, só as com dentes permanentes. Médias só com 5 pessoas ou mais.</p>`;
+    <p class="nota">Cada pessoa conta uma vez, pelo exame mais recente do período. No ceo-d entram só as pessoas com dentes decíduos no exame; no CPO-D, só as com dentes permanentes. Com poucas pessoas, a média muda muito de um exame para outro: leia junto com o número de pessoas.</p>`;
 }
 // Plural certo: 1 pessoa, 2 pessoas.
 function pl(n, um, varios) { return `${fmtN(n)} ${Number(n) === 1 ? um : varios}`; }
@@ -4129,7 +4211,7 @@ function desenharPainel(d, local) {
     <div class="kpi"><b>${pctDe(r.nivel.Alto, r.n)}</b><span>das pessoas em alto risco (${fmtN(r.nivel.Alto)} pessoas)</span></div>
     <div class="kpi"><b>${fmtN(r.ceodMedia)}</b><span>ceo-d médio por pessoa</span></div>
     <div class="kpi"><b>${fmtN(r.cpodMedia)}</b><span>CPO-D médio por pessoa</span></div>
-    <div class="kpi"><b>${fmtN(r.procsRealizados)}</b><span>procedimentos realizados nos dentes</span></div></div>`;
+    <div class="kpi"><b>${fmtN(r.procsRealizados)}</b><span>procedimentos realizados nos dentes${r.retornos && r.retornos.procedimentos ? ` <small>(inclui ${fmtN(r.retornos.procedimentos)} de ${pl(r.retornos.consultas, "consulta de retorno", "consultas de retorno")})</small>` : ""}</span></div></div>`;
 
   const R = B.risco, rOk = R && !R.poucos && R.n > 0;
   const classes = `<div class="bloco"><h3>Classificação de risco</h3>${!rOk ? `<p class="dica">Menos de 5 pessoas.</p>` : `<div class="barra-risco" aria-hidden="true">${CL.map(c => { const v = R.classe[c], w = ehNum(v) ? v : v === "<5" ? 2 : 0;
@@ -4140,7 +4222,7 @@ function desenharPainel(d, local) {
   const c12 = r && r.cpod12 && r.cpod12.n;
   const cpod12 = semDados ? "" : `<div class="bloco"><h3>CPO-D aos 12 anos <small class="dica">(idade-índice da OMS)</small></h3>${
     !c12 ? `<p class="dica">Nenhuma pessoa de 12 anos examinada nesta seleção.</p>` :
-    r.cpod12Media == null ? `<p class="dica">${pl(c12, "pessoa", "pessoas")} de 12 anos. A média aparece a partir de 5 pessoas.</p>` :
+    r.cpod12Media == null ? `<p class="dica">${pl(c12, "pessoa", "pessoas")} de 12 anos.</p>` :
     `<p class="destaque">${fmtN(r.cpod12Media)}</p><p class="dica">Severidade ${esc(r.cpod12Severidade.toLowerCase())} pela classificação da OMS, com ${pl(c12, "pessoa", "pessoas")} de 12 anos.</p>`}
     <h3 style="margin-top:16px">Todas as idades nesta seleção</h3>
     <ul class="totais"><li>Pessoas com placa visível: <b>${fmtN(r.placa)}</b></li><li>Pessoas com gengivite: <b>${fmtN(r.gengivite)}</b></li>${r.fluorose != null ? `<li>Pessoas com fluorose moderada ou severa: <b>${fmtN(r.fluorose)}</b></li>` : ""}${totaisDentes(r)}</ul></div>`;
@@ -4189,10 +4271,10 @@ function desenharPainel(d, local) {
 // Idades-índice das Diretrizes (ceo-d de 1 a 6 anos; CPO-D de 7 a 12, 15 a 19, 35 a 44 e 65 a 74; livres de cárie), ao lado das faixas de hoje.
 function blocoIdadesIndice(r, semDados) {
   if (semDados || !r || !r.oficiais) return "";
-  const o = r.oficiais, med = x => x && typeof x.n === "number" && x.n >= 5 ? fmtN(Math.round(x.soma / x.n * 100) / 100) : x && x.n ? "<5" : "–";
+  const o = r.oficiais, med = x => x && typeof x.n === "number" && x.n >= 1 ? fmtN(Math.round(x.soma / x.n * 100) / 100) : "–";
   const lin = (g, x, m) => `<tr><td>${esc(g[0])}</td><td>${x ? fmtN(x.n) : 0}</td><td>${m}</td></tr>`;
   const tab = (t, gs, k) => `<div class="bloco"><h3>${t}</h3><div class="tabela"><table class="conta"><thead><tr><th>Idade</th><th>Pessoas</th><th>Média por pessoa</th></tr></thead><tbody>${gs.map(g => lin(g, o[k][g[0]], med(o[k][g[0]]))).join("")}</tbody></table></div></div>`;
-  const liv = `<div class="bloco"><h3>Livres de cárie <small class="dica">(ceo-d e CPO-D iguais a zero)</small></h3><div class="tabela"><table class="conta"><thead><tr><th>Idade</th><th>Pessoas</th><th>Livres de cárie</th></tr></thead><tbody>${GRUPOS_LIVRES.map(g => { const x = o.livres[g[0]]; return `<tr><td>${esc(g[0])}</td><td>${x ? fmtN(x.n) : 0}</td><td>${x && x.n >= 5 ? pctDe(x.livres, x.n) + ` (${fmtN(x.livres)} pessoas)` : x && x.n ? "<5" : "–"}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+  const liv = `<div class="bloco"><h3>Livres de cárie <small class="dica">(ceo-d e CPO-D iguais a zero)</small></h3><div class="tabela"><table class="conta"><thead><tr><th>Idade</th><th>Pessoas</th><th>Livres de cárie</th></tr></thead><tbody>${GRUPOS_LIVRES.map(g => { const x = o.livres[g[0]]; return `<tr><td>${esc(g[0])}</td><td>${x ? fmtN(x.n) : 0}</td><td>${x && x.n >= 1 ? pctDe(x.livres, x.n) + ` (${pl(x.livres, "pessoa", "pessoas")})` : "–"}</td></tr>`; }).join("")}</tbody></table></div></div>`;
   return `<p class="dica" style="margin:8px 4px">Idades-índice das Diretrizes para a atenção à saúde bucal nos DSEI. Cada pessoa conta uma vez, pelo último exame com odontograma no período.</p><div class="p-grade">${tab("ceo-d por idade", GRUPOS_CEOD, "ceod")}${tab("CPO-D por idade", GRUPOS_CPOD, "cpod")}</div>${liv}`;
 }
 // O que ainda falta: o tratamento básico das pessoas, os procedimentos indicados e não realizados, os encaminhamentos e as prescrições.
@@ -4468,7 +4550,7 @@ function renderAcomp() {
     <h4 class="cpo-sub">Por faixa etária no 1º exame</h4>
     ${!d.porFaixa.length ? `<p class="dica">Ninguém com 2 ou mais exames neste recorte ainda.</p>` : `<div class="tabela"><table><thead><tr><th>Faixa etária</th><th>Pessoas</th><th>Risco menor · igual · maior</th><th>Dentes cariados por pessoa<br><small>1º → último</small></th><th>Com dor ou abscesso<br><small>1º → último</small></th></tr></thead>
     <tbody>${d.porFaixa.map(f => `<tr><td>${esc(f.faixa)}</td><td>${fmtN(f.n)}</td><td>${fmtN(f.menor)} · ${fmtN(f.igual)} · ${fmtN(f.maior)}</td><td>${f.cariados1 == null ? "–" : `${f1(f.cariados1)} → ${f1(f.cariadosU)}`}</td><td>${fmtN(f.dor1)} → ${fmtN(f.dorU)}</td></tr>`).join("")}</tbody></table></div>`}
-    <p class="nota">${d.sigilo ? "Grupos com menos de 5 pessoas aparecem como “&lt;5” e sem média. " : ""}<b>Por que não usar o CPO-D para dizer se melhorou?</b> O CPO-D não diminui: o dente cariado tratado vira obturado (C → O) e o perdido continua perdido. Nas crianças, o ceo-d também cai quando o decíduo esfolia. Por isso o acompanhamento usa os dentes cariados, a classe de risco, a cárie nova e a dor ou abscesso.</p>`;
+    <p class="nota">${d.sigilo ? "Grupos com menos de 5 pessoas aparecem como “&lt;5” e sem média. " : ""}<button class="link" type="button" data-guia="acompanhamento">Entenda o acompanhamento</button> · <b>Por que não usar o CPO-D para dizer se melhorou?</b> O CPO-D não diminui: o dente cariado tratado vira obturado (C → O) e o perdido continua perdido. Nas crianças, o ceo-d também cai quando o decíduo esfolia. Por isso o acompanhamento usa os dentes cariados, a classe de risco, a cárie nova e a dor ou abscesso.</p>`;
   const lista = !temLista ? "" : (() => {
     const l = d.lista.filter(x => (!estA.fFaixa || x.faixa === estA.fFaixa) && (!estA.fEvol || x.evol === estA.fEvol) && (!estA.fCod || x.codigo.toUpperCase().includes(estA.fCod.toUpperCase())));
     return `<div class="grade"><label class="campo">Faixa etária no 1º exame<select id="aFaixa"><option value="">Todas</option>${FAIXAS_ETARIAS.slice(0, 5).map(f => `<option ${f === estA.fFaixa ? "selected" : ""}>${esc(f)}</option>`).join("")}</select></label>
@@ -4501,14 +4583,15 @@ function planoHtml(p) {
   return `<div class="bloco plano"><div class="bloco-topo"><h3>Plano de tratamento · exame de ${fmtData(pl.plano.dataExame)}</h3>${pode ? `<button class="prim mini" type="button" data-retorno-plano="${esc(pl.plano.id)}">Registrar consulta de retorno</button>` : ""}</div>
     <p style="margin:4px 0"><b>Tratamento básico (APS):</b> ${esc(NOMES_TRATAMENTO[sit])}${(pl.estado.tratamento || {}).motivo && sit === "nao_concluido" ? " · " + esc(pl.estado.tratamento.motivo) : ""} · <b>Atenção especializada:</b> ${esc(NOMES_SIT_ENCAMINHAMENTO[enc].toLowerCase())}</p>
     ${pend.length ? `<p class="dica" style="margin:4px 0 0">Pendências da APS:</p><ul class="lista-pend">${pend.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
-    ${pl.retornos.length ? `<p class="dica" style="margin:8px 0 0">Consultas de retorno: ${pl.retornos.map(r => `${fmtData(r.dataExame)} (${esc(r.profissionalNome || "")}${Object.keys(r.dentes || {}).length ? ", dentes " + esc(Object.keys(r.dentes).join(", ")) : ""})`).join(" · ")}</p>` : ""}
+    ${pl.retornos.length ? `<p class="dica" style="margin:8px 0 2px">Consultas de retorno:</p><ul class="lista-ret">${pl.retornos.map(r => `<li>${fmtData(r.dataExame)} · ${esc(r.profissionalNome || "")}${Object.keys(r.dentes || {}).length ? " · dentes " + esc(Object.keys(r.dentes).join(", ")) : ""}${r.usuarioId && r.usuarioId === idUsuario() ? ` <button class="link perigo" type="button" data-rt-cancelar="${esc(r.id)}" data-cod="${esc(codigoIndividuoDe(pl.plano))}">Cancelar este retorno</button>` : ""}</li>`).join("")}</ul>
+      <p class="dica" style="margin:2px 0 0">Retorno lançado errado: quem registrou cancela (com o motivo) e registra de novo.</p>` : ""}
     ${!pode && fazExames() ? `<p class="dica" style="margin:6px 0 0">O retorno é registrado por um CD do DSEI ${esc(pl.plano.dsei)}.</p>` : ""}</div>`;
 }
 const estRt = {p: null, pl: null, itens: {}, novos: [], encs: {}, tc: {aps: "", motivo: ""}, data: "", local: "", obs: ""};
 // Abre o formulário do retorno a partir do histórico da pessoa (precisa de internet: o plano vem do servidor).
 function abrirRetorno(p) {
   const pl = planoDaPessoa(p); if (!pl) return toast("Esta pessoa ainda não tem exame com odontograma.");
-  Object.assign(estRt, {p, pl, itens: {}, novos: [], encs: {}, tc: {aps: "", motivo: ""}, data: hoje(), local: pl.plano.localAtendimento || "", obs: ""});
+  Object.assign(estRt, {p, pl, id: null, itens: {}, novos: [], encs: {}, tc: {aps: "", motivo: ""}, data: hoje(), local: pl.plano.localAtendimento || "", obs: ""});
   renderRetorno();
 }
 // O que o retorno muda, a partir das escolhas do formulário: só os dentes e os encaminhamentos que mexeu.
@@ -4524,6 +4607,8 @@ function retornoAtual() {
       else if (tipo === "enc") { d.conduta = {tipo: "encaminhamento", especialidade: x}; if (!encs[x] && !(st.encaminhamentos || {})[x]) encs[x] = "pendente"; }
       else if (tipo === "proc") { d.procs = Object.assign({}, d.procs, {[x]: y}); }
     } else if (k !== "_motivo" && v === "realizado") { const d = dente(n); d.procs = Object.assign({}, d.procs, {[k]: "realizado"}); }
+    // "Não será feito" (por exemplo, o ART indicado virou resina): a indicação sai do plano.
+    else if (k !== "_motivo" && v === "nao_fara") { const d = dente(n); d.procs = Object.assign({}, d.procs); delete d.procs[k]; }
   });
   estRt.novos.forEach(x => { const d = dente(x.n); d.faces = Object.assign({}, d.faces, {[x.face]: x.cond}); if (x.proc) d.procs = Object.assign({}, d.procs, {[x.proc]: x.momento}); });
   return {id: estRt.id || (estRt.id = uid()), planoId: estRt.pl.plano.id, dataExame: estRt.data, localAtendimento: estRt.local, dentes, encaminhamentos: encs,
@@ -4535,10 +4620,13 @@ function renderRetorno() {
   const sit = situacaoTratamento(prev, aj), pend = pendenciasAPS(prev, aj);
   const indicados = ds.flatMap(n => Object.entries(st.dentes[n].procs || {}).filter(([, v]) => v === "indicado").map(([k]) => [n, k]));
   const necs = necessidadesSemConduta(st);
+  // Indicação tirada ("Não será feito") num dente com cárie, dor ou abscesso: o dente pede outro procedimento ou uma conduta.
+  Object.entries(estRt.itens).filter(([, v]) => v === "nao_fara").map(([c]) => c.split("|")[0])
+    .filter((n, i, a) => a.indexOf(n) === i && necessidadeDoDente(st.dentes[n]).length && !necs.some(x => String(x.n) === n)).forEach(n => necs.push({n, motivos: necessidadeDoDente(st.dentes[n])}));
   const encPend = Object.entries(st.encaminhamentos || {}).filter(([, v]) => v === "pendente").map(([k]) => k);
   const linhaInd = ([n, k]) => { const v = estRt.itens[n + "|" + k] || "pendente";
     return `<div class="linha-op"><span><b>${n}</b> · ${esc(PROC_NOME[k] || k)}${nivelDoProc(k, aj) === "especializada" ? " <small class=\"dica\">(especializada)</small>" : ""}</span><div class="seg pequeno" role="group" aria-label="${esc(PROC_NOME[k] || k)} no ${n}">${
-      [["realizado", "Realizado"], ["pendente", "Ainda pendente"]].map(([x, t]) => `<button type="button" data-rt-item="${n}|${k}" data-v="${x}" aria-pressed="${v === x}">${t}</button>`).join("")}</div></div>`; };
+      [["realizado", "Realizado"], ["pendente", "Ainda pendente"], ["nao_fara", "Não será feito"]].map(([x, t]) => `<button type="button" data-rt-item="${n}|${k}" data-v="${x}" aria-pressed="${v === x}">${t}</button>`).join("")}</div></div>`; };
   const opcoesNec = n => { const d = st.dentes[n], comp = procsCompativeis(n, d).filter(k => ehDecid(n) || !SO_DECIDUO.includes(k));
     return `<option value="">O que foi feito neste dente?</option>
       <optgroup label="Procedimento realizado">${comp.map(k => `<option value="proc:${k}:realizado">${esc(PROC_NOME[k])}</option>`).join("")}</optgroup>
@@ -4584,6 +4672,7 @@ async function salvarRetorno() {
   if (!navigator.onLine) return toast("O retorno precisa de internet para ser salvo.");
   try {
     const j = await api("enviarRetorno", {retorno: ret});
+    estRt.id = null; // gravado: o próximo retorno ganha um registro novo, mesmo se a consulta abaixo falhar
     toast(`Retorno salvo. Tratamento básico: ${NOMES_TRATAMENTO[j.situacao].toLowerCase()}.`);
     const p = await api("pessoa", {codigoIndividuo: codigoIndividuoDe(pl.plano)});
     estRt.id = null; abrirModal(`<div class="painel" role="dialog" aria-modal="true" style="max-width:900px"><div class="p-topo"><div><h3>Histórico da pessoa</h3><p>Somente leitura</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>${htmlPessoa(p)}</div>`);
@@ -4594,6 +4683,16 @@ async function salvarRetorno() {
 function dataValida(v) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || "")); if (!m) return false; const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])); return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3]; }
 $("#leitura").addEventListener("click", async e => {
   const t = e.target;
+  const rc = t.closest("[data-rt-cancelar]");
+  if (rc) {
+    const motivo = (prompt("Por que cancelar este retorno? (por exemplo: lançado na pessoa errada)") || "").trim(); if (!motivo) return;
+    if (!navigator.onLine) return toast("Cancelar um retorno precisa de internet.");
+    try { await api("cancelarRetorno", {id: rc.dataset.rtCancelar, motivo}); toast("Retorno cancelado. Ele deixa de contar no plano, no painel e nas fichas.");
+      const p = await api("pessoa", {codigoIndividuo: rc.dataset.cod}); estRt.p = p;
+      abrirModal(`<div class="painel" role="dialog" aria-modal="true" style="max-width:900px"><div class="p-topo"><div><h3>Histórico da pessoa</h3><p>Somente leitura</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>${htmlPessoa(p)}</div>`);
+    } catch (err) { toast(err.message); }
+    return;
+  }
   const ab = t.closest("[data-retorno-plano]");
   if (ab) { if (!navigator.onLine) return toast("O retorno precisa de internet."); if (estRt.p) abrirRetorno(estRt.p); return; }
   if (!estRt.pl || !$("#rtTit")) return;
@@ -4831,10 +4930,10 @@ document.addEventListener("click", e => {
 function renderFichas() {
   const box = $("#fichasBox"), pf = perfil(); if (!box) return;
   box.innerHTML = pf === "rt" || pf === "coord" ? `<div class="bloco"><h2>Fichas 3 e 7 do SIASI</h2>
-    <p class="dica" style="margin:4px 0 10px">Soma, por aldeia, os exames registrados no app num mês, para ajudar a lançar no SIASI. Ficha 7: procedimentos individuais. Ficha 3: escovação supervisionada, flúor-gel e insumos marcados nos exames. Saem vazios a 1ª consulta programática, o agendamento, a demanda espontânea e a educação em saúde: o app não registra.</p>
+    <p class="dica" style="margin:4px 0 10px">Soma, por aldeia, os exames registrados no app num mês, para ajudar a lançar no SIASI. Ficha 7: procedimentos individuais. Ficha 3: escovação supervisionada, flúor-gel e insumos marcados nos exames. Saem vazios a 1ª consulta programática, o agendamento, a demanda espontânea e a educação em saúde: o app não registra. <button class="link" type="button" data-guia="fichas">Entenda as Fichas 3 e 7</button></p>
     <div class="grade">${pf === "coord" && !dseiFixo() ? `<label class="campo">DSEI<select id="fiDsei">${DSEIS.map(x => `<option>${esc(x)}</option>`).join("")}</select></label>` : ""}
       <label class="campo">Mês<input id="fiMes" type="month" value="${hoje().slice(0, 7)}" max="${hoje().slice(0, 7)}"></label></div>
-    <div class="acoes-l"><button class="prim" type="button" id="fiBaixar">Baixar as Fichas 3 e 7 (planilhas)</button></div><p class="dica" id="fiStatus" aria-live="polite"></p></div>` : "";
+    <div class="acoes-l"><button class="prim" type="button" id="fiBaixar">Baixar as Fichas 3 e 7 (um arquivo Excel, uma aba para cada)</button></div><p class="dica" id="fiStatus" aria-live="polite"></p></div>` : "";
 }
 $("#fichasBox").addEventListener("click", async e => {
   if (e.target.id !== "fiBaixar") return;
@@ -4842,9 +4941,13 @@ $("#fichasBox").addEventListener("click", async e => {
   $("#fiStatus").textContent = "Preparando…";
   try {
     const j = await api("fichasSiasi", {mes, dsei});
-    const tab = (cols, l) => [cols].concat(l.map(x => cols.map(c => x[c])));
-    baixar(`ficha7-${j.dsei}-${j.mes}.csv`, csv(tab(j.colunas7, j.ficha7)));
-    setTimeout(() => baixar(`ficha3-${j.dsei}-${j.mes}.csv`, csv(tab(j.colunas3, j.ficha3))), 400);
+    const ExcelJS = await carregarExcel(), wb = new ExcelJS.Workbook();
+    const aba = (nome, cols, l) => { const ws = wb.addWorksheet(nome, {views: [{state: "frozen", ySplit: 1}]}); ws.addRow(cols); l.forEach(x => ws.addRow(cols.map(c => x[c]))); ws.getRow(1).font = {bold: true}; ws.columns.forEach(c => { c.width = 16; }); };
+    aba("Ficha 7", j.colunas7, j.ficha7); aba("Ficha 3", j.colunas3, j.ficha3);
+    const av = wb.addWorksheet("Avisos"); av.addRow(["Fichas 3 e 7 do SIASI", `DSEI ${j.dsei} · ${j.mes}`]); j.avisos.forEach(t => av.addRow([t])); av.getColumn(1).width = 110;
+    const buf = await wb.xlsx.writeBuffer(), a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([buf], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}));
+    a.download = `fichas-3-e-7-${j.dsei}-${j.mes}.xlsx`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
     $("#fiStatus").textContent = `${j.ficha7.length} ${j.ficha7.length === 1 ? "aldeia" : "aldeias"} na Ficha 7 e ${j.ficha3.length} na Ficha 3. ${j.avisos.join(" ")}`;
   } catch (err) { $("#fiStatus").textContent = err.message; }
 });
@@ -4949,6 +5052,7 @@ async function api(acao, dados, opc) {
     if (!j.ok) {
       if (j.semAcesso && !opc.publica && !opc.cred && s) acessoPerdido(j.erro);
       if (/perfil não tem permissão/.test(j.erro || "") && acao !== "entrar") setTimeout(() => verificarSessao(true), 0);
+      if (j.termoPendente) setTimeout(() => verificarSessao(true), 0);
       if (/^Ação desconhecida/.test(j.erro || "")) avisarServidor(0);
       const err = new Error(j.erro || "O servidor recusou o pedido."); err.semAcesso = !!j.semAcesso; err.dados = j; throw err;
     }
@@ -5531,6 +5635,35 @@ function rotularTabelas() {
 }
 let rotulando = false;
 new MutationObserver(() => { if (rotulando) return; rotulando = true; requestAnimationFrame(() => { rotularTabelas(); rotulando = false; }); }).observe(document.body, {childList: true, subtree: true});
+
+/* ---------- guia do app ----------
+ * Um texto só, aberto em Minha conta ("Abrir o guia") ou pelo "Entenda" de um bloco (abre já na parte certa). */
+const GUIA = [
+  ["registrar", "Como registrar um atendimento", `<p>Toda pessoa atendida ganha um <b>exame</b>, uma pessoa por vez, com ou sem odontograma.</p><ul>
+    <li><b>Com odontograma:</b> toque só nos dentes que têm alguma alteração. Dente sem marcação é hígido. Se não houver nenhuma alteração, marque "Examinei todos os dentes e estão todos hígidos".</li>
+    <li><b>Dentes com contorno laranja e "?":</b> a idade deixa em dúvida se o dente já nasceu ou já caiu. Confirme cada um antes dos outros.</li>
+    <li><b>Sem odontograma:</b> escolha o motivo. Quem só participou da escovação ou do flúor-gel entra com "Atendimento direcionado exclusivamente a ações coletivas". Na urgência sem tempo para o odontograma, escolha "Atendimento de urgência" e informe o dente e o que foi feito.</li></ul>`],
+  ["tratamento", "Tratamento básico e consulta de retorno", `<p>O exame com odontograma abre um <b>plano de tratamento</b>. O que fica indicado volta na <b>consulta de retorno</b> (qualquer CD do mesmo DSEI registra).</p><ul>
+    <li>No retorno, cada procedimento indicado é "Realizado", "Ainda pendente" ou "Não será feito" (por exemplo, o ART virou resina: marque o ART como "Não será feito" e registre a resina).</li>
+    <li>Sem pendências da APS, o app pergunta se o tratamento básico foi concluído. Quem decide é o CD.</li>
+    <li>Retorno lançado errado: quem registrou cancela, com o motivo, e registra de novo.</li></ul>`],
+  ["diab", "Ações do Dia B", `<p>Cada ação é uma <b>síntese</b> dos exames do período e das aldeias da ação: atendimentos, ações coletivas, insumos, clínica e situação. Não há nada para preencher na ação: tudo vem dos exames.</p>`],
+  ["indicadores", "Painel: Indicadores, Dicas e Dados do app", `<ul><li><b>Indicadores:</b> os 8 da Nota Técnica 3/2025 com o histórico oficial do SIASI. Três são pactuados no PDSI; cinco são intermediários do SIPLAM. A cor da barra mostra quanto da meta foi alcançado.</li>
+    <li><b>Dados do app:</b> só o que foi registrado no app (nunca somado ao SIASI). Os números aparecem mesmo quando são poucas pessoas. Os procedimentos feitos nos retornos entram na produção.</li></ul>`],
+  ["acompanhamento", "Acompanhamento (pessoas com 2 ou mais exames)", `<p>Compara o <b>1º</b> e o <b>último</b> exame com odontograma de cada pessoa.</p><ul>
+    <li><b>Por que não o CPO-D?</b> Ele não diminui: o dente cariado tratado vira obturado (C → O) e o perdido continua perdido. Nas crianças, o ceo-d cai quando o decíduo esfolia.</li>
+    <li>Por isso o acompanhamento usa os dentes cariados, a classe de risco, a cárie nova (dente que estava hígido) e a dor ou abscesso.</li></ul>`],
+  ["fichas", "Fichas 3 e 7 do SIASI", `<p>O app <b>soma os exames do mês, por aldeia</b>, para ajudar a lançar no SIASI. O arquivo é um Excel com três abas: Ficha 7, Ficha 3 e Avisos.</p><ul>
+    <li><b>Ficha 7 (procedimentos individuais):</b> restaurações, ART, exodontias, selante, raspagem, encaminhamentos realizados, prescrições e tratamento concluído (contado uma vez, quando passa a concluído). Entram também os procedimentos dos retornos e da urgência, no mês em que foram feitos.</li>
+    <li><b>Ficha 3 (atividades coletivas):</b> pessoas com escovação supervisionada ou flúor-gel marcados no exame, e os insumos entregues.</li>
+    <li><b>Saem vazios</b> (preencha no SIASI): 1ª consulta programática, agendamento, demanda espontânea e educação em saúde.</li></ul>`],
+  ["privacidade", "Privacidade", `<p>O app não guarda nome, Cartão SUS nem CPF. A pessoa é identificada pelo código de acompanhamento. Não escreva nada que identifique a pessoa nas observações. Saia do app em aparelhos usados por outras pessoas.</p>`]];
+function abrirGuia(parte) {
+  abrirModal(`<div class="painel guia" role="dialog" aria-modal="true" aria-labelledby="guiaTit" style="max-width:760px"><div class="p-topo"><div><h3 id="guiaTit">Guia do app</h3><p>Toque num assunto para abrir</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>
+    ${GUIA.map(([k, t, c]) => `<details id="guia-${k}" ${k === parte ? "open" : ""}><summary>${esc(t)}</summary>${c}</details>`).join("")}</div>`);
+  if (parte) setTimeout(() => $("#guia-" + parte)?.scrollIntoView({block: "start"}), 50);
+}
+document.addEventListener("click", e => { const g = e.target.closest("[data-guia]"); if (g) abrirGuia(g.dataset.guia); });
 
 /* ---------- minha conta ---------- */
 function renderConfig() {

@@ -2,7 +2,9 @@
 
 O que mudou em cada versão, da mais nova para a mais antiga. O guia do app como ele é hoje está no [LEIA-ME](../LEIA-ME.md).
 
-## Versões 47.1 a 47.3 (correções depois da instalação)
+## Versões 47.1 a 47.4 (correções depois da instalação)
+
+- **47.4:** correções da auditoria técnica: um retorno não escreve mais por cima de outro; a Ficha 7 conta a conclusão do tratamento uma vez por plano; procedimento indicado pode ficar "Não será feito" no retorno; retorno pode ser cancelado por quem registrou; cache do painel separado por perfil; Termo de Ciência exigido pelo servidor quando ligado. Pedidos da coordenação: painel mostra todos os números (sem "<5") e soma os retornos; busca de exames anteriores só no mesmo polo base; dentes em dúvida pela idade obrigatórios e em destaque; confirmação "todos hígidos"; face escolhida em destaque; placa e gengivite sem "Não avaliado"; tratamento básico em destaque; Fichas 3 e 7 num arquivo Excel só; urgência sem odontograma; Guia do app em Minha conta.
 
 - **47.1:** gráfico do indicador com 2026 como ponto solto e números nos pontos; barras com a cor da meta alcançada; indicadores em dois grupos (PDSI e SIPLAM) e meta do PDSI só para os 3 pactuados; histórico que aparece para todos os perfis; CPO-D aos 12 anos separado; tabelas sem rolagem lateral; explicação de "Onde a pessoa mora".
 - **47.2:** o app volta a abrir quando há um exame começado guardado no aparelho.

@@ -98,10 +98,10 @@ Cada pessoa tem um código pessoal, recebido por e-mail, e entra com o mesmo e-m
 
 **Uma página só**, em partes que se liberam sozinhas: Local → Indivíduo → Odontograma (com vigilância e prótese) → Condições → Resumo e salvar.
 
-**Indivíduo:** sem nome, sem Cartão SUS e sem nenhum dado que identifique a pessoa. Ela recebe um **código de acompanhamento** (`UF-POLO-ALDEIA-8 caracteres`), que nunca muda. No exame seguinte, o app procura a pessoa pela aldeia, pela data de nascimento e pelo sexo, ou pelo código. Também pede a localidade de residência e, para mulheres de 10 a 49 anos, se está gestante (e as semanas).
+**Indivíduo:** sem nome, sem Cartão SUS e sem nenhum dado que identifique a pessoa. Ela recebe um **código de acompanhamento** (`UF-POLO-ALDEIA-8 caracteres`), que nunca muda. No exame seguinte, o app procura a pessoa no mesmo polo base e na mesma aldeia, com a mesma data de nascimento e o mesmo sexo (se não achar, nas outras aldeias do mesmo polo; outros polos e a gestação não entram), ou pelo código. Também pede a localidade de residência e, para mulheres de 10 a 49 anos, se está gestante (e as semanas).
 
 **Odontograma** (pode ficar de fora, com o motivo; sem odontograma não há classe de risco):
-- A data de nascimento escolhe a dentição. Os dentes que a idade garante já vêm como não erupcionado ou esfoliado. Os que a idade deixa em dúvida aparecem com contorno amarelo pontilhado.
+- A data de nascimento escolhe a dentição. Os dentes que a idade garante já vêm como não erupcionado ou esfoliado. Os que a idade deixa em dúvida aparecem com contorno laranja e "?" e precisam ser confirmados antes dos outros dentes. Se nenhum dente tiver alteração, o CD confirma "Examinei todos os dentes e estão todos hígidos".
 - Dente sem marcação é presente e hígido. Tocar no dente abre o painel do dente: situação → desenho (toque na face) → condição da face → sinais → tratamento → conduta.
 - **Situação:** Presente, Não erupcionado (NE), Esfoliado (Es, só no decíduo), Ausente por outro motivo (A), Extraído por cárie (E).
 - **Faces:** Hígida, Cárie ativa, Cárie crônica, Mancha branca ativa, Mancha branca inativa, Restaurada sem cárie, Restaurada com cárie, Selante.
@@ -111,11 +111,12 @@ Cada pessoa tem um código pessoal, recebido por e-mail, e entra com o mesmo e-m
 
 **Vigilância:** dor de dente e abscesso vêm do odontograma; as outras condições depois de um "Sim". Fluorose pelo índice de Dean, de 10 a 19 anos.
 **Prótese:** por arcada, sem, parcial ou total, e se usa. Dentes 18, 28, 38 e 48 ausentes não lembram prótese.
-**Condições:** placa visível e gengivite (Sim, Não ou Não avaliado); procedimentos coletivos e insumos.
+**Condições:** placa visível e gengivite (Sim ou Não); procedimentos coletivos e insumos.
+**Urgência sem odontograma:** com o motivo "Atendimento de urgência", o CD informa o dente e o que fez (exodontia, pulpotomia, selamento provisório ou drenagem de abscesso). A medicação vai na prescrição. Não há classe de risco.
 **Encaminhamentos e prescrições:** por especialidade, com a situação (pendente ou realizado).
 **Tratamento básico (APS):** o app sugere "concluído" quando não há pendências da APS; o CD confirma. "Não concluído" pede o motivo. O que é APS ou especializada segue a lista padrão, com ajuste por DSEI em Administração.
 
-**Retorno:** na pessoa, "Registrar consulta de retorno" anota o que foi feito no plano do último exame com odontograma. Qualquer CD do mesmo DSEI pode registrar. Um odontograma completo novo fecha o plano anterior e herda as pendências.
+**Retorno:** na pessoa, "Registrar consulta de retorno" anota o que foi feito no plano do último exame com odontograma. Qualquer CD do mesmo DSEI pode registrar. Um odontograma completo novo fecha o plano anterior e herda as pendências. Cada procedimento indicado pode ficar "Realizado", "Ainda pendente" ou "Não será feito". Retorno lançado errado: quem registrou cancela, com o motivo, e registra de novo.
 
 **Tudo pelo exame, uma pessoa por vez:** quem só participou da escovação supervisionada ou do flúor-gel também ganha um exame, sem odontograma e com o motivo "só ações coletivas". Não há registro de atividade coletiva à parte.
 
@@ -152,7 +153,7 @@ O Painel tem três abas:
 - **Dicas:** só as aprovadas pela titular, quando o indicador está abaixo da meta. RT e coordenação podem sugerir dicas.
 - **Dados do app:** o que foi registrado no app, em 6 blocos (produção, registro clínico, situação de saúde bucal, indicadores, necessidades e cobertura).
 
-O histórico do SIASI e os dados do app nunca se somam: cada número mostra a fonte. O Painel mostra só números somados, nunca exames de uma pessoa. Quando um recorte tem de 1 a 4 pessoas, aparece "<5" no lugar do número. Para mudar esse limite, altere `const MINIMO = 5;` no `Codigo.gs`. Mostra a cobertura pela população da SESAI (enviada pela coordenação em Administração), o acompanhamento de quem tem 2 ou mais exames e os filtros cruzados. Sem internet, mostra os últimos números baixados.
+O histórico do SIASI e os dados do app nunca se somam: cada número mostra a fonte. O Painel mostra só números somados, nunca exames de uma pessoa. Desde a 47.4 todos os números aparecem, mesmo de 1 a 4 pessoas (decisão da coordenação). Para voltar a esconder, altere `const MINIMO = 1;` para 5 no `Codigo.gs`. Os procedimentos feitos nos retornos entram na produção. Mostra a cobertura pela população da SESAI (enviada pela coordenação em Administração), o acompanhamento de quem tem 2 ou mais exames e os filtros cruzados. Sem internet, mostra os últimos números baixados.
 
 ## A planilha
 
@@ -178,9 +179,9 @@ As abas que começam com `_` são de uso interno do servidor: não mexa nelas.
 
 A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
-- **493 verificações do servidor**, num simulador do Apps Script e sem dados reais;
+- **514 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
-- **228 verificações no navegador**, com os fluxos principais, no horário de Brasília.
+- **235 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
 Para rodar no seu computador: `node ferramentas/verificar.js`, `node testes/servidor.test.js`, `node ferramentas/abrir-app.js` e `node testes/navegador.test.js`. O [mapa do código](docs/MAPA-DO-CODIGO.md) explica cada um.
 
@@ -199,5 +200,4 @@ São dados de saúde, considerados sensíveis. O app não coleta nome, Cartão S
 - No iPhone, o Safari pode apagar dados de sites que ficam semanas sem uso. Instalar o app na tela inicial reduz esse risco. O ideal é enviar os exames no mesmo dia.
 - Uma conta Gmail comum envia cerca de 100 e-mails por dia. Se um e-mail não sair, o código aparece na tela para ser repassado.
 - O app não registra o tipo de consulta (1ª consulta programática, agendamento, demanda espontânea): nas Fichas 7 essas colunas saem vazias, e o indicador de tratamento concluído do app usa como denominador o 1º exame com odontograma no ano ("não oficial").
-- Os números de produção do Painel ainda não somam os procedimentos feitos nos retornos (eles saem nas Fichas 7).
 - A planilha Google atende bem a milhares de exames. Para muitos anos de dados de uma rede inteira, vale migrar depois para um banco de dados próprio.

@@ -61,6 +61,8 @@ for (let i = 0; i < 8; i++) {
   // Cada parte libera sozinha quando as anteriores estão completas; não há botão "Continuar".
   const bloq = (pg, sel) => pg.evaluate(q => document.querySelector(q).classList.contains("bloq") && document.querySelector(q).inert, sel);
   const fecharJanela = pg => pg.evaluate(() => { const l = document.getElementById("leitura"); if (!l.hidden) { l.hidden = true; l.innerHTML = ""; document.body.style.overflow = ""; } });
+  // Os dentes que a idade deixa em dúvida são confirmados antes dos outros (como o dentista faz, tocando em cada um).
+  const confirmarDuvidas = pg => pg.evaluate(() => { const ex = estado.ex; dentesEmDuvida(ex).forEach(n => { ex._conf[n] = true; }); alterado(); renderOdonto(); renderEtapas(); });
   async function novaPessoa(pg, o) {
     await fecharJanela(pg);
     await irAba(pg, "exame"); await pg.waitForTimeout(300);
@@ -76,7 +78,7 @@ for (let i = 0; i < 8; i++) {
     await pg.click('[data-id-acao="buscar-dados"]'); await pg.waitForTimeout(800);
     await pg.click('[data-id-acao="nova-pessoa"]'); await pg.waitForTimeout(800);
     await pg.click('#leitura [data-id-acao="fecha-novo"].prim'); await pg.waitForTimeout(1300); // a página desce sozinha até o odontograma
-    if (o.odontograma !== false) { await pg.click('#segOdonto [data-od="sim"]'); await pg.waitForTimeout(200); }   // "O odontograma foi preenchido?" Sim
+    if (o.odontograma !== false) { await pg.click('#segOdonto [data-od="sim"]'); await pg.waitForTimeout(200); if (!o.manterDuvidas) await confirmarDuvidas(pg); }   // "O odontograma foi preenchido?" Sim
   }
   const semColetivosNemInsumos = async pg => { await pg.click('[data-sn="fezColetivos"] [data-v="nao"]'); await pg.click('[data-sn="deuInsumos"] [data-v="nao"]');
     await pg.click('[data-sn="fezEncaminhamento"] [data-v="nao"]'); await pg.click('[data-sn="fezPrescricao"] [data-v="nao"]'); await pg.waitForTimeout(150);
@@ -84,6 +86,7 @@ for (let i = 0; i < 8; i++) {
     await pg.waitForTimeout(1300); };
   // Depois do Indivíduo, responde o mínimo (sem alterações) até o Resumo.
   async function completar(pg) {
+    if (await pg.isVisible("#higBox")) { await pg.check("#inHig"); await pg.waitForTimeout(150); }
     if (await pg.isVisible("#deanBox")) await pg.check('#dean input[value="0"]');
     await pg.click('#vigOutros [data-v="nao"]'); await pg.click("#proteseNenhuma"); await pg.waitForTimeout(1300); // desce até Condições
     await pg.click('[data-bool="placa"] [data-v="0"]'); await pg.click('[data-bool="gengivite"] [data-v="0"]'); await semColetivosNemInsumos(pg);
@@ -180,7 +183,7 @@ for (let i = 0; i < 8; i++) {
   await pg.waitForTimeout(1300);
   T("Local completo: o Indivíduo é liberado e a página desce até ele", !await bloq(pg, "#blocoInd") && await pg.evaluate(() => { const t = document.getElementById("blocoInd").getBoundingClientRect().top; return t > 0 && t < 260; }), await pg.evaluate(() => document.getElementById("blocoInd").getBoundingClientRect().top));
   T("e o número 2 do topo fica marcado como a parte na tela", await pg.evaluate(() => document.querySelector('#etapas [data-etapa="1"]').classList.contains("atual")));
-  await novaPessoa(pg, { nasc: "2018-08-20", sexo: "F" });
+  await novaPessoa(pg, { nasc: "2018-08-20", sexo: "F", manterDuvidas: true });
   await pg.waitForTimeout(1300);
   T("Indivíduo completo: odontograma, vigilância e prótese são liberados juntos (Condições ainda não)", !await bloq(pg, "#blocoOdonto") && !await bloq(pg, "#blocoCond") && !await bloq(pg, "#blocoProtese") && await bloq(pg, "#blocoGerais"));
   T("depois da janela do código, a página desce até o odontograma", await pg.evaluate(() => { const t = document.getElementById("blocoOdonto").getBoundingClientRect().top; return t > 0 && t < 260; }), await pg.evaluate(() => document.getElementById("blocoOdonto").getBoundingClientRect().top));
@@ -199,6 +202,13 @@ for (let i = 0; i < 8; i++) {
   await pg.click('.painel [data-status="esfoliado"]'); await pg.waitForTimeout(100);
   T("esfoliado: só a situação, sem desenho das faces", await pg.evaluate(n => estado.ex.dentes[n].status === "esfoliado", dd) && !(await pg.$(".painel .faces-desenho")));
   await pg.click('.painel .p-acoes [data-acao="fechar"]'); await pg.waitForTimeout(100);
+  const outrasDuv = await pg.evaluate(() => dentesEmDuvida(estado.ex));
+  T("dentes em dúvida: contorno laranja forte e aviso para confirmar antes", outrasDuv.length > 0 && await pg.isVisible("#duvOdonto") && await pg.evaluate(n => getComputedStyle(document.querySelector(`.dente[data-n="${n}"] .dente-cor svg`)).outlineStyle === "solid", outrasDuv[0]), outrasDuv);
+  await pg.click('.dente[data-n="46"]'); await pg.waitForTimeout(200);
+  T("tocar em outro dente com dúvidas pendentes abre o dente que falta confirmar", await pg.evaluate(() => estado.sel) === outrasDuv[0] && /Antes, confirme pela idade/.test(await pg.textContent("#toast")), await pg.evaluate(() => estado.sel));
+  await pg.click('.painel .p-acoes [data-acao="fechar"]'); await pg.waitForTimeout(100);
+  await confirmarDuvidas(pg);
+  T("confirmados os dentes em dúvida, o aviso some", !(await pg.isVisible("#duvOdonto")));
   await pg.click('.dente[data-n="46"]'); await pg.waitForTimeout(150);
   T("permanente não tem a opção Esfoliado", !(await pg.$('.painel [data-status="esfoliado"]')));
   T("dente presente mostra o desenho e a indicação de tocar na face", await vis(".faces-desenho") && /Toque em uma face/.test(await pg.textContent(".dica-face")));
@@ -251,10 +261,9 @@ for (let i = 0; i < 8; i++) {
   T("desfazendo, Condições continua liberado (o que já foi liberado não volta para o cinza)", !await bloq(pg, "#blocoGerais"));
   await pg.click('[data-protese="sup"] [data-v="parcial"]'); await pg.click('[data-protese="usoSup"] [data-v="nao"]'); await pg.click('[data-protese="inf"] [data-v="nao"]'); await pg.click('[data-protese="usoInf"] [data-v="nao"]');
   T("prótese respondida de novo", await pg.evaluate(() => JSON.stringify(estado.ex.protese)) === pr0);
-  await pg.click('[data-bool="placa"] [data-v="na"]'); await pg.waitForTimeout(100);
-  T("placa \"Não avaliado\": fica vazia e marcada como não avaliada", await pg.evaluate(() => estado.ex.placa === null && estado.ex.condNaoAvaliadas.includes("placa") && !faltasEtapa(4, estado.ex).some(x => /placa/.test(x[0]))));
+  T("com odontograma, placa e gengivite não têm \"Não avaliado\" (só Sim ou Não)", !(await pg.$('[data-bool="placa"] [data-v="na"]')) && !(await pg.$('[data-bool="gengivite"] [data-v="na"]')));
   await pg.click('[data-bool="placa"] [data-v="1"]'); await pg.click('[data-bool="gengivite"] [data-v="0"]'); await pg.waitForTimeout(300);
-  T("voltando para Sim, a placa deixa de ser \"não avaliada\"", await pg.evaluate(() => estado.ex.placa === true && !estado.ex.condNaoAvaliadas.includes("placa")));
+  T("placa e gengivite respondidas com Sim ou Não", await pg.evaluate(() => estado.ex.placa === true && estado.ex.gengivite === false));
   T("placa e gengivite respondidas, mas coletivos e insumos não: o Resumo continua bloqueado (não pula mais para o resumo)", await bloq(pg, "#blocoRevisao") && await pg.evaluate(() => faltasEtapa(4, estado.ex).map(x => x[0]).join(" ")).then(t => /coletivos/.test(t) && /insumos/.test(t)));
   await pg.click('[data-sn="fezColetivos"] [data-v="sim"]'); await pg.waitForTimeout(150);
   T("\"Sim\" nos coletivos abre a lista, e o Resumo espera marcar pelo menos um", await pg.isVisible("#gerais") && await bloq(pg, "#blocoRevisao"));
@@ -587,11 +596,21 @@ for (let i = 0; i < 8; i++) {
   await novaPessoa(pg, { nasc: "2017-03-03", sexo: "M", odontograma: false });
   T("antes da resposta, vigilância e prótese esperam a pergunta do odontograma", await bloq(pg, "#blocoCond") && await pg.isVisible("#segOdonto") && !await pg.isVisible("#odonto"));
   await pg.click('#segOdonto [data-od="nao"]'); await pg.waitForTimeout(200);
-  T("\"Não\": aparece a mensagem de incentivo e os 7 motivos; o odontograma não aparece", /Registro odontológico/.test(await pg.textContent("#odSemBox")) && await pg.$$eval('#odMotivos input[name="odMot"]', l => l.length) === 7 && !await pg.isVisible("#odonto"));
+  T("\"Não\": aparece a mensagem de incentivo e os 8 motivos; o odontograma não aparece", /Registro odontológico/.test(await pg.textContent("#odSemBox")) && await pg.$$eval('#odMotivos input[name="odMot"]', l => l.length) === 8 && !await pg.isVisible("#odonto"));
   T("sem o motivo, o resto fica bloqueado", await bloq(pg, "#blocoGerais"));
   await pg.check('#odMotivos input[value="Outro motivo"]'); await pg.waitForTimeout(150);
   T("\"Outro motivo\" pede o texto", await pg.isVisible('[data-campo="odontogramaMotivoOutro"]') && await bloq(pg, "#blocoGerais"));
+  // Urgência sem odontograma: o dente e o que foi feito nele.
+  await pg.check('#odMotivos input[value="Atendimento de urgência, sem tempo para o odontograma completo"]'); await pg.waitForTimeout(200);
+  T("urgência: aparece o dente e o que foi feito, e o resto espera", await pg.isVisible("#urgBox [data-urg-dente]") && await bloq(pg, "#blocoGerais"));
+  await pg.fill('#urgBox [data-urg-dente="0"]', "46"); await pg.selectOption('#urgBox [data-urg-proc="0"]', "exo_carie"); await pg.waitForTimeout(150);
+  await pg.click("#urgBox [data-urg-mais]"); await pg.waitForTimeout(100);
+  await pg.fill('#urgBox [data-urg-dente="1"]', "99"); await pg.selectOption('#urgBox [data-urg-proc="1"]', "drenagem"); await pg.waitForTimeout(150);
+  T("urgência: dente que não existe (99) é recusado", await pg.evaluate(() => faltasEtapa(2, estado.ex).some(x => /urgência/.test(x[0]))));
+  await pg.fill('#urgBox [data-urg-dente="1"]', "36"); await pg.waitForTimeout(150);
+  T("urgência: com os dentes certos, o atendimento segue", await pg.evaluate(() => !faltasEtapa(2, estado.ex).length && registro47(estado.ex).urgencia.length === 2));
   await pg.check('#odMotivos input[value="A pessoa recusou o exame odontológico"]'); await pg.waitForTimeout(1300);
+  T("outro motivo: a urgência some e não vai junto", !(await pg.isVisible("#urgBox")) && await pg.evaluate(() => registro47(estado.ex).urgencia.length === 0));
   T("com o motivo: vigilância, prótese, placa e gengivite somem; condições libera", !await pg.isVisible("#blocoCond") && !await pg.isVisible("#blocoProtese") && !await pg.isVisible("#condClinicas") && !await bloq(pg, "#blocoGerais"));
   await pg.click('[data-sn="fezColetivos"] [data-v="sim"]'); await pg.waitForTimeout(150);
   const opcoesCol = await pg.$$eval("#gerais label", l => l.map(x => x.textContent.trim()));
