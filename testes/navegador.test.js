@@ -483,6 +483,24 @@ for (let i = 0; i < 8; i++) {
     await ctx.close();
   }
 
+  parte("CRO incompleto");
+  {
+    const cab = G.est.sheets.Usuarios[0], lin = G.est.sheets.Usuarios.find(l => l[3] === S.BRUNO.email), antes = lin[cab.indexOf("cro")];
+    lin[cab.indexOf("cro")] = "CRO 880"; G.ctx.cadastrosMudaram();
+    ({ ctx, pg } = await pagina(true));
+    await entrar(pg, S.BRUNO); await pg.waitForTimeout(400);
+    await pg.evaluate(() => { store.set("odo_cro_aviso", ""); conferirCro(); }); await pg.waitForTimeout(300);
+    T("CRO sem a UF: o app pede para completar, com a UF numa lista e o número já preenchido", await pg.isVisible("#croTit") && await pg.inputValue("#crCroNum") === "880" && (await pg.$$("#crCroUf option")).length === 28);
+    await pg.fill("#crCroNum", ""); await pg.type("#crCroNum", "88a0");
+    T("o número do CRO só aceita dígitos", await pg.inputValue("#crCroNum") === "880", await pg.inputValue("#crCroNum"));
+    await pg.selectOption("#crCroUf", "RR"); await pg.click("#croSalvar"); await pg.waitForTimeout(1200);
+    T("CRO completado: o aviso some e o cadastro fica com RR 880", !(await pg.isVisible("#croTit")) && lin[cab.indexOf("cro")] === "RR 880" && !pg.erros.length, [lin[cab.indexOf("cro")], pg.erros]);
+    await irAba(pg, "config"); await pg.waitForTimeout(300);
+    T("Minha conta mostra o CRO completo, sem o botão de completar", /RR 880/.test(await pg.textContent("#contaDados")) && !(await pg.$("[data-cro-completar]")));
+    await ctx.close();
+    lin[cab.indexOf("cro")] = antes; G.ctx.cadastrosMudaram();
+  }
+
   parte("recuperação");
   ({ ctx, pg } = await pagina(true));
   await pg.goto(URL); await pg.waitForTimeout(500);

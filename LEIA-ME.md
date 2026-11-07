@@ -179,9 +179,9 @@ As abas que começam com `_` são de uso interno do servidor: não mexa nelas.
 
 A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
-- **517 verificações do servidor**, num simulador do Apps Script e sem dados reais;
+- **525 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
-- **235 verificações no navegador**, com os fluxos principais, no horário de Brasília.
+- **239 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
 Para rodar no seu computador: `node ferramentas/verificar.js`, `node testes/servidor.test.js`, `node ferramentas/abrir-app.js` e `node testes/navegador.test.js`. O [mapa do código](docs/MAPA-DO-CODIGO.md) explica cada um.
 

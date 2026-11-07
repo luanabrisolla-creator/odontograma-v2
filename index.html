@@ -172,7 +172,7 @@ a.sec{display:inline-flex;align-items:center;text-decoration:none;border-radius:
 .bts{display:flex;gap:6px;flex-wrap:wrap}
 .mini{padding:6px 12px;min-height:36px;font-size:.88rem}
 .perigo-t{color:#9B1B2E;border-color:#E7B9B6}
-.pill-p{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700;background:var(--surface-2);color:var(--ink)}
+.pill-p{display:inline-block;border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700;background:var(--surface-2);color:var(--ink);white-space:nowrap}
 .pill-p.rt{background:#E3ECF8;color:#1F5FAD}
 .pill-p.coord{background:var(--accent-soft);color:var(--accent)}
 .estado.inativo{background:var(--surface-2);color:var(--muted)}
@@ -223,15 +223,16 @@ table.cruz tr.total td{border-top:2px solid var(--line)}
 .barra span{display:block;height:100%;border-radius:3px}
 .tabela{overflow-x:visible;max-width:100%}
 .tabela table{border-collapse:collapse;width:100%;font-size:.9rem;font-variant-numeric:tabular-nums}
-.tabela th,.tabela td{padding:7px 8px;border-bottom:1px solid var(--surface-2);text-align:right;white-space:normal;overflow-wrap:anywhere;hyphens:none}
-/* Cabeçalho: a palavra nunca se parte no meio ("Indicados", não "Indicado/s"). No corpo, um e-mail longo pode quebrar para caber na tela. */
+.tabela th,.tabela td{padding:7px 8px;border-bottom:1px solid var(--surface-2);text-align:right;white-space:normal;overflow-wrap:break-word;hyphens:none}
+/* No computador, a palavra só se parte se não couber inteira (nunca "Pernamb/uco"); o cabeçalho nunca se parte. No celular (cartões), o e-mail longo quebra. */
 .tabela th{word-break:keep-all;overflow-wrap:normal}
 .tabela td .bts{display:flex;flex-wrap:wrap;gap:6px}
 @media (max-width:760px){
   .tabela table.tab-cartao,.tabela table.tab-cartao tbody,.tabela table.tab-cartao tr,.tabela table.tab-cartao td{display:block;width:100%}
   .tabela table.tab-cartao thead{display:none}
   .tabela table.tab-cartao tr{border:1px solid var(--line);border-radius:12px;padding:6px 12px;margin:0 0 10px;background:var(--surface)}
-  .tabela table.tab-cartao td{border:0;text-align:left;padding:4px 0;display:flex;gap:10px;align-items:baseline}
+  .tabela table.tab-cartao td{border:0;text-align:left;padding:4px 0;display:flex;gap:10px;align-items:baseline;overflow-wrap:anywhere;min-width:0}
+  .tabela table.tab-cartao td > *{min-width:0}
   .tabela table.tab-cartao td[data-rotulo]::before{content:attr(data-rotulo);flex:0 0 38%;color:var(--muted);font-size:.78rem;font-weight:700}
   .tabela table.tab-cartao td:not([data-rotulo]),.tabela table.tab-cartao td[data-rotulo=""]{display:block}
   .tabela table.tab-cartao td[data-rotulo=""]::before{display:none}
@@ -620,6 +621,7 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .urg-l{display:grid;grid-template-columns:110px 1fr auto;gap:8px;align-items:center;margin:6px 0}
 @media (max-width:520px){.urg-l{grid-template-columns:90px 1fr}.urg-l button{grid-column:1/-1;justify-self:start}}
 .guia details{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 8px;background:var(--surface)}.guia summary{cursor:pointer;font-weight:700}.guia p,.guia li{font-size:.92rem;line-height:1.5}
+.cro-par{display:grid;grid-template-columns:96px 1fr;gap:8px}
 .termo-texto{white-space:pre-wrap;font-size:.9rem;line-height:1.5;max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0 12px;background:var(--bg)}
 .termo-li{display:flex;gap:8px;align-items:center;margin:0 0 10px;font-weight:600}.termo-li input{width:22px;height:22px;min-height:0;flex:none;margin:0;padding:0;accent-color:var(--azul,#1D6FD8)}
 .serie>svg{max-width:100%;height:auto;display:block}.serie .lg{display:flex;flex-wrap:wrap;gap:6px 18px;line-height:1.3;font-size:.78rem;color:var(--muted);margin:4px 0 8px}.serie .lg span{display:inline-flex;align-items:center;gap:6px}.serie .lg svg{flex:none}
@@ -3587,6 +3589,18 @@ function nomeProprio(t) {
     return w.toLowerCase().replace(/(^|[-'])([^-'])/g, function (_, a, b) { return a + b.toUpperCase(); });
   }).join(" ");
 }
+// CRO num padrão só: "UF número" (ex.: "PE 9100"). A UF é a do conselho regional (pode ser de outro estado que o DSEI).
+var UFS_CRO = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
+/** Escreve o CRO no padrão. Ex.: "cro-pe 9100" → "PE 9100"; "RR 01623" → "RR 1623". Sem UF, devolve só o número. @param {any} t */
+function croPadrao(t) {
+  var s = String(t || "").toUpperCase().replace(/CRO/g, " ").replace(/([A-Z])(\d)/g, "$1 $2").replace(/(\d)([A-Z])/g, "$1 $2").replace(/[^A-Z0-9]+/g, " ").trim();
+  var uf = (s.match(/(?:^| )([A-Z]{2})(?= |$)/) || [])[1], num = (s.match(/\d+/) || [])[0];
+  if (num) num = String(Number(num));
+  if (num && uf && UFS_CRO.indexOf(uf) >= 0) return uf + " " + num;
+  return num || String(t || "").trim();
+}
+/** O CRO tem a UF e o número (de 1 a 6 dígitos). @param {any} t */
+function croCompleto(t) { var p = croPadrao(t); return /^[A-Z]{2} [1-9]\d{0,5}$/.test(p) && UFS_CRO.indexOf(p.slice(0, 2)) >= 0; }
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
 /** @param {any} iso */
@@ -5404,7 +5418,7 @@ function renderAcesso() {
       </div>
       <div class="grade">
         <label class="campo">Nome completo<input id="acNome" autocomplete="name"></label>
-        <label class="campo">CRO<input id="acCro" placeholder="Ex.: MT 4521"></label>
+        <div class="campo">CRO<div class="cro-par"><select id="acCroUf" aria-label="UF do CRO"><option value="">UF</option>${UFS_CRO.map(x => `<option>${x}</option>`).join("")}</select><input id="acCroNum" inputmode="numeric" maxlength="6" placeholder="Número" aria-label="Número do CRO"></div><span class="dica" style="font-weight:400">UF do conselho e número, ex.: PE 9100</span></div>
         <label class="campo">E-mail<input id="acEmail" type="email" autocomplete="email"></label>
         <label class="campo">UF<select id="acUf" class="lista-uf"></select></label>
         <label class="campo">DSEI<select id="acDsei"></select></label>
@@ -5439,7 +5453,7 @@ function renderAceitarConvite(box) {
     <div class="conv-email"><span>E-mail do convite</span><b>${esc(c.email)}</b></div>
     <div class="grade">
       <label class="campo">Nome completo<input id="cvNome" autocomplete="name"></label>
-      <label class="campo">CRO<input id="cvCro" placeholder="Ex.: MT 4521"></label>
+      <div class="campo">CRO<div class="cro-par"><select id="cvCroUf" aria-label="UF do CRO"><option value="">UF</option>${UFS_CRO.map(x => `<option>${x}</option>`).join("")}</select><input id="cvCroNum" inputmode="numeric" maxlength="6" placeholder="Número" aria-label="Número do CRO"></div><span class="dica" style="font-weight:400">UF do conselho e número, ex.: PE 9100</span></div>
       <label class="campo">UF<select id="cvUf">${ufs.length === 1 ? "" : `<option value="">Escolha a UF</option>`}${(ufs.length ? ufs : UFS).map(u => `<option>${u}</option>`).join("")}</select></label>
       <label class="campo"><span>Polo base principal <small style="font-weight:400;color:var(--muted);font-size:inherit">(opcional)</small></span><input id="cvPolo"></label>
     </div>
@@ -5448,7 +5462,7 @@ function renderAceitarConvite(box) {
     <p class="dica" style="margin-top:8px">O convite vale até ${fmtData(c.valido_ate)}.</p></div>`;
 }
 async function aceitarConvite(b) {
-  const d = {convite: estAc.convite.token, nome: $("#cvNome").value.trim(), cro: $("#cvCro").value.trim(), uf: $("#cvUf").value, polo: $("#cvPolo").value.trim()};
+  const d = {convite: estAc.convite.token, nome: $("#cvNome").value.trim(), cro: croDoForm("cv"), uf: $("#cvUf").value, polo: $("#cvPolo").value.trim()};
   if (!d.nome || !d.cro || !d.uf) return toast("Preencha nome, CRO e UF.");
   if (!$("#cvTermo").checked) return toast("Marque a declaração para continuar.");
   b.disabled = true;
@@ -5588,7 +5602,7 @@ $("#acessoConteudo").addEventListener("click", async e => {
   if (b.id === "acVerCodigo") { const i = $("#acCodigo"), ver = i.type === "password"; i.type = ver ? "text" : "password"; b.setAttribute("aria-pressed", String(ver)); b.setAttribute("aria-label", ver ? "Esconder o código" : "Mostrar o código"); return; }
   lerUrlAcesso();
   if (b.id === "acPedir") {
-    const d = {perfil: estAc.perfil, nome: $("#acNome").value.trim(), cro: $("#acCro").value.trim(), email: $("#acEmail").value.trim(), uf: $("#acUf").value, dsei: $("#acDsei").value, polo: $("#acPolo").value.trim()};
+    const d = {perfil: estAc.perfil, nome: $("#acNome").value.trim(), cro: croDoForm("ac"), email: $("#acEmail").value.trim(), uf: $("#acUf").value, dsei: $("#acDsei").value, polo: $("#acPolo").value.trim()};
     if (!d.nome || !d.cro || !d.email || !d.uf || !d.dsei) return toast("Preencha nome, CRO, e-mail, UF e DSEI.");
     if (!$("#acTermo").checked) return toast("Marque a declaração para enviar o pedido.");
     b.disabled = true;
@@ -5605,7 +5619,7 @@ $("#acessoConteudo").addEventListener("click", async e => {
       avisarServidor(j.versao || 0);
       carregarTerritorios(j.territoriosVersao || "", true);
       aplicarUsuario(j.usuario); estAc.msg = "";
-      rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem(); conferirTermo();
+      rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem(); conferirTermo(); setTimeout(conferirCro, 1500);
     } catch (err) {
       estAc.msg = err.semAcesso ? "O e-mail ou o código não conferem. Confira os dois (o código diferencia maiúsculas de minúsculas) ou peça um novo código." : err.message;
       renderAcesso(); $("#acEmail").value = email;
@@ -5699,13 +5713,42 @@ function abrirGuia(parte) {
 }
 document.addEventListener("click", e => { const g = e.target.closest("[data-guia]"); if (g) abrirGuia(g.dataset.guia); });
 
+/* ---------- CRO no padrão "UF número" ----------
+ * No cadastro, a UF vem de uma lista e o número só aceita dígitos. Quem já tem acesso com o CRO sem a UF vê um aviso
+ * e completa em Minha conta: o cadastro, o acesso e os exames continuam os mesmos. */
+function croDoForm(pre) { const uf = ($("#" + pre + "CroUf") || {}).value || "", n = (($("#" + pre + "CroNum") || {}).value || "").replace(/\D/g, ""); return uf && n ? `${uf} ${Number(n)}` : ""; }
+document.addEventListener("input", e => { if (/CroNum$/.test(e.target.id || "")) e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6); });
+function htmlCro(obrig) {
+  const u = (sessao() || {}).usuario || {};
+  return `<div class="painel" role="dialog" aria-modal="true" aria-labelledby="croTit" style="max-width:520px"><div class="p-topo"><div><h3 id="croTit">Complete o seu CRO</h3><p>Hoje está "${esc(u.cro || "vazio")}", sem a UF do conselho.</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>
+    <p class="dica" style="margin:0 0 10px">Informe a UF do conselho em que você é inscrito(a) e o número. Seu cadastro, seu acesso e seus exames continuam os mesmos.</p>
+    <div class="campo">CRO<div class="cro-par"><select id="crCroUf" aria-label="UF do CRO"><option value="">UF</option>${UFS_CRO.map(x => `<option>${x}</option>`).join("")}</select><input id="crCroNum" inputmode="numeric" maxlength="6" placeholder="Número" aria-label="Número do CRO"></div><span class="dica" style="font-weight:400">UF do conselho e número, ex.: PE 9100</span></div>
+    <div class="acoes-l" style="margin-top:12px"><button class="prim" type="button" id="croSalvar">Salvar o CRO</button><button class="sec" type="button" data-fecha-leitura>${obrig ? "Agora não" : "Cancelar"}</button></div>
+    <p class="dica" id="croStatus" aria-live="polite"></p></div>`;
+}
+function conferirCro() {
+  const s = sessao(), u = s && s.usuario; if (!u || !u.croIncompleto || !$("#leitura").hidden) return;
+  if (store.get("odo_cro_aviso", "") === hoje()) return; store.set("odo_cro_aviso", hoje()); // avisa uma vez por dia
+  const n = (String(u.cro || "").match(/\d+/) || [""])[0];
+  abrirModal(htmlCro(true)); $("#crCroNum").value = n;
+}
+$("#leitura").addEventListener("click", async e => {
+  if (e.target.id !== "croSalvar") return;
+  const cro = croDoForm("cr"); if (!cro) return $("#croStatus").textContent = "Escolha a UF e informe o número.";
+  e.target.disabled = true;
+  try { const j = await api("corrigirCro", {cro}); store.set(K_SESSAO, Object.assign(sessao(), {usuario: j.usuario}));
+    $("#leitura").hidden = true; $("#leitura").innerHTML = ""; document.body.style.overflow = ""; toast(`CRO salvo: ${j.usuario.cro}.`); if (estado.aba === "config") renderConfig(); }
+  catch (err) { $("#croStatus").textContent = err.message; e.target.disabled = false; }
+});
+document.addEventListener("click", e => { if (e.target.closest("[data-cro-completar]")) { abrirModal(htmlCro(false)); $("#crCroNum").value = (String(((sessao() || {}).usuario || {}).cro || "").match(/\d+/) || [""])[0]; } });
+
 /* ---------- minha conta ---------- */
 function renderConfig() {
   const s = sessao(), u = (s && s.usuario) || {}, c = cfg();
   $("#contaPerfil").innerHTML = u.perfil ? `<span class="pill-p ${u.perfil}">${nomePerfil(u)}${u.perfil === "coord" && u.titular ? " titular" : ""}</span>` : "";
   const linhas = u.perfil === "coord" ? [...(u.titular ? [] : [["Nome", u.nome]]), ...(u.dsei ? [["CRO", u.cro], ["RT do DSEI", `${u.dsei} (${u.uf})`]] : []), ["E-mail", u.email], ["Acesso", "Todos os DSEIs"], ...(u.titular ? [] : [["Adicionada por", u.aprovado_por || "–"]])]
-    : [["Nome", u.nome], ["CRO", u.cro], ["E-mail", u.email], ["DSEI", `${u.dsei} (${u.uf})`], ["Aprovado por", u.aprovado_por || "–"]];
-  $("#contaDados").innerHTML = linhas.map(([k, v]) => `<tr><th>${k}</th><td>${esc(v || "")}</td></tr>`).join("");
+    : [["Nome", u.nome], ["CRO", u.croIncompleto ? `${u.cro || "vazio"} (falta a UF)` : u.cro], ["E-mail", u.email], ["DSEI", `${u.dsei} (${u.uf})`], ["Aprovado por", u.aprovado_por || "–"]];
+  $("#contaDados").innerHTML = linhas.map(([k, v]) => `<tr><th>${k}</th><td>${esc(v || "")}${k === "CRO" && u.croIncompleto ? ` <button class="link" type="button" data-cro-completar>Completar o CRO</button>` : ""}</td></tr>`).join("");
   // A coordenação titular entra pelas Propriedades do script; o nome dela é guardado lá também.
   $("#contaNomeTit").innerHTML = u.titular ? `<div class="grade" style="margin-top:12px"><label class="campo">Seu nome (aparece na página inicial e nos registros)<input id="titNome" value="${esc(/^coordena/i.test(u.nome || "") ? "" : u.nome || "")}" autocomplete="name" placeholder="Seu nome completo"></label>
     <div class="campo" style="justify-content:flex-end"><button class="sec" id="titSalvar">Salvar nome</button></div></div>` : "";
@@ -6335,7 +6378,7 @@ if (CONVITE_URL) {
   if (sessao()) setTimeout(() => toast(`Este aparelho já está conectado com a conta de ${sessao().usuario.nome}. Para aceitar o convite, saia em "Minha conta" e abra o link do convite de novo.`), 900);
   else { estAc.vista = "convite"; estAc.convite = {token: CONVITE_URL}; }
 }
-atualizarNomesAntigos(estado.ex); rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao(); conferirTermo();
+atualizarNomesAntigos(estado.ex); rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao(); conferirTermo(); setTimeout(conferirCro, 1500);
 if (RECUPERAR_URL) abrirRecuperacao();
 conferirVersaoServidor();
 sincronizar();

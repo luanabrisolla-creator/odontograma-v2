@@ -482,6 +482,18 @@ function nomeProprio(t) {
     return w.toLowerCase().replace(/(^|[-'])([^-'])/g, function (_, a, b) { return a + b.toUpperCase(); });
   }).join(" ");
 }
+// CRO num padrão só: "UF número" (ex.: "PE 9100"). A UF é a do conselho regional (pode ser de outro estado que o DSEI).
+var UFS_CRO = ["AC", "AL", "AM", "AP", "BA", "CE", "DF", "ES", "GO", "MA", "MG", "MS", "MT", "PA", "PB", "PE", "PI", "PR", "RJ", "RN", "RO", "RR", "RS", "SC", "SE", "SP", "TO"];
+/** Escreve o CRO no padrão. Ex.: "cro-pe 9100" → "PE 9100"; "RR 01623" → "RR 1623". Sem UF, devolve só o número. @param {any} t */
+function croPadrao(t) {
+  var s = String(t || "").toUpperCase().replace(/CRO/g, " ").replace(/([A-Z])(\d)/g, "$1 $2").replace(/(\d)([A-Z])/g, "$1 $2").replace(/[^A-Z0-9]+/g, " ").trim();
+  var uf = (s.match(/(?:^| )([A-Z]{2})(?= |$)/) || [])[1], num = (s.match(/\d+/) || [])[0];
+  if (num) num = String(Number(num));
+  if (num && uf && UFS_CRO.indexOf(uf) >= 0) return uf + " " + num;
+  return num || String(t || "").trim();
+}
+/** O CRO tem a UF e o número (de 1 a 6 dígitos). @param {any} t */
+function croCompleto(t) { var p = croPadrao(t); return /^[A-Z]{2} [1-9]\d{0,5}$/.test(p) && UFS_CRO.indexOf(p.slice(0, 2)) >= 0; }
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
 /** @param {any} iso */
