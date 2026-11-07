@@ -179,7 +179,7 @@ As abas que começam com `_` são de uso interno do servidor: não mexa nelas.
 
 A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
-- **514 verificações do servidor**, num simulador do Apps Script e sem dados reais;
+- **517 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
 - **235 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
