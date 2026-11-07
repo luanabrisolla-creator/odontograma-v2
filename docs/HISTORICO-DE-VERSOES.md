@@ -2,7 +2,9 @@
 
 O que mudou em cada versão, da mais nova para a mais antiga. O guia do app como ele é hoje está no [LEIA-ME](../LEIA-ME.md).
 
-## Versões 47.1 a 47.4 (correções depois da instalação)
+## Versões 47.1 a 47.5 (correções depois da instalação)
+
+- **47.5:** nomes das pessoas num padrão só (Maria das Dores e Silva); barra da classificação de risco em degradê do verde ao vinho; gráfico do indicador no tamanho real, com os valores do Brasil e da meta; "Como este número é calculado" em forma de conta; palavras dos cabeçalhos das tabelas sem quebrar no meio; texto da meta do PDSI com os 8 indicadores.
 
 - **47.4:** correções da auditoria técnica: um retorno não escreve mais por cima de outro; a Ficha 7 conta a conclusão do tratamento uma vez por plano; procedimento indicado pode ficar "Não será feito" no retorno; retorno pode ser cancelado por quem registrou; cache do painel separado por perfil; Termo de Ciência exigido pelo servidor quando ligado. Pedidos da coordenação: painel mostra todos os números (sem "<5") e soma os retornos; busca de exames anteriores só no mesmo polo base; dentes em dúvida pela idade obrigatórios e em destaque; confirmação "todos hígidos"; face escolhida em destaque; placa e gengivite sem "Não avaliado"; tratamento básico em destaque; Fichas 3 e 7 num arquivo Excel só; urgência sem odontograma; Guia do app em Minha conta.
 

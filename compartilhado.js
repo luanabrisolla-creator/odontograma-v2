@@ -468,6 +468,20 @@ var NOMES_PROC = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia
   civ: "Restauração com cimento de ionômero de vidro", resina: "Restauração em resina composta", amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado",
   cdf: "Aplicação de cariostático", selprov: "Selamento provisório / adequação do meio", pcdp: "Proteção do complexo dentino-pulpar",
   pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia (dente decíduo)", coroa: "Coroa de aço"};
+// Nome de pessoa num padrão só: a primeira letra de cada nome maiúscula; "de", "da", "do", "das", "dos" e "e" minúsculas.
+// Ex.: "LUCIANA GOUVÊA LUCENA AOUN" → "Luciana Gouvêa Lucena Aoun"; "célia regina de araújo" → "Célia Regina de Araújo".
+/** @param {any} t */
+function nomeProprio(t) {
+  /** @type {any} */ var PEQ = {de: 1, da: 1, "do": 1, das: 1, dos: 1, e: 1, di: 1, du: 1, del: 1};
+  var s = String(t || "").replace(/\s+/g, " ").trim();
+  // Só mexe em nome de verdade (letras, espaço, hífen, apóstrofo e ponto); qualquer outra coisa fica como veio.
+  if (!/^[A-Za-zÀ-ÖØ-öø-ÿ' .\-]+$/.test(s)) return s;
+  return s.split(" ").map(function (w, i) {
+    if (i > 0 && PEQ[w.toLowerCase()]) return w.toLowerCase();
+    if (w.length > 1 && w === w.toUpperCase() && !/[AEIOUÀ-ÖØ-Ýaeiou]/.test(w)) return w; // sigla sem vogal (RT, CD) fica como está
+    return w.toLowerCase().replace(/(^|[-'])([^-'])/g, function (_, a, b) { return a + b.toUpperCase(); });
+  }).join(" ");
+}
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
 /** @param {any} iso */

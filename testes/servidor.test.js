@@ -1337,5 +1337,14 @@ parte("auditoria: retornos, Ficha 7, cache, termo, busca, urgência e números p
   T("a confirmação \"examinei todos os dentes e estão todos hígidos\" fica guardada no exame", R.P(R.ANA, { acao: "enviarExame", registro: hig }).ok && JSON.parse(ab("Exames").find(l => l[0] === "H1").at(-1)).todosHigidos === true);
 }
 
+parte("nomes num padrão só");
+{
+  const R = cenario(), np = n => require("vm").runInContext("nomeProprio(" + JSON.stringify(n) + ")", R.G.ctx);
+  T("nome todo em maiúsculas ou minúsculas fica no padrão (de, da, do, das, dos e e minúsculos)", np("LUCIANA GOUVÊA LUCENA AOUN") === "Luciana Gouvêa Lucena Aoun" && np("stephen sadamy dantas mesquita") === "Stephen Sadamy Dantas Mesquita" && np("MARIA DAS DORES E SILVA") === "Maria das Dores e Silva");
+  T("hífen e apóstrofo, siglas e texto que não é nome ficam certos", np("ana-luíza d'ávila") === "Ana-Luíza D'Ávila" && np("Rita RT") === "Rita RT" && np("=IMPORTDATA(x)") === "=IMPORTDATA(x)");
+  const r = R.P(null, { acao: "pedirAcesso", nome: "JOANA DA SILVA", cro: "RR 9191", email: "joana@teste.org", uf: "RR", dsei: "Yanomami", perfil: "dentista" });
+  T("pedido de acesso grava o nome no padrão", r.ok && R.G.est.sheets.Usuarios.some(l => l[1] === "Joana da Silva"));
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);

@@ -1366,6 +1366,7 @@ function lerUsuarios() {
     l = aba.getLastRow() < 2 ? [] : aba.getRange(2, 1, aba.getLastRow() - 1, CAB_USUARIOS.length).getValues().map(function (v, i) {
       /** @type {any} */ const u = { _linha: i + 2 };
       CAB_USUARIOS.forEach(function (k, j) { u[k] = v[j] instanceof Date ? v[j].toISOString() : String(v[j]); });
+      if (u.nome) u.nome = nomeProprio(u.nome); // cadastros antigos com tudo maiúsculo ou minúsculo aparecem no padrão
       return u;
     }).filter(function (u) { return u.id; });
     guardarNaMemoria('usuarios', l, 600);
@@ -1652,7 +1653,7 @@ function emailCodigo(u, codigo, link, novo) {
 /* ---------- 7. pedido de acesso e recuperação do código ---------- */
 function pedirAcesso(d) {
   const email = normEmail(d.email), perfil = d.perfil === 'rt' ? 'rt' : 'dentista';
-  const nome = String(d.nome || '').trim(), cro = String(d.cro || '').trim(), dsei = String(d.dsei || '').trim();
+  const nome = nomeProprio(d.nome), cro = String(d.cro || '').trim(), dsei = String(d.dsei || '').trim();
   if (!nome || !cro || !dsei || !d.uf) return { ok: false, erro: 'Preencha nome, CRO, UF e DSEI.' };
   if (!dseiValido(dsei) || !ufDoDsei(d.uf, dsei)) return { ok: false, erro: 'Escolha um DSEI da lista e uma UF desse DSEI.' };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, erro: 'E-mail inválido.' };
@@ -2830,7 +2831,7 @@ function acompanhamento(p, u) {
 /** @param {any} d @param {any} u */
 function meuNome(d, u) {
   if (!u.titular) return { ok: false, erro: 'O nome das outras pessoas vem do cadastro de acesso.' };
-  const nome = String(d.nome || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+  const nome = nomeProprio(d.nome).slice(0, 80);
   if (!nome) return { ok: false, erro: 'Digite o seu nome.' };
   PropertiesService.getScriptProperties().setProperty('NOME_COORDENACAO', nome);
   return { ok: true, usuario: { nome: nome } };
@@ -3218,7 +3219,7 @@ function dadosRT(d) {
 function adicionarCoord(d, u) {
   if (!u.titular) return { ok: false, erro: 'Só a coordenação titular adiciona pessoas à coordenação.' };
   // O e-mail da pessoa nova vem em emailNovo (o campo email é o de quem está entrando).
-  const nome = String(d.nome || '').trim(), email = normEmail(d.emailNovo);
+  const nome = nomeProprio(d.nome), email = normEmail(d.emailNovo);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, erro: 'E-mail inválido.' };
   if (email === emailCoord()) return { ok: false, erro: 'Este é o e-mail da coordenação titular.' };
   const rt = dadosRT(d); if (!rt.ok) return rt;
@@ -4335,6 +4336,20 @@ var NOMES_PROC = {exo_carie: "Exodontia devido à cárie", exodontia: "Exodontia
   civ: "Restauração com cimento de ionômero de vidro", resina: "Restauração em resina composta", amalgama: "Restauração em amálgama", verniz: "Verniz fluoretado",
   cdf: "Aplicação de cariostático", selprov: "Selamento provisório / adequação do meio", pcdp: "Proteção do complexo dentino-pulpar",
   pulpotomia: "Pulpotomia", pulpectomia: "Pulpectomia (dente decíduo)", coroa: "Coroa de aço"};
+// Nome de pessoa num padrão só: a primeira letra de cada nome maiúscula; "de", "da", "do", "das", "dos" e "e" minúsculas.
+// Ex.: "LUCIANA GOUVÊA LUCENA AOUN" → "Luciana Gouvêa Lucena Aoun"; "célia regina de araújo" → "Célia Regina de Araújo".
+/** @param {any} t */
+function nomeProprio(t) {
+  /** @type {any} */ var PEQ = {de: 1, da: 1, "do": 1, das: 1, dos: 1, e: 1, di: 1, du: 1, del: 1};
+  var s = String(t || "").replace(/\s+/g, " ").trim();
+  // Só mexe em nome de verdade (letras, espaço, hífen, apóstrofo e ponto); qualquer outra coisa fica como veio.
+  if (!/^[A-Za-zÀ-ÖØ-öø-ÿ' .\-]+$/.test(s)) return s;
+  return s.split(" ").map(function (w, i) {
+    if (i > 0 && PEQ[w.toLowerCase()]) return w.toLowerCase();
+    if (w.length > 1 && w === w.toUpperCase() && !/[AEIOUÀ-ÖØ-Ýaeiou]/.test(w)) return w; // sigla sem vogal (RT, CD) fica como está
+    return w.toLowerCase().replace(/(^|[-'])([^-'])/g, function (_, a, b) { return a + b.toUpperCase(); });
+  }).join(" ");
+}
 /** @param {any} n */
 function decidDe(n) { return Math.floor(Number(n) / 10) >= 5; }
 /** @param {any} iso */
