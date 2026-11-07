@@ -1264,9 +1264,6 @@ const ACOES = {
   salvarMetaPdsi: { perfis: ['coord'], escreve: true, fn: salvarMetaPdsi },
   salvarDica:     { perfis: ['coord'], escreve: true, fn: salvarDica },
   sugerirDica:    { perfis: ['rt', 'coord'], escreve: true, fn: sugerirDica },
-  registrarAtividade: { escreve: true, fn: registrarAtividade },
-  cancelarAtividade:  { escreve: true, fn: cancelarAtividade },
-  atividades:     { fn: atividades },
   fichasSiasi:    { perfis: ['rt', 'coord'], fn: fichasSiasi },
   dadosAnalise:   { fn: dadosAnalise },
   limparErros:    { perfis: ['coord'], escreve: true, fn: limparErros },
@@ -2659,61 +2656,11 @@ function enviarRetorno(d, u) {
   registrar(u, antigo ? 'Corrigiu consulta de retorno' : 'Registrou consulta de retorno', cod + ' · plano de ' + dataBR(plano.dataExame) + ' · ' + Object.keys(dentes).length + ' dente(s) · tratamento básico: ' + NOMES_TRATAMENTO[sit].toLowerCase());
   return { ok: true, retorno: reg, plano: estado, situacao: sit };
 }
-/* ---------- atividade coletiva (Ficha 3) ----------
- * Escovação dental supervisionada, aplicação tópica de flúor-gel ou educação em saúde: uma linha por atividade, com o número
- * de participantes, o nível de quem conduziu, onde foi e os insumos distribuídos. Quem faz exames registra no próprio DSEI. */
+/* ---------- atividades coletivas registradas na versão 47 ----------
+ * Desde a 47.3, tudo é registrado no exame, pessoa por pessoa (com ou sem odontograma), e a Ficha 3 sai dos exames.
+ * As atividades que já foram registradas à parte ficam na aba Atividades e no backup, mas não entram mais nas contas. */
 const CAB_ATIVIDADES = ['id', 'tipo', 'dsei', 'polo', 'aldeia', 'cod_aldeia', 'data', 'participantes', 'nivel_profissional', 'local', 'escovas', 'cremes', 'fios',
   'observacoes', 'usuario_id', 'profissional', 'criado_em', 'situacao', 'cancelado_em'];
-function lerAtividades() { return lerAbaPrincipal('Atividades', CAB_ATIVIDADES).filter(function (a) { return a.id; }); }
-/** @param {any} a */
-function salvarAtividade(a) {
-  const aba = obterAba(planilha(), 'Atividades', CAB_ATIVIDADES);
-  const linha = linhaSegura(CAB_ATIVIDADES.map(function (k) { return a[k] == null ? '' : a[k]; }));
-  const n = aba.getLastRow(), ids = n > 1 ? aba.getRange(2, 1, n - 1, 1).getValues().map(function (l) { return String(l[0]); }) : [];
-  const i = ids.indexOf(String(a.id));
-  if (i >= 0) aba.getRange(i + 2, 1, 1, CAB_ATIVIDADES.length).setValues([linha]); else aba.appendRow(linha);
-}
-/** @param {any} v @param {number} max */
-function inteiroEntre(v, max) { const n = Number(v); return Number.isInteger(n) && n >= 0 && n <= max ? n : -1; }
-/** @param {any} d @param {any} u */
-function registrarAtividade(d, u) {
-  const a = d.atividade || {}, dsei = dseiClinico(u);
-  if (!dsei) return { ok: false, erro: 'Para registrar atividades, o cadastro precisa ter um DSEI.' };
-  /** @type {string[]} */ const f = [];
-  if (TIPOS_ATIVIDADE.indexOf(a.tipo) < 0) f.push('o tipo de atividade');
-  if (!dataValida(a.data) || a.data > hojeIso()) f.push('a data (até hoje)');
-  if (!String(a.polo || '').trim() || !String(a.aldeia || '').trim()) f.push('o polo base e a aldeia');
-  const part = inteiroEntre(a.participantes, 5000); if (part < 1) f.push('o número de participantes (de 1 a 5.000)');
-  if (!NIVEIS_PROF[a.nivel]) f.push('o nível de quem conduziu (médio ou superior)');
-  if (!LOCAIS_ATIVIDADE[a.local]) f.push('o local (comunidade ou estabelecimento)');
-  const ins = ['escovas', 'cremes', 'fios'].map(function (k) { return inteiroEntre(a[k] || 0, 5000); });
-  if (ins.some(function (x) { return x < 0; })) f.push('os insumos distribuídos (números de 0 a 5.000)');
-  if (f.length) return { ok: false, erro: 'A atividade não foi gravada. Falta ou está errado: ' + f.join('; ') + '.' };
-  const id = String(a.id || Utilities.getUuid()), antiga = lerAtividades().filter(function (x) { return x.id === id; })[0];
-  if (antiga && antiga.usuario_id !== u.id) return { ok: false, erro: 'Só quem registrou esta atividade pode alterá-la.' };
-  const reg = { id: id, tipo: a.tipo, dsei: dsei, polo: String(a.polo).trim().slice(0, 150), aldeia: String(a.aldeia).trim().slice(0, 150), cod_aldeia: String(a.codAldeia || '').slice(0, 20),
-    data: a.data, participantes: part, nivel_profissional: a.nivel, local: a.local, escovas: ins[0], cremes: ins[1], fios: ins[2], observacoes: String(a.observacoes || '').slice(0, 1000),
-    usuario_id: u.id, profissional: u.nome || '', criado_em: antiga ? antiga.criado_em : new Date().toISOString(), situacao: 'válida', cancelado_em: '' };
-  salvarAtividade(reg);
-  registrar(u, antiga ? 'Corrigiu atividade coletiva' : 'Registrou atividade coletiva', reg.tipo + ' · ' + reg.aldeia + ' · ' + dataBR(reg.data) + ' · ' + part + ' participantes');
-  return { ok: true, atividade: reg };
-}
-/** @param {any} d @param {any} u */
-function cancelarAtividade(d, u) {
-  const a = lerAtividades().filter(function (x) { return x.id === String(d.id || ''); })[0];
-  if (!a || a.situacao === 'cancelada') return { ok: false, erro: 'Atividade não encontrada.' };
-  if (a.usuario_id !== u.id) return { ok: false, erro: 'Só quem registrou esta atividade pode cancelá-la.' };
-  a.situacao = 'cancelada'; a.cancelado_em = new Date().toISOString(); salvarAtividade(a);
-  registrar(u, 'Cancelou atividade coletiva', a.tipo + ' · ' + a.aldeia + ' · ' + dataBR(a.data));
-  return { ok: true };
-}
-/** Atividades do DSEI de quem pede (a coordenação vê todas), da mais nova para a mais antiga. @param {any} d @param {any} u */
-function atividades(d, u) {
-  const dsei = u.perfil === 'coord' && !u.dsei ? String(d.dsei || '') : String(u.dsei || '');
-  const l = lerAtividades().filter(function (a) { return a.situacao !== 'cancelada' && (!dsei || a.dsei === dsei); })
-    .sort(function (x, y) { return String(y.data).localeCompare(String(x.data)) || String(y.criado_em).localeCompare(String(x.criado_em)); });
-  return { ok: true, atividades: l.slice(0, 300).map(function (a) { return Object.assign({}, a, { minha: a.usuario_id === u.id }); }) };
-}
 
 /* ---------- consolidados das Fichas 3 e 7 do SIASI, por aldeia, num mês ----------
  * Somam o que o app registrou, para ajudar a lançar no SIASI. O que o app não registra (1ª consulta programática,
@@ -2764,8 +2711,10 @@ function fichasSiasi(d, u) {
     Object.keys(e.encaminhamentos || {}).forEach(function (k) { if (e.encaminhamentos[k] === 'realizado' && ENC_FICHA7[k]) l[ENC_FICHA7[k]]++; });
     (e.prescricoes || []).forEach(function (p) { const i = PRESCRICOES.indexOf(p); if (i >= 0) l[PRESC_FICHA7[i]]++; });
     if ((e.tratamento || {}).aps === 'concluido') l.tratamento_odontologico_basico_concluido++;
-    // Insumos entregues no atendimento individual: uma unidade de cada item marcado.
+    // Ficha 3: cada exame com escovação supervisionada ou flúor-gel conta uma pessoa; insumos, uma unidade de cada item marcado.
     const l3 = linha3(e);
+    if ((e.gerais || []).indexOf('Escovação dental supervisionada') >= 0) l3.educ_escovacao_dental_superv++;
+    if ((e.gerais || []).indexOf('Aplicação tópica de flúor-gel') >= 0) l3.aplicacao_topica_fluor++;
     (e.insumos || []).forEach(function (x) { const c = { 'Escova dental': 'escova_dental_distribuida', 'Creme dental': 'creme_dental_distribuido', 'Fio dental': 'fio_dental_distribuido' }[x]; if (c) l3[c]++; });
   });
   // Retornos do mês: só o que passou a ser realizado nele (e os encaminhamentos que passaram a realizados).
@@ -2785,13 +2734,8 @@ function fichasSiasi(d, u) {
       est = estadoDoPlano(est, [Object.assign({}, r, { planoId: est.id })]);
     });
   });
-  lerAtividades().filter(function (a) { return a.situacao !== 'cancelada' && a.dsei === dsei && doMes(a.data); }).forEach(function (a) {
-    const l = linha3(a), p = Number(a.participantes) || 0;
-    if (a.tipo === 'Educação em saúde') l['educ_prof_' + (a.nivel_profissional === 'superior' ? 'superior' : 'medio') + '_' + (a.local === 'estabelecimento' ? 'estab' : 'comunidade')]++;
-    if (a.tipo === 'Escovação dental supervisionada') l.educ_escovacao_dental_superv += p;
-    if (a.tipo === 'Aplicação tópica de flúor-gel') l.aplicacao_topica_fluor += p;
-    l.escova_dental_distribuida += Number(a.escovas) || 0; l.creme_dental_distribuido += Number(a.cremes) || 0; l.fio_dental_distribuido += Number(a.fios) || 0;
-  });
+  // Educação em saúde conta sessões (pelo nível de quem conduziu e pelo local), não pessoas: o exame não registra; sai vazia.
+  Object.keys(f3).forEach(function (k) { ['educ_prof_medio_comunidade', 'educ_prof_medio_estab', 'educ_prof_superior_comunidade', 'educ_prof_superior_estab'].forEach(function (c) { if (c in f3[k]) f3[k][c] = ''; }); });
   const ord = function (/** @type {any} */ x, /** @type {any} */ y) { return String(x.polo).localeCompare(String(y.polo)) || String(x.aldeia).localeCompare(String(y.aldeia)); };
   const r7 = Object.keys(f7).map(function (k) { return f7[k]; }).sort(ord), r3 = Object.keys(f3).map(function (k) { return f3[k]; }).sort(ord);
   r7.forEach(function (l) { l.consulta_odontologica_programada = ''; l.consultas_atendidas_por_agendamento = ''; l.demanda_espontanea = ''; });
@@ -2799,7 +2743,8 @@ function fichasSiasi(d, u) {
   return { ok: true, dsei: dsei, mes: mes, ficha7: r7, ficha3: r3, colunas7: ['polo', 'aldeia', 'codigo_aldeia'].concat(COLS_FICHA7), colunas3: ['polo', 'aldeia', 'codigo_aldeia'].concat(COLS_FICHA3),
     avisos: ['1ª consulta odontológica programática, consultas por agendamento e por demanda espontânea saem vazias: o app não registra o tipo de consulta. Preencha no SIASI.',
       'Raspagens contam atendimentos, não sextantes.', 'Pulpectomia e selamento provisório não têm campo na Ficha 7 e ficam de fora.',
-      'Encaminhamentos contam só os realizados (usuário referenciado).', 'Insumos somam os entregues nas atividades e um de cada item marcado nos atendimentos individuais.'] };
+      'Encaminhamentos contam só os realizados (usuário referenciado).', 'Ficha 3: escovação supervisionada e flúor-gel contam as pessoas com o item marcado no exame; insumos, um de cada item marcado.',
+      'Educação em saúde conta sessões e sai vazia: preencha no SIASI.'] };
 }
 /** @param {any} a @param {any} b */
 function mesesEntre(a, b) {
@@ -2904,7 +2849,18 @@ function resumoAcao(a, regs, u, hoje) {
   return { id: a.id, nome: a.nome || 'Dia B', dsei: a.dsei, aldeias: String(a.aldeias || '').split(';').map(function (x) { return x.trim(); }).filter(function (x) { return x; }),
     inicio: a.data_inicio, fim: a.data_fim, andamento: andamentoDe(a, hoje), criadaPor: a.criada_por || '',
     pessoas: Object.keys(pessoas).length, exames: l.length, alto: ocultarNumero(Object.keys(alto).length),
-    meus: l.filter(function (r) { return ehDoUsuario(r, u); }).length };
+    meus: l.filter(function (r) { return ehDoUsuario(r, u); }).length, sintese: sinteseAcao(l) };
+}
+/** Síntese do Dia B pelos exames da ação: atendimentos, ações coletivas, insumos, clínica e situação. @param {any[]} l */
+function sinteseAcao(l) {
+  const r = agregarExames(l), ger = r.gerais || {}, ins = r.insumos || {};
+  const enc = Object.keys(r.encaminhamentos || {}).reduce(function (t, k) { t.realizado += r.encaminhamentos[k].realizado || 0; t.pendente += r.encaminhamentos[k].pendente || 0; return t; }, { realizado: 0, pendente: 0 });
+  return { atendimentos: r.atend.registrados + r.atend.coletivos, comOdontograma: r.atend.preenchidos, semOdontograma: r.atend.naoPreenchidos, soColetivo: r.atend.coletivos,
+    escovacao: ger['Escovação dental supervisionada'] || 0, fluor: ger['Aplicação tópica de flúor-gel'] || 0, orientacao: ger['Orientação de higiene e dieta'] || 0,
+    escovas: ins['Escova dental'] || 0, cremes: ins['Creme dental'] || 0, fios: ins['Fio dental'] || 0,
+    procedimentos: r.procsRealizados, art: r.art, restauracoes: r.restauracoes, exodontias: r.exodontias, tcConcluido: r.tratamento.concluido,
+    encRealizados: enc.realizado, encPendentes: enc.pendente,
+    dorOuAbscesso: ocultarNumero(r.dorOuAbscesso || 0), gestantes: ocultarNumero(r.gestantes || 0) };
 }
 /** @param {any} d @param {any} u */
 function acoes(d, u) {
@@ -3973,12 +3929,6 @@ function estadoDoPlano(plano, retornos) {
     });
   return e;
 }
-// Atividade coletiva (Ficha 3): um registro por atividade, com o número de participantes.
-var TIPOS_ATIVIDADE = ["Escovação dental supervisionada", "Aplicação tópica de flúor-gel", "Educação em saúde"];
-/** @type {any} */
-var NIVEIS_PROF = {medio: "Nível médio", superior: "Nível superior"};
-/** @type {any} */
-var LOCAIS_ATIVIDADE = {comunidade: "Na comunidade", estabelecimento: "No estabelecimento de saúde"};
 // Os 8 indicadores de saúde bucal da Nota Técnica 3/2025 e as metas nacionais por ano. 2020 a 2023 vêm do Fala.BR
 // (a meta repetida em cada tabela anual); 2026 dos intermediários, do quadro do SIPLAM. A meta do PDSI vale no lugar, quando houver.
 /** @type {any} */

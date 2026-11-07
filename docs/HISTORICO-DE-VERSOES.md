@@ -2,6 +2,12 @@
 
 O que mudou em cada versão, da mais nova para a mais antiga. O guia do app como ele é hoje está no [LEIA-ME](../LEIA-ME.md).
 
+## Versões 47.1 a 47.3 (correções depois da instalação)
+
+- **47.1:** gráfico do indicador com 2026 como ponto solto e números nos pontos; barras com a cor da meta alcançada; indicadores em dois grupos (PDSI e SIPLAM) e meta do PDSI só para os 3 pactuados; histórico que aparece para todos os perfis; CPO-D aos 12 anos separado; tabelas sem rolagem lateral; explicação de "Onde a pessoa mora".
+- **47.2:** o app volta a abrir quando há um exame começado guardado no aparelho.
+- **47.3:** tudo pelo exame, pessoa por pessoa: sai o registro de atividade coletiva à parte; a Ficha 3 sai dos exames (escovação, flúor-gel e insumos); Ações do Dia B vira uma síntese da ação; a exportação das Fichas 3 e 7 vai para Painel › Dados do app.
+
 ## Versão 47 (app 47 · servidor 47 · formato da planilha 26): Fichas do SIASI, plano de tratamento e histórico
 
 Uma atualização única que fecha as decisões pendentes. Como instalar: [INSTALAR-VERSAO-47.md](INSTALAR-VERSAO-47.md).

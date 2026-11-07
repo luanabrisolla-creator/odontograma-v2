@@ -601,6 +601,9 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 .ind-barra{height:8px;border-radius:4px;background:var(--surface-2);position:relative}.ind-barra i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#C2620A}
 .ind-barra b{position:absolute;top:-4px;width:3px;height:16px;background:#13233A;border-radius:1px}
 .grupo-ind{margin:12px 0 8px;font-size:.85rem;color:var(--muted);font-weight:700}
+.acao-sintese{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}.acao-sintese summary{cursor:pointer;font-weight:700;color:var(--accent,#1D4F9E)}
+.sintese-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:6px 18px;margin-top:8px}.sintese-grade h4{margin:6px 0 4px;font-size:.8rem;color:var(--muted)}
+.sintese-grade ul{list-style:none;margin:0;padding:0}.sintese-grade li{display:flex;justify-content:space-between;gap:10px;font-size:.86rem;padding:2px 0;border-bottom:1px dashed var(--surface-2)}
 .termo-texto{white-space:pre-wrap;font-size:.9rem;line-height:1.5;max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0 12px;background:var(--bg)}
 .termo-li{display:flex;gap:8px;align-items:center;margin:0 0 10px;font-weight:600}.termo-li input{width:22px;height:22px;min-height:0;flex:none;margin:0;padding:0;accent-color:var(--azul,#1D6FD8)}
 .serie>svg{width:100%;max-width:720px;height:auto;display:block}.serie .lg{display:flex;flex-wrap:wrap;gap:6px 18px;line-height:1.3;font-size:.78rem;color:var(--muted);margin:4px 0 8px}.serie .lg span{display:inline-flex;align-items:center;gap:6px}.serie .lg svg{flex:none}
@@ -986,8 +989,6 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     <div id="acaoForm"></div>
     <p class="dica" id="acoesStatus" style="margin:0 4px 12px"></p>
     <div id="acoesLista"></div>
-    <div id="ativBox"></div>
-    <div id="fichasBox"></div>
   </section>
 
   <!-- EXAME -->
@@ -1152,6 +1153,7 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     <div id="pConteudo"></div>
     <div id="pCobertura"></div>
     <div id="pAcomp"></div>
+    <div id="fichasBox"></div>
     </div>
   </section>
 
@@ -2785,7 +2787,7 @@ function irAba(a) {
   $$(".abas button").forEach(b => b.setAttribute("aria-selected", b.dataset.aba === a));
   ["inicio","acoes","exame","lista","painel","config","acesso","equipe","admin"].forEach(x => $("#aba-" + x).hidden = x !== a);
   if (a === "inicio") { carregarInicio(); if (navigator.onLine && fazExames() && (!estado.nuvemEm || Date.now() - estado.nuvemEm > 60000)) { estado.nuvemEm = Date.now(); carregarNuvem(); } }
-  if (a === "acoes") { carregarAcoes(); carregarAtividades(); }
+  if (a === "acoes") carregarAcoes();
   if (a === "acesso") renderAcesso();
   if (a === "equipe") carregarEquipe();
   if (a === "admin") carregarAdmin();
@@ -3158,12 +3160,6 @@ function estadoDoPlano(plano, retornos) {
     });
   return e;
 }
-// Atividade coletiva (Ficha 3): um registro por atividade, com o número de participantes.
-var TIPOS_ATIVIDADE = ["Escovação dental supervisionada", "Aplicação tópica de flúor-gel", "Educação em saúde"];
-/** @type {any} */
-var NIVEIS_PROF = {medio: "Nível médio", superior: "Nível superior"};
-/** @type {any} */
-var LOCAIS_ATIVIDADE = {comunidade: "Na comunidade", estabelecimento: "No estabelecimento de saúde"};
 // Os 8 indicadores de saúde bucal da Nota Técnica 3/2025 e as metas nacionais por ano. 2020 a 2023 vêm do Fala.BR
 // (a meta repetida em cada tabela anual); 2026 dos intermediários, do quadro do SIPLAM. A meta do PDSI vale no lugar, quando houver.
 /** @type {any} */
@@ -4249,7 +4245,7 @@ const ANOS_HIST = ["2020", "2021", "2022", "2023", "2024", "2025", "2026"];
 function abaPainel(k) {
   estH.aba = k; $$("#pAbas [data-pab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.pab === k)));
   $("#pIndicadores").hidden = k !== "indicadores"; $("#pDicas").hidden = k !== "dicas"; $("#pDados").hidden = k !== "dados";
-  if (k === "dados") carregarPainel(); else carregarHistorico();
+  if (k === "dados") { carregarPainel(); renderFichas(); } else carregarHistorico();
 }
 async function carregarHistorico(forcar) {
   if (!estH.dsei) estH.dsei = dseiFixo() || (sessao() && sessao().usuario.dsei) || DSEIS[0];
@@ -4709,6 +4705,17 @@ function tileHtml(cor, ic, t, sub, acao) {
 function statHtml(ic, bg, cor, n, t, sub) {
   return `<div class="ini-stat"><span class="bola" style="background:${bg};color:${cor}">${icone(ic)}</span><span><b>${n == null ? "–" : fmtN(n)}</b><span class="t">${t}</span>${sub ? `<span class="s2">${sub}</span>` : ""}</span></div>`;
 }
+// Síntese do Dia B: tudo vem dos exames da ação (DSEI, aldeias e período), registrados pessoa por pessoa.
+function sinteseAcaoHtml(s) {
+  const li = (t, v) => `<li><span>${t}</span><b>${fmtN(v)}</b></li>`;
+  return `<details class="acao-sintese"><summary>Síntese do Dia B</summary><div class="sintese-grade">
+    <div><h4>Atendimentos</h4><ul>${li("Registrados", s.atendimentos)}${li("Com odontograma", s.comOdontograma)}${li("Sem odontograma", s.semOdontograma)}${li("Só ações coletivas", s.soColetivo)}</ul></div>
+    <div><h4>Ações coletivas</h4><ul>${li("Escovação dental supervisionada", s.escovacao)}${li("Aplicação tópica de flúor-gel", s.fluor)}${li("Orientação de higiene e dieta", s.orientacao)}</ul></div>
+    <div><h4>Insumos entregues</h4><ul>${li("Escova dental", s.escovas)}${li("Creme dental", s.cremes)}${li("Fio dental", s.fios)}</ul></div>
+    <div><h4>Clínica</h4><ul>${li("Procedimentos realizados nos dentes", s.procedimentos)}${li("ART", s.art)}${li("Restaurações", s.restauracoes)}${li("Exodontias", s.exodontias)}${li("Tratamento básico concluído", s.tcConcluido)}${li("Encaminhamentos realizados", s.encRealizados)}${li("Encaminhamentos pendentes", s.encPendentes)}</ul></div>
+    <div><h4>Situação</h4><ul>${li("Pessoas com dor ou abscesso", s.dorOuAbscesso)}${li("Atendimentos de gestantes", s.gestantes)}</ul></div>
+  </div><p class="dica" style="margin:6px 0 0">Tudo vem dos exames da ação, um por pessoa. Quem só participou da escovação ou do flúor entra como exame sem odontograma, com o motivo "só ações coletivas".</p></details>`;
+}
 function acaoCardHtml(a, completo) {
   const al = a.aldeias && a.aldeias.length ? a.aldeias.join(", ") : "todas as aldeias";
   const est = {andamento: ["Em andamento", "enviado"], proxima: ["Próxima", "azul"], encerrada: ["Encerrada", "inativo"]}[a.andamento] || ["", "inativo"];
@@ -4716,6 +4723,7 @@ function acaoCardHtml(a, completo) {
     <div class="acao-topo"><span class="bola">${icone("acoes")}</span><span><b>${esc(a.nome || "Dia B")} · ${esc(al)}</b><span>DSEI ${esc(a.dsei)} · ${fmtData(a.inicio)} a ${fmtData(a.fim)}</span></span></div>
     ${completo ? `<span class="estado ${est[1]}">${est[0]}</span>` : ""}
     <div class="acao-nums"><span><span>Pessoas atendidas</span><b>${fmtN(a.pessoas)}</b></span><span><span>Exames</span><b>${fmtN(a.exames)}</b></span><span><span>Em alto risco</span><b>${fmtN(a.alto)}</b></span></div>
+    ${completo && a.sintese ? sinteseAcaoHtml(a.sintese) : ""}
     ${completo || fazExames() ? `<div class="acao-pe">${fazExames() ? `<span>Seus exames nesta ação: <b>${fmtN(a.meus)}</b></span>` : ""}${completo && perfil() === "coord" ? `<span>Criada por ${esc(a.criadaPor || "coordenação")}</span><button class="link perigo" data-acao-cancelar="${esc(a.id)}">Cancelar ação</button>` : ""}</div>` : ""}
   </div>`;
 }
@@ -4819,72 +4827,26 @@ document.addEventListener("click", e => {
 });
 
 /* ---------- atividades coletivas (Ficha 3) e exportação das Fichas 3 e 7 ---------- */
-const estAtiv = {lista: null, form: false, msg: ""};
-async function carregarAtividades() {
-  renderAtividades();
-  if (!navigator.onLine || !sessao() || !cfg().url) return;
-  try { estAtiv.lista = (await api("atividades")).atividades; } catch (err) { estAtiv.msg = err.message; }
-  if (estado.aba === "acoes") renderAtividades();
-}
-function renderAtividades() {
-  const box = $("#ativBox"); if (!box) return;
-  const faz = fazExames(), dsei = dseiFixo() || "", L = listaDoDsei(dsei);
-  const form = faz && estAtiv.form ? `<div class="bloco"><h2 style="margin-bottom:6px">Nova atividade coletiva</h2>
-      <p class="dica" style="margin:0 0 12px">Para a Ficha 3 do SIASI. Os atendimentos individuais continuam no exame; aqui entra a atividade com o grupo.</p>
-      <div class="grade">
-        <label class="campo">Atividade<select id="atTipo"><option value="">Escolha</option>${TIPOS_ATIVIDADE.map(t => `<option>${esc(t)}</option>`).join("")}</select></label>
-        <label class="campo">Data<input id="atData" type="date" value="${hoje()}" max="${hoje()}"></label>
-        <label class="campo">Polo base<input id="atPolo" list="atPolos" autocomplete="off"></label>
-        <label class="campo">Aldeia ou comunidade<input id="atAldeia" list="atAldeias" autocomplete="off"></label>
-        <label class="campo">Participantes<input id="atPart" type="number" min="1" max="5000" inputmode="numeric"></label>
-        <label class="campo">Quem conduziu<select id="atNivel"><option value="">Escolha</option>${Object.entries(NIVEIS_PROF).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select></label>
-        <label class="campo">Onde<select id="atLocal"><option value="">Escolha</option>${Object.entries(LOCAIS_ATIVIDADE).map(([k, t]) => `<option value="${k}">${t}</option>`).join("")}</select></label>
-        <label class="campo">Escovas distribuídas<input id="atEscovas" type="number" min="0" max="5000" value="0" inputmode="numeric"></label>
-        <label class="campo">Cremes dentais distribuídos<input id="atCremes" type="number" min="0" max="5000" value="0" inputmode="numeric"></label>
-        <label class="campo">Fios dentais distribuídos<input id="atFios" type="number" min="0" max="5000" value="0" inputmode="numeric"></label>
-        <label class="campo largo">Observações<textarea id="atObs" placeholder="Sem dados que identifiquem as pessoas"></textarea></label>
-      </div>
-      <datalist id="atPolos">${L ? L.polos.map(x => `<option value="${esc(x.n)}">`).join("") : ""}</datalist>
-      <datalist id="atAldeias">${L ? L.aldeias.map(x => `<option value="${esc(x.n)}">`).join("") : ""}</datalist>
-      <div class="acoes-l"><button class="prim" id="atSalvar">Salvar atividade</button><button class="sec" id="atFechar">Cancelar</button></div></div>` : "";
-  const l = estAtiv.lista;
-  const lista = !l ? `<p class="dica">${navigator.onLine ? "Carregando as atividades…" : "As atividades aparecem quando houver internet."}</p>` : !l.length ? `<p class="dica">Nenhuma atividade coletiva registrada ainda.</p>`
-    : `<div class="tabela"><table class="conta"><thead><tr><th>Data</th><th>Atividade</th><th>Aldeia</th><th>Participantes</th><th>Quem conduziu</th><th></th></tr></thead><tbody>${l.slice(0, 50).map(a => `<tr><td>${fmtData(a.data)}</td><td>${esc(a.tipo)}</td><td>${esc(a.aldeia)}</td><td>${fmtN(a.participantes)}</td><td>${esc(NIVEIS_PROF[a.nivel_profissional] || "")} · ${esc(a.profissional || "")}</td><td>${a.minha ? `<button class="link" type="button" data-at-cancelar="${esc(a.id)}">Cancelar</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`;
-  box.innerHTML = `<div class="bloco"><div class="bloco-topo"><h2>Atividades coletivas</h2>${faz && !estAtiv.form ? `<button class="prim mini" type="button" id="atNova">Registrar atividade coletiva</button>` : ""}</div>
-    <p class="dica" style="margin:4px 0 10px">Escovação dental supervisionada, aplicação tópica de flúor-gel e educação em saúde, com o número de participantes (Ficha 3).${estAtiv.msg ? " " + esc(estAtiv.msg) : ""}</p>${lista}</div>` + form;
-  const pf = perfil();
-  $("#fichasBox").innerHTML = pf === "rt" || pf === "coord" ? `<div class="bloco"><h2>Fichas 3 e 7 do SIASI</h2>
-    <p class="dica" style="margin:4px 0 10px">Soma, por aldeia, o que foi registrado no app num mês, para ajudar a lançar no SIASI. A 1ª consulta programática, o agendamento e a demanda espontânea saem vazios: o app não registra o tipo de consulta.</p>
+// Fichas 3 e 7 do SIASI (RT e coordenação), no Painel › Dados do app: somam os exames do mês, por aldeia.
+function renderFichas() {
+  const box = $("#fichasBox"), pf = perfil(); if (!box) return;
+  box.innerHTML = pf === "rt" || pf === "coord" ? `<div class="bloco"><h2>Fichas 3 e 7 do SIASI</h2>
+    <p class="dica" style="margin:4px 0 10px">Soma, por aldeia, os exames registrados no app num mês, para ajudar a lançar no SIASI. Ficha 7: procedimentos individuais. Ficha 3: escovação supervisionada, flúor-gel e insumos marcados nos exames. Saem vazios a 1ª consulta programática, o agendamento, a demanda espontânea e a educação em saúde: o app não registra.</p>
     <div class="grade">${pf === "coord" && !dseiFixo() ? `<label class="campo">DSEI<select id="fiDsei">${DSEIS.map(x => `<option>${esc(x)}</option>`).join("")}</select></label>` : ""}
       <label class="campo">Mês<input id="fiMes" type="month" value="${hoje().slice(0, 7)}" max="${hoje().slice(0, 7)}"></label></div>
     <div class="acoes-l"><button class="prim" type="button" id="fiBaixar">Baixar as Fichas 3 e 7 (planilhas)</button></div><p class="dica" id="fiStatus" aria-live="polite"></p></div>` : "";
 }
-$("#aba-acoes").addEventListener("click", async e => {
-  const t = e.target;
-  if (t.id === "atNova") { estAtiv.form = true; renderAtividades(); return setTimeout(() => $("#atTipo")?.focus(), 50); }
-  if (t.id === "atFechar") { estAtiv.form = false; return renderAtividades(); }
-  if (t.id === "atSalvar") {
-    const L = listaDoDsei(dseiFixo() || ""), aldeia = $("#atAldeia").value.trim(), al = L && L.aldeias.find(x => normNome(x.n) === normNome(aldeia));
-    const a = {tipo: $("#atTipo").value, data: $("#atData").value, polo: $("#atPolo").value.trim(), aldeia, codAldeia: al ? al.c : "", participantes: Number($("#atPart").value),
-      nivel: $("#atNivel").value, local: $("#atLocal").value, escovas: Number($("#atEscovas").value || 0), cremes: Number($("#atCremes").value || 0), fios: Number($("#atFios").value || 0), observacoes: $("#atObs").value};
-    t.disabled = true;
-    try { await api("registrarAtividade", {atividade: a}); estAtiv.form = false; toast("Atividade coletiva registrada."); await carregarAtividades(); }
-    catch (err) { toast(err.message); t.disabled = false; }
-    return;
-  }
-  const cx = t.closest("[data-at-cancelar]");
-  if (cx) { if (!confirm("Cancelar esta atividade coletiva? Ela deixa de contar na Ficha 3.")) return; try { await api("cancelarAtividade", {id: cx.dataset.atCancelar}); toast("Atividade cancelada."); carregarAtividades(); } catch (err) { toast(err.message); } return; }
-  if (t.id === "fiBaixar") {
-    const mes = $("#fiMes").value, dsei = $("#fiDsei") ? $("#fiDsei").value : dseiFixo() || "";
-    $("#fiStatus").textContent = "Preparando…";
-    try {
-      const j = await api("fichasSiasi", {mes, dsei});
-      const tab = (cols, l) => [cols].concat(l.map(x => cols.map(c => x[c])));
-      baixar(`ficha7-${j.dsei}-${j.mes}.csv`, csv(tab(j.colunas7, j.ficha7)));
-      setTimeout(() => baixar(`ficha3-${j.dsei}-${j.mes}.csv`, csv(tab(j.colunas3, j.ficha3))), 400);
-      $("#fiStatus").textContent = `${j.ficha7.length} ${j.ficha7.length === 1 ? "aldeia" : "aldeias"} na Ficha 7 e ${j.ficha3.length} na Ficha 3. ${j.avisos.join(" ")}`;
-    } catch (err) { $("#fiStatus").textContent = err.message; }
-  }
+$("#fichasBox").addEventListener("click", async e => {
+  if (e.target.id !== "fiBaixar") return;
+  const mes = $("#fiMes").value, dsei = $("#fiDsei") ? $("#fiDsei").value : dseiFixo() || "";
+  $("#fiStatus").textContent = "Preparando…";
+  try {
+    const j = await api("fichasSiasi", {mes, dsei});
+    const tab = (cols, l) => [cols].concat(l.map(x => cols.map(c => x[c])));
+    baixar(`ficha7-${j.dsei}-${j.mes}.csv`, csv(tab(j.colunas7, j.ficha7)));
+    setTimeout(() => baixar(`ficha3-${j.dsei}-${j.mes}.csv`, csv(tab(j.colunas3, j.ficha3))), 400);
+    $("#fiStatus").textContent = `${j.ficha7.length} ${j.ficha7.length === 1 ? "aldeia" : "aldeias"} na Ficha 7 e ${j.ficha3.length} na Ficha 3. ${j.avisos.join(" ")}`;
+  } catch (err) { $("#fiStatus").textContent = err.message; }
 });
 
 /* ---------- ações do Dia B ---------- */

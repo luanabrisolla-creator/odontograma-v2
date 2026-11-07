@@ -439,6 +439,7 @@ for (let i = 0; i < 8; i++) {
       T(nome + ": aba Dicas abre sem erro", await pg.isVisible("#pDicas") && !pg.erros.length, pg.erros);
       await pg.click('#pAbas [data-pab="dados"]'); await pg.waitForTimeout(800);
       await pg.selectOption("#pPeriodo", "tudo"); await pg.waitForTimeout(1500);
+      T(nome + ": Fichas 3 e 7 em Dados do app só para RT e coordenação", !!(await pg.$("#fiBaixar")) === (nome !== "dentista"));
       T(nome + ": aba Dados do app tem os 6 blocos", (await pg.$$("#pConteudo .grupo-dados")).length === 6, (await pg.textContent("#pConteudo")).slice(0, 200));
       T(nome + ": painel mostra os índices por faixa etária", /Índices médios por faixa etária/.test(await pg.textContent("#pConteudo")), (await pg.textContent("#pConteudo")).slice(0, 200));
     }
@@ -456,6 +457,20 @@ for (let i = 0; i < 8; i++) {
     await pg.reload(); await pg.waitForTimeout(2000);
     T(cr.email + ": o app abre sem erro com um exame começado (e com nome antigo) guardado no aparelho", !pg.erros.length && (await pg.$$("#abas [data-aba]")).length > 3 && (await pg.$$("#exDsei option")).length > 0 && (await pg.$$("#localidades [data-localidade]")).length === 3, pg.erros);
     T(cr.email + ": o exame começado continua lá, com o nome novo", await pg.evaluate(() => estado.ex.crianca.nascimento === "1996-01-15" && !estado.ex.gerais.some(g => g in GERAIS_ANTIGOS && GERAIS_ANTIGOS[g])), await pg.evaluate(() => estado.ex.gerais));
+    await ctx.close();
+  }
+
+  parte("síntese do Dia B");
+  {
+    const ac = S.P(S.C, { acao: "criarAcao", nome: "Dia B de setembro", dsei: "Yanomami", inicio: "2026-09-01", fim: "2026-09-30", aldeias: [] });
+    T("(ação de setembro criada)", ac.ok, ac);
+    ({ ctx, pg } = await pagina(true));
+    await entrar(pg, S.RT); await irAba(pg, "acoes"); await pg.waitForTimeout(1500);
+    const card = pg.locator(".acao-card", { hasText: "Dia B de setembro" });
+    await card.locator("summary").click(); await pg.waitForTimeout(300);
+    const txt = await card.textContent();
+    T("o cartão do Dia B mostra a síntese pelos exames (atendimentos, coletivos, insumos, clínica, situação)", /Síntese do Dia B/.test(txt) && /Registrados\s*8/.test(txt) && /Escovação dental supervisionada/.test(txt) && /Insumos entregues/.test(txt) && /Tratamento básico concluído/.test(txt) && !pg.erros.length, txt.slice(0, 400));
+    await foto(pg, "11_sintese_dia_b_cel", ".acao-card");
     await ctx.close();
   }
 
@@ -598,13 +613,9 @@ for (let i = 0; i < 8; i++) {
   T("início: \"Pessoas atendidas\" e \"Atendimentos registrados\", com quantos têm classificação e odontograma", /Pessoas atendidas/.test(stats) && /com classificação de risco: \d/.test(stats)
     && /Atendimentos registrados/.test(stats) && /com odontograma: \d/.test(stats) && !/examinadas/.test(stats), stats);
   T("início: diz de quem são os números", /Seus atendimentos/.test(status), status);
-  // Atividade coletiva: registrar pela aba do Dia B.
+  // Ações do Dia B é uma síntese: não há formulário de atividade coletiva (tudo é registrado no exame).
   await fecharJanela(pg); await irAba(pg, "acoes"); await pg.waitForTimeout(1200);
-  await pg.click("#atNova"); await pg.waitForTimeout(150);
-  await pg.selectOption("#atTipo", "Escovação dental supervisionada"); await pg.fill("#atPolo", "Surucucu"); await pg.fill("#atAldeia", "Hakoma");
-  await pg.fill("#atPart", "18"); await pg.selectOption("#atNivel", "medio"); await pg.selectOption("#atLocal", "comunidade"); await pg.fill("#atEscovas", "18");
-  await pg.click("#atSalvar"); await pg.waitForTimeout(1800);
-  T("atividade coletiva registrada pela tela aparece na lista e na planilha", /Escovação dental supervisionada/.test(await pg.textContent("#ativBox")) && (G.est.sheets.Atividades || []).some(l => l[1] === "Escovação dental supervisionada" && l[7] === 18));
+  T("Ações do Dia B não tem formulário de atividade coletiva", !(await pg.$("#atNova")) && !(await pg.$("#ativBox")));
   T("a dentista não vê a exportação das Fichas 3 e 7 (é da RT e da coordenação)", !await pg.$("#fiBaixar"));
   T("sem erros na página (sem odontograma)", !pg.erros.length, pg.erros);
   await ctx.close();

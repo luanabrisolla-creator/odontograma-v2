@@ -1145,19 +1145,21 @@ parte("consulta de retorno");
 }
 
 /* ---------------------------------------------------------------- atividade coletiva e Fichas 3 e 7 (cenário separado) */
-parte("atividade coletiva e Fichas 3 e 7");
+parte("Fichas 3 e 7 e síntese do Dia B (tudo pelo exame)");
 {
   const R = cenario(), ab = n => R.G.est.sheets[n] || [];
-  const at = o => Object.assign({ tipo: "Escovação dental supervisionada", data: "2026-10-10", polo: "Surucucu", aldeia: "Saúba", participantes: 25, nivel: "medio", local: "comunidade", escovas: 25, cremes: 10, fios: 0 }, o);
-  T("atividade sem participantes é recusada", /número de participantes/.test(R.P(R.ANA, { acao: "registrarAtividade", atividade: at({ participantes: 0 }) }).erro || ""));
-  T("atividade no futuro é recusada", /a data/.test(R.P(R.ANA, { acao: "registrarAtividade", atividade: at({ data: "2099-01-01" }) }).erro || ""));
-  const a1 = R.P(R.ANA, { acao: "registrarAtividade", atividade: at({}) });
-  T("escovação supervisionada com 25 participantes é registrada no DSEI do cadastro", a1.ok && a1.atividade.dsei === "Yanomami" && ab("Atividades").length === 2);
-  R.P(R.ANA, { acao: "registrarAtividade", atividade: at({ tipo: "Educação em saúde", nivel: "superior", local: "estabelecimento", participantes: 12, escovas: 0, cremes: 0 }) });
-  R.P(R.BRUNO, { acao: "registrarAtividade", atividade: at({ tipo: "Aplicação tópica de flúor-gel", participantes: 30, escovas: 0, cremes: 0 }) });
-  T("só quem registrou cancela a atividade", !R.P(R.BRUNO, { acao: "cancelarAtividade", id: a1.atividade.id }).ok);
-  const lt = R.P(R.RT, { acao: "atividades" });
-  T("a RT vê as atividades do DSEI", lt.ok && lt.atividades.length === 3);
+  T("não há mais registro de atividade coletiva à parte", /desconhecida|não existe|inválida/i.test(R.P(R.ANA, { acao: "registrarAtividade", atividade: {} }).erro || ""));
+  // Uma atividade antiga, de antes da 47.3, na planilha: fica guardada, mas não entra nas contas.
+  R.G.est.sheets.Atividades = [require("vm").runInContext("CAB_ATIVIDADES", R.G.ctx).slice(), ["AT-ANTIGA", "Escovação dental supervisionada", "Yanomami", "Surucucu", "Saúba", "", "2026-10-10", 25, "medio", "comunidade", 25, 10, 0, "", "x", "Ana", "2026-10-10", "válida", ""]];
+  if (!R.G.est.order.includes("Atividades")) R.G.est.order.push("Atividades");
+  // Dia B em outubro: quem só participou da escovação entra como exame sem odontograma ("só ações coletivas").
+  const MOTC = require("vm").runInContext("MOTIVO_SO_COLETIVO", R.G.ctx);
+  const soCol = (id, suf, gerais, insumos) => Object.assign(exame({ id, sufixo: suf, data: "2026-10-12", gerais, insumos }), { odontograma: "nao", odontogramaMotivo: MOTC, odontogramaMotivoOutro: "", dentes: {}, vigilancia: [],
+    protese: { sup: "", inf: "", usoSup: "", usoInf: "", naoAvaliado: false }, placa: null, gengivite: null, fezColetivos: "sim", deuInsumos: insumos.length ? "sim" : "nao",
+    resultado: { classe: "", risco: "Sem odontograma", motivos: [], ceod: null, cpod: null }, localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] });
+  T("(três crianças só na escovação, duas com flúor-gel e escova)", ["SC1", "SC2", "SC3"].every((id, n) => R.P(R.ANA, { acao: "enviarExame", registro: soCol(id, "SCSCSC" + "234"[n] + "2", n < 2 ? ["Escovação dental supervisionada", "Aplicação tópica de flúor-gel"] : ["Escovação dental supervisionada"], n < 2 ? ["Escova dental"] : []) }).ok));
+  const ac = R.P(R.C, { acao: "criarAcao", nome: "Dia B outubro", dsei: "Yanomami", inicio: "2026-10-01", fim: "2026-10-31", aldeias: [] });
+  T("(ação do Dia B de outubro criada)", ac.ok, ac);
   // Atendimentos de outubro na mesma aldeia: ART realizado, exodontia de decíduo, encaminhamento realizado, analgésico e TC.
   const e = Object.assign(exame({ id: "FX1", sufixo: "FXFXFXF2", data: "2026-10-12", insumos: ["Escova dental"], gerais: ["Raspagem (RAP) supragengival"],
     mud: { 46: { faces: { O: "ca" }, procs: { art: "realizado" } }, 85: { faces: { O: "ca" }, procs: { exo_carie: "realizado" } } } }),
@@ -1167,8 +1169,12 @@ parte("atividade coletiva e Fichas 3 e 7");
   const fx = R.P(R.RT, { acao: "fichasSiasi", mes: "2026-10" }), f7 = fx.ficha7[0], f3 = fx.ficha3[0];
   T("Ficha 7: ART, exodontia de decíduo, RAP, encaminhamento realizado, analgésico e TC, e a 1ª consulta vazia", fx.ok && fx.ficha7.length === 1 && f7.tratamento_restauracao_atraumatico === 1 && f7.exodontia_deciduo === 1
     && f7.exodontia_permanente === 0 && f7.rap_supragengival === 1 && f7.endodontia === 1 && f7.periodontia === 0 && f7.analgesico === 1 && f7.tratamento_odontologico_basico_concluido === 1 && f7.consulta_odontologica_programada === "", f7);
-  T("Ficha 3: escovação e flúor somam participantes, educação conta a atividade pelo nível e local, insumos somam", f3.educ_escovacao_dental_superv === 25 && f3.aplicacao_topica_fluor === 30 && f3.educ_prof_superior_estab === 1
-    && f3.escova_dental_distribuida === 26 && f3.creme_dental_distribuido === 10, f3);
+  T("Ficha 3 pelos exames: escovação e flúor-gel contam as pessoas, insumos um de cada item; a atividade antiga não entra", f3.educ_escovacao_dental_superv === 3 && f3.aplicacao_topica_fluor === 2
+    && f3.escova_dental_distribuida === 3 && f3.creme_dental_distribuido === 0, f3);
+  T("Ficha 3: educação em saúde sai vazia, com o aviso", f3.educ_prof_superior_estab === "" && f3.educ_prof_medio_comunidade === "" && fx.avisos.some(a => /Educação em saúde/.test(a)));
+  const dia = R.P(R.RT, { acao: "acoes" }).acoes.find(a => a.nome === "Dia B outubro"), si = dia && dia.sintese;
+  T("síntese do Dia B pelos exames: atendimentos, só coletivos, escovação, flúor, insumos e clínica", si && si.atendimentos === 4 && si.soColetivo === 3 && si.comOdontograma === 1 && si.escovacao === 3 && si.fluor === 2
+    && si.escovas === 3 && si.art === 1 && si.tcConcluido === 1 && si.encRealizados === 1 && si.encPendentes === 1, si);
   T("outro mês vem vazio", R.P(R.RT, { acao: "fichasSiasi", mes: "2026-09" }).ficha7.length === 0);
   // Retorno em novembro realiza o ART indicado do plano: entra na Ficha 7 de novembro, não na de outubro.
   const pl = Object.assign(exame({ id: "FX2", sufixo: "FXFXFXG2", data: "2026-10-15", mud: { 16: { faces: { O: "ca" }, procs: { art: "indicado" } } } }), { localidade: "Aldeia", fezEncaminhamento: "nao", encaminhamentos: {}, fezPrescricao: "nao", prescricoes: [] });
@@ -1177,7 +1183,7 @@ parte("atividade coletiva e Fichas 3 e 7");
   R.P(R.BRUNO, { acao: "enviarRetorno", retorno: { id: "FXR", planoId: "FX2", dataExame: "2026-11-03", localAtendimento: "UBSI", dentes: { 16: Object.assign({}, d16, { procs: { art: "realizado" } }) }, encaminhamentos: {}, tratamento: { aps: "concluido" } } });
   const nov = R.P(R.RT, { acao: "fichasSiasi", mes: "2026-11" }).ficha7[0];
   T("o ART feito no retorno conta no mês do retorno, com o TC", nov && nov.tratamento_restauracao_atraumatico === 1 && nov.tratamento_odontologico_basico_concluido === 1, nov);
-  T("a atividade entra no backup", (R.G.ctx.fazerBackup("teste"), Object.values(R.G.est.extras).find(x => x.nome === "Odontograma - backup").abas.Atividades_coletivas.length === 4));
+  T("a atividade antiga continua guardada no backup", (R.G.ctx.fazerBackup("teste"), Object.values(R.G.est.extras).find(x => x.nome === "Odontograma - backup").abas.Atividades_coletivas.length === 2));
 }
 
 /* ---------------------------------------------------------------- histórico do SIASI, metas e dicas (cenário separado) */

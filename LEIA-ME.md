@@ -117,7 +117,11 @@ Cada pessoa tem um código pessoal, recebido por e-mail, e entra com o mesmo e-m
 
 **Retorno:** na pessoa, "Registrar consulta de retorno" anota o que foi feito no plano do último exame com odontograma. Qualquer CD do mesmo DSEI pode registrar. Um odontograma completo novo fecha o plano anterior e herda as pendências.
 
-**Atividade coletiva** (aba Ações do Dia B): registrada à parte, para a Ficha 3 sair completa. RT e coordenação baixam as **Fichas 3 e 7 do SIASI** do mês, por aldeia.
+**Tudo pelo exame, uma pessoa por vez:** quem só participou da escovação supervisionada ou do flúor-gel também ganha um exame, sem odontograma e com o motivo "só ações coletivas". Não há registro de atividade coletiva à parte.
+
+**Ações do Dia B** é uma síntese: cada ação mostra, pelos exames do período e das aldeias, os atendimentos, as ações coletivas, os insumos entregues, a clínica e a situação.
+
+**Fichas 3 e 7 do SIASI** (Painel › Dados do app, para RT e coordenação): somam os exames do mês, por aldeia, para ajudar a lançar no SIASI. A Ficha 7 traz os procedimentos individuais; a Ficha 3, a escovação supervisionada, o flúor-gel e os insumos marcados nos exames. A educação em saúde (que conta sessões, não pessoas) sai vazia e é preenchida no SIASI.
 
 ## Classe de risco e índices
 
@@ -161,7 +165,7 @@ O histórico do SIASI e os dados do app nunca se somam: cada número mostra a fo
 | Dicionário | O que significa cada coluna |
 | Acoes | Ações do Dia B |
 | Retornos | Um retorno por linha, ligado ao exame do plano |
-| Atividades | Atividades coletivas |
+| Atividades | Atividades coletivas registradas à parte na versão 47 (guardadas, mas fora das contas desde a 47.3) |
 | Sugestoes_dicas | Dicas sugeridas por RT e coordenação |
 | Termo_versoes | Versões do Termo de Ciência (aparece quando o texto muda) |
 | População | População da SESAI por aldeia |
@@ -176,7 +180,7 @@ A cada envio ao GitHub, a aba Actions roda:
 - a conferência de que app, servidor e `sw.js` combinam;
 - **493 verificações do servidor**, num simulador do Apps Script e sem dados reais;
 - a abertura do app no celular e no computador;
-- **222 verificações no navegador**, com os fluxos principais, no horário de Brasília.
+- **228 verificações no navegador**, com os fluxos principais, no horário de Brasília.
 
 Para rodar no seu computador: `node ferramentas/verificar.js`, `node testes/servidor.test.js`, `node ferramentas/abrir-app.js` e `node testes/navegador.test.js`. O [mapa do código](docs/MAPA-DO-CODIGO.md) explica cada um.
 
