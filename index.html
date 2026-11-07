@@ -622,6 +622,13 @@ body.na-entrada main{max-width:none;margin:0;padding:0}
 @media (max-width:520px){.urg-l{grid-template-columns:90px 1fr}.urg-l button{grid-column:1/-1;justify-self:start}}
 .guia details{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:0 0 8px;background:var(--surface)}.guia summary{cursor:pointer;font-weight:700}.guia p,.guia li{font-size:.92rem;line-height:1.5}
 .cro-par{display:grid;grid-template-columns:96px 1fr;gap:8px}
+.bib-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:12px}
+.bib-card{display:flex;flex-direction:column;gap:6px;align-items:flex-start;text-align:left;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer}
+.bib-card b{font-size:.98rem;color:var(--ink)}.bib-card span:not(.estado){font-size:.85rem;color:var(--muted)}.bib-tit{border:2px dashed #1D4F9E}
+.bib-ficha h4{margin:14px 0 6px}.bib-ficha ul,.bib-ficha ol{margin:0;padding-left:1.2rem}.bib-ficha li{margin:3px 0;line-height:1.45}.ficha-perg{font-weight:700;color:#13336B}
+.aviso-alarme{background:#FDECEC;border:2px solid #C42B2B;color:#5A1010;border-radius:10px;padding:10px 12px;margin:10px 0}.refs li{font-size:.85rem}
+.op-evid{margin:12px 0;border:2px solid #1D4F9E;border-radius:12px;padding:10px 12px;background:#F3F7FF}.op-evid>summary{cursor:pointer;font-weight:800;color:#13336B}
+.op-item{border-top:1px solid #D5E0F2;padding:8px 0}.op-num{margin:4px 0}.op-res{display:inline-block;min-width:64px;font-weight:800;color:#13336B}
 .termo-texto{white-space:pre-wrap;font-size:.9rem;line-height:1.5;max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:8px 0 12px;background:var(--bg)}
 .termo-li{display:flex;gap:8px;align-items:center;margin:0 0 10px;font-weight:600}.termo-li input{width:22px;height:22px;min-height:0;flex:none;margin:0;padding:0;accent-color:var(--azul,#1D6FD8)}
 .serie>svg{max-width:100%;height:auto;display:block}.serie .lg{display:flex;flex-wrap:wrap;gap:6px 18px;line-height:1.3;font-size:.78rem;color:var(--muted);margin:4px 0 8px}.serie .lg span{display:inline-flex;align-items:center;gap:6px}.serie .lg svg{flex:none}
@@ -1184,6 +1191,15 @@ button.dente:focus-visible{outline:2px solid var(--accent);outline-offset:2px;bo
     <div id="pAcomp"></div>
     <div id="fichasBox"></div>
     </div>
+  </section>
+
+  <!-- BIBLIOTECA CLÍNICA -->
+  <section id="aba-biblio" hidden>
+    <div class="bloco"><div class="bloco-topo"><h2>Biblioteca clínica</h2><span id="bibStatus" class="dica"></span></div>
+      <p class="dica" style="margin:4px 0 10px">Fichas de condições e procedimentos com a evidência científica, revisadas pela coordenação. São apoio à decisão: o julgamento clínico do cirurgião-dentista prevalece.</p>
+      <label class="campo">Buscar<input id="bibBusca" type="search" placeholder="Ex.: ART, cariostático, ionômero" autocomplete="off"></label></div>
+    <div id="bibTitular"></div>
+    <div id="bibLista"></div>
   </section>
 
   <!-- CONFIG -->
@@ -2142,6 +2158,7 @@ function renderPainel(focoSel) {
       <label class="check"><input type="checkbox" data-sinal="abscesso" ${d.abscesso ? "checked" : ""}>Abscesso ou fístula</label>
       <h4>Tratamento</h4><div>${visiveis.map(linhaProc).join("")}</div>
       ${ocultos > 0 ? `<button class="link" type="button" data-acao="todos-proc" style="margin-top:8px">Outros procedimentos (${ocultos})</button>` : ""}
+      ${opcoesEvidencia(n, d)}
       ${condutaHtml(n, d)}
       <label class="campo" style="margin-top:14px">Observação sobre o dente<textarea data-obs placeholder="Sem dados que identifiquem a pessoa">${esc(d.obs)}</textarea></label>`;
   }
@@ -2859,7 +2876,8 @@ function irAba(a) {
   if (perfil() && !fazExames() && ["exame", "lista"].includes(a)) a = "inicio";
   estado.aba = a;
   $$(".abas button").forEach(b => b.setAttribute("aria-selected", b.dataset.aba === a));
-  ["inicio","acoes","exame","lista","painel","config","acesso","equipe","admin"].forEach(x => $("#aba-" + x).hidden = x !== a);
+  ["inicio","acoes","exame","lista","painel","config","acesso","equipe","admin","biblio"].forEach(x => $("#aba-" + x).hidden = x !== a);
+  if (a === "biblio") carregarBiblioteca(true);
   if (a === "inicio") { carregarInicio(); if (navigator.onLine && fazExames() && (!estado.nuvemEm || Date.now() - estado.nuvemEm > 60000)) { estado.nuvemEm = Date.now(); carregarNuvem(); } }
   if (a === "acoes") carregarAcoes();
   if (a === "acesso") renderAcesso();
@@ -5158,7 +5176,7 @@ async function verificarSessao(forcar) {
   try {
     const j = await api("entrar", {aparelho: tipoAparelho()});
     const mudou = (s.usuario || {}).perfil !== j.usuario.perfil;
-    store.set(K_SESSAO, comSessao(Object.assign(s, {usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0, termo: j.termo || null}), j));
+    store.set(K_SESSAO, comSessao(Object.assign(s, {usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0, termo: j.termo || null, biblioteca: j.biblioteca || null}), j));
     conferirTermo();
     avisarServidor(j.versao || 0);
     carregarTerritorios(j.territoriosVersao || "");
@@ -5348,6 +5366,9 @@ function abasDoPerfil() {
   let l;
   if (p === "coord") l = [["inicio", "Início"], ["admin", "Administração"], ["equipe", "Equipes", faz], ["acoes", "Ações do Dia B", faz], ...(faz ? [["exame", "Exame"], ["lista", "Meus exames"]] : []), ["painel", "Painel"]];
   else { l = [["inicio", "Início"], ["exame", "Exame"], ["lista", "Meus exames"], ["acoes", "Ações do Dia B", p === "rt"], ["painel", "Painel"]]; if (p === "rt") l.push(["equipe", "Equipe"]); }
+  // Biblioteca clínica: a titular sempre vê; as equipes, só depois que ela abre.
+  const u0 = (sessao() || {}).usuario || {};
+  if (u0.titular || ((sessao() || {}).biblioteca || {}).aberta) l.push(["biblio", "Biblioteca"]);
   l.push(["config", "Minha conta"]);
   return l;
 }
@@ -5359,10 +5380,11 @@ const IC_ABA = {
   painel: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
   equipe: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c1-3.5 3.5-5.5 6.5-5.5s5.5 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5c1.8.6 3 2.4 3.5 5.5"/>',
   config: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  biblio: '<path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v16H5.5c-.8 0-1.5-.7-1.5-1.5z"/><path d="M20 5.5c0-.8-.7-1.5-1.5-1.5H13v16h5.5c.8 0 1.5-.7 1.5-1.5z"/><path d="M6.5 8h2.5M6.5 11h2.5M15 8h2.5M15 11h2.5"/>',
   admin: '<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="m9 12 2 2 4-4"/>',
   acesso: '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>'
 };
-const CURTO_ABA = {admin: "Gestão", config: "Conta", lista: "Exames", exame: "Examinar", acoes: "Dia B"};
+const CURTO_ABA = {admin: "Gestão", config: "Conta", lista: "Exames", exame: "Examinar", acoes: "Dia B", biblio: "Biblioteca"};
 const IC_DENTE = IC_ABA.exame;
 function renderAbas() {
   const atual = estado.aba;
@@ -5615,11 +5637,11 @@ $("#acessoConteudo").addEventListener("click", async e => {
     b.disabled = true;
     try {
       const j = await api("entrar", {aparelho: tipoAparelho()}, {cred: {email, codigo}});
-      store.set(K_SESSAO, comSessao({email, codigo, usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0, termo: j.termo || null}, j));
+      store.set(K_SESSAO, comSessao({email, codigo, usuario: j.usuario, verificadoEm: new Date().toISOString(), versaoServidor: j.versao || 0, termo: j.termo || null, biblioteca: j.biblioteca || null}, j));
       avisarServidor(j.versao || 0);
       carregarTerritorios(j.territoriosVersao || "", true);
       aplicarUsuario(j.usuario); estAc.msg = "";
-      rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem(); conferirTermo(); setTimeout(conferirCro, 1500);
+      rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); toast(`Bem-vindo(a), ${j.usuario.nome}.`); sincronizar(); carregarNuvem(); conferirTermo(); setTimeout(conferirCro, 1500); setTimeout(() => carregarBiblioteca(), 2500);
     } catch (err) {
       estAc.msg = err.semAcesso ? "O e-mail ou o código não conferem. Confira os dois (o código diferencia maiúsculas de minúsculas) ou peça um novo código." : err.message;
       renderAcesso(); $("#acEmail").value = email;
@@ -5683,6 +5705,117 @@ function rotularTabelas() {
 }
 let rotulando = false;
 new MutationObserver(() => { if (rotulando) return; rotulando = true; requestAnimationFrame(() => { rotularTabelas(); rotulando = false; }); }).observe(document.body, {childList: true, subtree: true});
+
+/* ---------- Biblioteca clínica (47.6) ----------
+ * A titular escreve, revisa e publica. Rascunho: só ela vê. As equipes veem as publicadas quando ela abre a Biblioteca.
+ * As fichas ficam guardadas no aparelho (servem sem internet) e alimentam as "Opções com evidência" do painel do dente. */
+const K_BIB = "odonto.biblioteca.v1", estBib = {busca: "", carregando: false};
+const bibDados = () => store.get(K_BIB, null) || {fichas: []};
+const ehTitular = () => !!(((sessao() || {}).usuario || {}).titular);
+async function carregarBiblioteca(render) {
+  if (render) renderBiblioteca();
+  if (!navigator.onLine || !sessao() || !cfg().url || estBib.carregando) return;
+  estBib.carregando = true;
+  try { const j = await api("biblioteca", {}); store.set(K_BIB, {em: new Date().toISOString(), aberta: j.aberta, fichas: j.fichas});
+    const s = sessao(); if (s && (s.biblioteca || {}).aberta !== j.aberta) { store.set(K_SESSAO, Object.assign(s, {biblioteca: {aberta: j.aberta}})); renderAbas(); } }
+  catch (err) {} finally { estBib.carregando = false; }
+  if (estado.aba === "biblio") renderBiblioteca();
+}
+const SIT_FICHA = f => f.situacao === "publicada" ? (f.vencida ? ["pendente", "Publicada · revisar"] : ["enviado", `Publicada · versão ${f.versao}`]) : ["inativo", "Rascunho (só você vê)"];
+const doiLink = r => r.doi ? ` <a href="https://doi.org/${esc(r.doi)}" target="_blank" rel="noopener">DOI</a>` : "";
+const listaFicha = (t, l, ord) => l && l.length ? `<h4>${t}</h4><${ord ? "ol" : "ul"}>${l.map(x => `<li>${esc(x)}</li>`).join("")}</${ord ? "ol" : "ul"}>` : "";
+function renderBiblioteca() {
+  const d = bibDados(), tit = ehTitular(), q = normTexto(estBib.busca || "");
+  $("#bibStatus").textContent = !d.em ? (navigator.onLine ? "Carregando…" : "Abra com internet uma vez para guardar as fichas.") : `Atualizada em ${fmtDataHora(d.em)}`;
+  const pub = d.fichas.filter(f => f.situacao === "publicada").length;
+  $("#bibTitular").innerHTML = tit ? `<div class="bloco bib-tit"><div class="bloco-topo"><h3>Só para você (coordenação titular)</h3><span class="estado ${d.aberta ? "enviado" : "inativo"}">${d.aberta ? "Aberta para as equipes" : "Fechada para as equipes"}</span></div>
+    <p class="dica" style="margin:4px 0 6px"><b>Padrão de evidência:</b> só documentos oficiais do governo e revisões sistemáticas ou metanálises do PubMed ou da Cochrane. A certeza é o GRADE informado pelos autores; quando não houver, a avaliação é sua.</p>
+    <p class="dica" style="margin:0 0 10px">${pub} de ${d.fichas.length} fichas publicadas. Leia cada rascunho, corrija o que precisar e toque em <b>Publicar</b>. ${d.aberta ? "As equipes veem só as publicadas." : "Enquanto estiver fechada, ninguém além de você vê a aba."}</p>
+    <div class="acoes-l"><button class="${d.aberta ? "sec" : "prim"}" type="button" id="bibAbrir">${d.aberta ? "Fechar para as equipes" : "Abrir para as equipes"}</button><button class="sec" type="button" data-bib-nova>Nova ficha</button></div></div>` : "";
+  const fs = d.fichas.filter(f => !q || normTexto([f.titulo, f.pergunta, f.resumo, f.categoria].join(" ")).includes(q));
+  const cats = [...new Set(fs.map(f => f.categoria))];
+  $("#bibLista").innerHTML = !fs.length ? `<div class="bloco vazio">${d.fichas.length ? "Nenhuma ficha com essa busca." : "Ainda não há fichas publicadas."}</div>`
+    : cats.map(c => `<p class="acoes-grupo">${esc(c)}</p><div class="bib-grade">${fs.filter(f => f.categoria === c).map(f => { const st = SIT_FICHA(f);
+      return `<button type="button" class="bib-card" data-bib-ver="${esc(f.id)}"><b>${esc(f.titulo)}</b>${f.pergunta ? `<span>${esc(f.pergunta)}</span>` : ""}${tit ? `<span class="estado ${st[0]}">${st[1]}</span>` : ""}</button>`; }).join("")}</div>`).join("");
+}
+function htmlFicha(f) {
+  const tit = ehTitular(), st = SIT_FICHA(f);
+  const evs = (f.evidencias || []).map(e => { const r = (f.referencias || [])[e.ref] || {}; return `<tr><td>${esc({decidua: "Decíduo", permanente: "Permanente", ambas: "Decíduo e permanente"}[e.den])}, ${esc({uma: "uma face", varias: "várias faces", qualquer: "qualquer lesão"}[e.faces])}</td><td>${esc(e.medida)}</td><td><b>${esc(e.resultado)}</b></td><td>${esc(e.tempo || "–")}</td><td>${esc(e.certeza || "–")}</td><td>${esc((r.texto || "").split(".")[0])}${doiLink(r)}</td></tr>`; }).join("");
+  return `<div class="painel bib-ficha" role="dialog" aria-modal="true" aria-labelledby="fiTit" style="max-width:820px"><div class="p-topo"><div><h3 id="fiTit">${esc(f.titulo)}</h3><p>${esc(f.categoria)}${f.procs && f.procs.length ? " · no app: " + esc(f.procs.map(k => PROC_NOME[k] || k).join(", ")) : ""}</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>
+    ${tit ? `<p class="dica"><span class="estado ${st[0]}">${st[1]}</span>${f.publicadoEm ? ` · publicada em ${fmtData(f.publicadoEm.slice(0, 10))} por ${esc(f.revisadoPor || "")}, revisar até ${fmtData(String(f.revisarEm).slice(0, 10))}` : ""}</p>` : `<p class="dica">Revisada pela coordenação em ${fmtData(String(f.publicadoEm || "").slice(0, 10))}. Apoio à decisão: o julgamento clínico prevalece.</p>`}
+    ${f.pergunta ? `<p class="ficha-perg">${esc(f.pergunta)}</p>` : ""}<p>${esc(f.resumo)}</p>
+    ${listaFicha("Quando indicar", f.indicar)}${f.naoFazer && f.naoFazer.length ? `<div class="aviso aviso-alarme"><h4 style="margin:0 0 4px">Quando NÃO fazer</h4><ul>${f.naoFazer.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+    ${listaFicha("Materiais", f.materiais)}${listaFicha("Etapas", f.etapas, true)}${f.fonteEtapas ? `<p class="dica"><b>Fonte das etapas:</b> ${esc(f.fonteEtapas)}</p>` : ""}${listaFicha("Atenção", f.avisos)}
+    ${evs || f.evidenciaTexto ? `<h4>O que a evidência mostra</h4>${f.evidenciaTexto ? `<p>${esc(f.evidenciaTexto)}</p>` : ""}${evs ? `<div class="tabela"><table class="esq"><thead><tr><th>Situação</th><th>O que foi medido</th><th>Resultado</th><th>Tempo</th><th>Certeza</th><th>Fonte</th></tr></thead><tbody>${evs}</tbody></table></div><p class="dica">Os números medem coisas diferentes e não são um ranking.</p>` : ""}` : ""}
+    ${(f.referencias || []).length ? `<h4>Referências</h4><ol class="refs">${f.referencias.map(r => `<li>${esc(r.texto)}${r.tipo ? ` <small class="dica">(${esc(r.tipo)})</small>` : ""}${doiLink(r)}</li>`).join("")}</ol>` : ""}
+    ${tit ? `<div class="acoes-l" style="margin-top:12px"><button class="sec" type="button" data-bib-editar="${esc(f.id)}">Editar</button><button class="${f.situacao === "publicada" ? "sec" : "prim"}" type="button" data-bib-publicar="${esc(f.id)}" data-v="${f.situacao === "publicada" ? "" : "1"}">${f.situacao === "publicada" ? "Voltar para rascunho" : f.vencida ? "Confirmar a revisão" : "Publicar"}</button></div><p class="dica" id="fiStatus2" aria-live="polite"></p>` : ""}</div>`;
+}
+// Editor da titular: listas uma por linha; referências "texto | DOI | tipo"; evidências "dentição | faces | medida | resultado | tempo | certeza | nº da referência".
+function htmlEditorFicha(f) {
+  f = f || {categoria: "Procedimentos", procs: [], referencias: [], evidencias: []};
+  const ta = (id, rot, v, dica, linhas) => `<label class="campo largo">${rot}${dica ? ` <small class="dica">${dica}</small>` : ""}<textarea id="${id}" rows="${linhas || 4}">${esc(v || "")}</textarea></label>`;
+  const um = l => (l || []).join("\n");
+  const refs = (f.referencias || []).map(r => [r.texto, r.doi, r.tipo].join(" | ")).join("\n");
+  const evs = (f.evidencias || []).map(e => [e.den, e.faces, e.medida, e.resultado, e.tempo, e.certeza, (Number(e.ref) || 0) + 1].join(" | ")).join("\n");
+  return `<div class="painel bib-ficha" role="dialog" aria-modal="true" aria-labelledby="feTit" style="max-width:820px"><div class="p-topo"><div><h3 id="feTit">${f.id ? "Editar ficha" : "Nova ficha"}</h3><p>Uma informação por linha nas listas.</p></div><button class="fechar" data-fecha-leitura aria-label="Fechar">×</button></div>
+    <input type="hidden" id="feId" value="${esc(f.id || "")}">
+    <div class="grade"><label class="campo">Título<input id="feTitulo" value="${esc(f.titulo || "")}"></label>
+      <label class="campo">Categoria<select id="feCat">${["Procedimentos", "Condutas", "Materiais", "Biossegurança", "Outros"].map(c => `<option ${c === f.categoria ? "selected" : ""}>${c}</option>`).join("")}</select></label></div>
+    <div class="campo">Procedimentos do app ligados a esta ficha<div class="chips">${PROCS.map(([k, t]) => `<label class="check"><input type="checkbox" data-fe-proc="${k}" ${(f.procs || []).includes(k) ? "checked" : ""}>${esc(t)}</label>`).join("")}</div></div>
+    <label class="campo">Pergunta que a ficha responde<input id="fePerg" value="${esc(f.pergunta || "")}"></label>
+    ${ta("feResumo", "Resposta curta", f.resumo, "", 3)}${ta("feIndicar", "Quando indicar", um(f.indicar))}${ta("feNao", "Quando NÃO fazer", um(f.naoFazer))}
+    ${ta("feMat", "Materiais", um(f.materiais))}${ta("feEtapas", "Etapas", um(f.etapas), "uma etapa por linha, na ordem", 8)}${ta("feAvisos", "Atenção", um(f.avisos), "", 2)}
+    <label class="campo largo">Fonte das etapas<input id="feFonteEt" value="${esc(f.fonteEtapas || "")}" placeholder="Documento oficial ou &quot;a validar pela revisora&quot;"></label>
+    <div class="campo">Aparece no exame quando o dente tem<div class="chips"><label class="check"><input type="checkbox" data-fe-cond="carie" ${(f.condicoes || ["carie"]).includes("carie") ? "checked" : ""}>cárie (ativa, crônica ou restaurada com cárie)</label><label class="check"><input type="checkbox" data-fe-cond="mancha" ${(f.condicoes || []).includes("mancha") ? "checked" : ""}>mancha branca ativa</label></div></div>
+    ${ta("feEvTexto", "O que a evidência mostra (texto)", f.evidenciaTexto, "", 3)}
+    ${ta("feRefs", "Referências", refs, "uma por linha: texto | DOI | tipo de estudo. Padrão: só documentos oficiais do governo e revisões sistemáticas ou metanálises do PubMed ou da Cochrane", 5)}
+    ${ta("feEvs", "Números para o painel do dente", evs, "uma por linha: dentição (decidua, permanente ou ambas) | faces (uma, varias ou qualquer) | o que foi medido | resultado | tempo | certeza (o GRADE dos autores ou a sua avaliação) | nº da referência", 4)}
+    <div class="acoes-l" style="margin-top:10px"><button class="prim" type="button" id="feSalvar">Salvar</button><button class="sec" type="button" data-fecha-leitura>Cancelar</button></div><p class="dica" id="feStatus" aria-live="polite"></p></div>`;
+}
+function fichaDoEditor() {
+  const ls = id => $("#" + id).value.split("\n").map(x => x.trim()).filter(Boolean);
+  const refs = ls("feRefs").map(l => { const [texto, doi, tipo] = l.split("|").map(x => (x || "").trim()); return {texto, doi, tipo}; });
+  const evs = ls("feEvs").map(l => { const [den, faces, medida, resultado, tempo, certeza, ref] = l.split("|").map(x => (x || "").trim()); return {den, faces, medida, resultado, tempo, certeza, ref: Math.max(0, (Number(ref) || 1) - 1)}; });
+  return {id: $("#feId").value, titulo: $("#feTitulo").value, categoria: $("#feCat").value, procs: $$("[data-fe-proc]").filter(c => c.checked).map(c => c.dataset.feProc),
+    pergunta: $("#fePerg").value, resumo: $("#feResumo").value, indicar: ls("feIndicar"), naoFazer: ls("feNao"), materiais: ls("feMat"), etapas: ls("feEtapas"), avisos: ls("feAvisos"),
+    evidenciaTexto: $("#feEvTexto").value, fonteEtapas: $("#feFonteEt").value, condicoes: $$("[data-fe-cond]").filter(c => c.checked).map(c => c.dataset.feCond), referencias: refs, evidencias: evs};
+}
+const fichaPorId = id => bibDados().fichas.find(f => f.id === id);
+$("#bibBusca").addEventListener("input", e => { estBib.busca = e.target.value; renderBiblioteca(); });
+document.addEventListener("click", async e => {
+  const t = e.target;
+  const v = t.closest("[data-bib-ver]"); if (v) { const f = fichaPorId(v.dataset.bibVer); if (f) abrirModal(htmlFicha(f)); return; }
+  if (t.closest("[data-bib-nova]")) return abrirModal(htmlEditorFicha(null));
+  const ed = t.closest("[data-bib-editar]"); if (ed) return abrirModal(htmlEditorFicha(fichaPorId(ed.dataset.bibEditar)));
+  const pb = t.closest("[data-bib-publicar]");
+  if (pb) { pb.disabled = true;
+    try { const j = await api("publicarFicha", {id: pb.dataset.bibPublicar, publicar: !!pb.dataset.v}); toast(j.ficha.situacao === "publicada" ? `Ficha publicada (versão ${j.ficha.versao}).` : "Ficha voltou para rascunho.");
+      await carregarBiblioteca(); const f = fichaPorId(j.ficha.id); if (f) abrirModal(htmlFicha(f)); }
+    catch (err) { $("#fiStatus2").textContent = err.message; pb.disabled = false; } return; }
+  if (t.id === "feSalvar") { t.disabled = true;
+    try { const j = await api("salvarFicha", {ficha: fichaDoEditor()}); toast("Ficha salva."); await carregarBiblioteca(); const f = fichaPorId(j.ficha.id); if (f) abrirModal(htmlFicha(f)); }
+    catch (err) { $("#feStatus").textContent = err.message; t.disabled = false; } return; }
+  if (t.id === "bibAbrir") { const d = bibDados(), abrir = !d.aberta;
+    if (abrir && !confirm("Abrir a Biblioteca para as equipes? Elas passam a ver as fichas publicadas (os rascunhos continuam só seus).")) return;
+    t.disabled = true; try { await api("abrirBiblioteca", {aberta: abrir}); toast(abrir ? "Biblioteca aberta para as equipes." : "Biblioteca fechada para as equipes."); await carregarBiblioteca(true); } catch (err) { toast(err.message); t.disabled = false; } }
+});
+// Opções com evidência no painel do dente: só quando o dente tem cárie (ativa, crônica ou restaurada com cárie).
+function opcoesEvidencia(n, d) {
+  const fs = (d.faces || {}), comCarie = Object.values(fs).filter(v => ["ca", "cc", "restc"].includes(v)).length, comMancha = Object.values(fs).filter(v => v === "mba").length;
+  if (!comCarie && !comMancha) return "";
+  const den = ehDecid(n) ? "decidua" : "permanente", nf = comCarie || comMancha, faces = nf > 1 ? "varias" : "uma", tit = ehTitular();
+  const condOk = f => (f.condicoes || ["carie"]).some(c => (c === "carie" && comCarie) || (c === "mancha" && comMancha));
+  const fichas = bibDados().fichas.filter(f => (f.situacao === "publicada" || tit) && condOk(f) && (!(f.procs || []).length || f.procs.some(k => ehDecid(n) || !SO_DECIDUO.includes(k))));
+  const itens = fichas.map(f => ({f, evs: (f.evidencias || []).filter(e => (e.den === "ambas" || e.den === den) && (e.faces === "qualquer" || e.faces === faces))}))
+    .filter(x => x.evs.length || !(x.f.evidencias || []).length);
+  if (!itens.length) return "";
+  return `<details class="op-evid"><summary>Opções com evidência <small>(${den === "decidua" ? "decíduo" : "permanente"}, ${comCarie ? "cárie" : "mancha branca ativa"} em ${faces === "uma" ? "uma face" : "várias faces"})</small></summary>
+    ${d.dor || d.abscesso ? `<p class="aviso aviso-alarme">Com dor ou abscesso, confira os sinais de envolvimento pulpar antes de escolher: pode ser caso de encaminhamento ou exodontia.</p>` : ""}
+    <p class="dica">Apoio à decisão: os números medem coisas diferentes e não são um ranking. Quem decide é o cirurgião-dentista.</p>
+    ${itens.map(({f, evs}) => `<div class="op-item"><b>${esc(f.titulo)}</b>${f.situacao !== "publicada" ? ` <span class="estado inativo">rascunho (só você vê)</span>` : ""}
+      ${evs.map(e => { const r = (f.referencias || [])[e.ref] || {}; return `<p class="op-num"><span class="op-res">${esc(e.resultado)}</span> ${esc(e.medida)}${e.tempo ? ` · ${esc(e.tempo)}` : ""}<br><small class="dica">Certeza: ${esc(e.certeza || "–")} · ${esc((r.texto || "").split(".")[0])}${doiLink(r)}</small></p>`; }).join("")}
+      <details><summary>Como fazer</summary><p>${esc(f.resumo)}</p>${f.naoFazer && f.naoFazer.length ? `<p class="dica"><b>Quando não fazer:</b> ${esc(f.naoFazer.join(" "))}</p>` : ""}${listaFicha("Etapas", f.etapas, true)}</details></div>`).join("")}</details>`;
+}
 
 /* ---------- guia do app ----------
  * Um texto só, aberto em Minha conta ("Abrir o guia") ou pelo "Entenda" de um bloco (abre já na parte certa). */
@@ -6378,7 +6511,7 @@ if (CONVITE_URL) {
   if (sessao()) setTimeout(() => toast(`Este aparelho já está conectado com a conta de ${sessao().usuario.nome}. Para aceitar o convite, saia em "Minha conta" e abra o link do convite de novo.`), 900);
   else { estAc.vista = "convite"; estAc.convite = {token: CONVITE_URL}; }
 }
-atualizarNomesAntigos(estado.ex); rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao(); conferirTermo(); setTimeout(conferirCro, 1500);
+atualizarNomesAntigos(estado.ex); rascunhoDaPessoa(); renderExame(); renderAbas(); irAba(abaInicial()); verificarSessao(); conferirTermo(); setTimeout(conferirCro, 1500); setTimeout(() => carregarBiblioteca(), 2500);
 if (RECUPERAR_URL) abrirRecuperacao();
 conferirVersaoServidor();
 sincronizar();

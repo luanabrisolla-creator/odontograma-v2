@@ -1367,5 +1367,30 @@ parte("CRO no padrão UF e número");
   T("a pessoa completa o CRO; o cadastro é o mesmo e a mudança fica em Acessos", c.ok && c.usuario.cro === "RR 7099" && !c.usuario.croIncompleto && c.usuario.id === lin[0] && R.G.est.sheets.Acessos.some(l => /Corrigiu o CRO/.test(l.join("|")) && /7099 → RR 7099/.test(l.join("|"))));
 }
 
+parte("Biblioteca clínica");
+{
+  const R = cenario();
+  const bt = R.P(R.C, { acao: "biblioteca" });
+  T("a titular vê as 6 fichas iniciais, todas em rascunho", bt.ok && bt.fichas.length === 6 && bt.fichas.every(f => f.situacao === "rascunho" && f.referencias.length), bt.fichas && bt.fichas.map(f => f.id));
+  T("padrão de evidência: só documento oficial ou revisão sistemática/metanálise (PubMed ou Cochrane), com DOI nas revisões", bt.fichas.every(f => f.referencias.every(r => r.tipo === "Documento oficial do governo" || (/Revisão sistemática|Metanálise/.test(r.tipo) && /^10\./.test(r.doi)))), bt.fichas.flatMap(f => f.referencias.map(r => r.tipo)));
+  T("certeza: GRADE dos autores ou \"a avaliar pela revisora\"; etapas com a fonte", bt.fichas.every(f => f.evidencias.every(e => /GRADE|Cochrane|informada pelos autores|A avaliar pela revisora/.test(e.certeza)) && !!f.fonteEtapas));
+  const bd = R.P(R.ANA, { acao: "biblioteca" });
+  T("fechada: a dentista não vê nenhuma ficha", bd.ok && bd.aberta === false && bd.fichas.length === 0);
+  T("ao entrar, o app sabe se a Biblioteca está aberta", R.P(R.ANA, { acao: "entrar", aparelho: "Teste" }).biblioteca.aberta === false);
+  T("só a titular escreve, publica e abre a Biblioteca", !R.P(R.ANA, { acao: "salvarFicha", ficha: { titulo: "x" } }).ok && !R.P(R.PAULA, { acao: "publicarFicha", id: "ficha-art", publicar: true }).ok && !R.P(R.RT, { acao: "abrirBiblioteca", aberta: true }).ok);
+  const sem = R.P(R.C, { acao: "salvarFicha", ficha: { titulo: "Ficha sem referência", resumo: "teste" } });
+  T("ficha sem referência não pode ser publicada", sem.ok && !R.P(R.C, { acao: "publicarFicha", id: sem.ficha.id, publicar: true }).ok);
+  const pub = R.P(R.C, { acao: "publicarFicha", id: "ficha-art", publicar: true });
+  T("a titular publica a ficha do ART: versão 1, revisar em 12 meses, com o nome de quem revisou", pub.ok && pub.ficha.situacao === "publicada" && pub.ficha.versao === 1 && pub.ficha.revisarEm > new Date().toISOString().slice(0, 10) && !!pub.ficha.revisadoPor, pub.ficha);
+  T("publicada, mas com a Biblioteca fechada: a dentista ainda não vê", R.P(R.ANA, { acao: "biblioteca" }).fichas.length === 0);
+  T("a titular abre a Biblioteca", R.P(R.C, { acao: "abrirBiblioteca", aberta: true }).ok && R.P(R.ANA, { acao: "entrar", aparelho: "Teste" }).biblioteca.aberta === true);
+  const bd2 = R.P(R.ANA, { acao: "biblioteca" });
+  T("aberta: a dentista vê só a ficha publicada (os rascunhos continuam só da titular)", bd2.fichas.length === 1 && bd2.fichas[0].id === "ficha-art", bd2.fichas.map(f => f.id));
+  const f0 = bd2.fichas[0], ed = R.P(R.C, { acao: "salvarFicha", ficha: Object.assign({}, f0, { resumo: f0.resumo + " Texto revisado." }) });
+  T("corrigir uma ficha publicada cria a versão 2 e ela continua publicada", ed.ok && ed.ficha.versao === 2 && ed.ficha.situacao === "publicada" && /Texto revisado/.test(R.P(R.ANA, { acao: "biblioteca" }).fichas[0].resumo));
+  T("as evidências do painel do dente ficam guardadas na ficha", ed.ficha.evidencias.length === 4 && ed.ficha.evidencias[0].resultado === "94,3%");
+  T("a publicação fica em Acessos", R.G.est.sheets.Acessos.some(l => /Publicou ficha da Biblioteca/.test(l.join("|"))));
+}
+
 console.log(falhas ? `\n${falhas} de ${total} verificações FALHARAM.` : `\nTudo certo: ${total} verificações do servidor passaram.`);
 process.exit(falhas ? 1 : 0);
